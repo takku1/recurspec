@@ -1,0 +1,17 @@
+# Measurement baselines are per-machine evidence, not shared source of truth.
+# Keep the directory shape, ignore the logs.
+.measure/**/log.jsonl
+
+# Agent handoff packets are session-scoped
+.scratch/handoffs/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# OS
+Thumbs.db
+.DS_Store

@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "skills": {
+    "dual-loop": {
+      "source": "C:\\Users\\dcarn\\aiprojects\\recursive-system-design\\skills\\dual-loop",
+      "sourceType": "local"
+    },
+    "reconcile-spec": {
+      "source": "C:\\Users\\dcarn\\aiprojects\\recursive-system-design\\skills\\reconcile-spec",
+      "sourceType": "local"
+    },
+    "recursive-spec": {
+      "source": "C:\\Users\\dcarn\\aiprojects\\recursive-system-design\\skills\\recursive-spec",
+      "sourceType": "local"
+    },
+    "sherloc": {
+      "source": "C:\\Users\\dcarn\\aiprojects\\recursive-system-design\\skills\\sherloc",
+      "sourceType": "local"
+    },
+    "wayfinder": {
+      "source": "C:\\Users\\dcarn\\aiprojects\\recursive-system-design\\skills\\wayfinder",
+      "sourceType": "local"
+    }
+  }
+}
