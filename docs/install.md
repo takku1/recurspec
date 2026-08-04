@@ -4,14 +4,22 @@ RSS ships four skills. They are plain `SKILL.md` files; installing means copying
 into `~/.claude/skills/<name>/`, where Claude Code discovers them at session start.
 
 ```bash
-for s in recursive-spec resolve-stack reconcile-spec dual-loop; do
-  mkdir -p ~/.claude/skills/$s
-  cp skills/$s/SKILL.md ~/.claude/skills/$s/SKILL.md
-done
+./install-skills.sh            # install or update all four
+./install-skills.sh --check    # report drift without writing (exits non-zero on drift)
 ```
 
-On Windows the target is `C:\Users\<you>\.claude\skills\`. Start a new session (or
-`/clear`) afterwards — the skill list is read at startup.
+Start a new session (or `/clear`) afterwards — the skill list is read at startup.
+Override the target with `CLAUDE_SKILLS_DIR`; it defaults to `~/.claude/skills`.
+
+### ⚠ Name collision with mattpocock/skills
+
+`recursive-spec` and `reconcile-spec` here are **derived from** the versions in
+[mattpocock/skills](https://github.com/mattpocock/skills) and share their names. Running
+`/setup-matt-pocock-skills` silently overwrites both with the smaller upstream versions,
+losing the decomposition loop and the technology-resolution gate.
+
+`./install-skills.sh --check` detects this; `./install-skills.sh` restores. Worth running
+after any bulk skill install.
 
 | Skill | Role | Invocation | Auto-invocable? |
 |-------|------|-----------|-----------------|
