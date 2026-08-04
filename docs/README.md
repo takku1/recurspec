@@ -14,6 +14,9 @@ Root-level markdown outside `docs/` is limited to the project [README](../README
 | [install.md](./install.md) | Installing the skills + harness for Claude Code |
 | [open-work.md](./open-work.md) | **Only** active checklist of incomplete work |
 | [research/foundation.md](./research/foundation.md) | Peer-reviewed / primary research grounding |
+| [process/decomposition-loop.md](./process/decomposition-loop.md) | **Goal → tree of buildable leaves.** The 5-phase per-node loop and its stopping rules |
+| [process/technology-resolution.md](./process/technology-resolution.md) | **Third-party-first gate.** Decision classes, scoring, anti-lock-in, §8 fields |
+| [examples/login-decomposition.md](./examples/login-decomposition.md) | Worked example: one flat line → 7 specified nodes |
 | [process/dual-backchannel-loop.md](./process/dual-backchannel-loop.md) | 7-stage loop: dual back-channels + branching measurement |
 | [process/multi-signal-reconciler.md](./process/multi-signal-reconciler.md) | Structural sensory signals (drift, bloat, seams) |
 | [architecture/SYSTEM.md](./architecture/SYSTEM.md) | L0 root contract |
@@ -31,12 +34,17 @@ All pre-redesign root essays, old architecture nodes, readiness checklists, Wayf
 
 ## Reading order
 
+**Starting a new project?** Read [process/decomposition-loop.md](./process/decomposition-loop.md) then [examples/login-decomposition.md](./examples/login-decomposition.md), and run `/recursive-spec`. That is the forward path from a goal to buildable leaves.
+
+**Working on RSS itself?**
+
 1. [glossary.md](./glossary.md) — terms
 2. [architecture/SYSTEM.md](./architecture/SYSTEM.md) — L0 decomposition
 3. [research/foundation.md](./research/foundation.md) — why the design is shaped this way
-4. [process/dual-backchannel-loop.md](./process/dual-backchannel-loop.md) — operational loop
-5. [open-work.md](./open-work.md) — what is not done yet
-6. Claim a leaf on `.scratch/wayfinder-map/MAP.md` and implement against its `SYSTEM.md`
+4. [process/decomposition-loop.md](./process/decomposition-loop.md) — forward loop (spec → leaves)
+5. [process/dual-backchannel-loop.md](./process/dual-backchannel-loop.md) — backward loop (reality → blueprint)
+6. [open-work.md](./open-work.md) — what is not done yet
+7. Claim a leaf on `.scratch/wayfinder-map/MAP.md` and implement against its `SYSTEM.md`
 
 ---
 

@@ -1,10 +1,10 @@
 # Installing RSS for Claude Code
 
-RSS ships three skills. They are plain `SKILL.md` files; installing means copying each
+RSS ships four skills. They are plain `SKILL.md` files; installing means copying each
 into `~/.claude/skills/<name>/`, where Claude Code discovers them at session start.
 
 ```bash
-for s in recursive-spec reconcile-spec dual-loop; do
+for s in recursive-spec resolve-stack reconcile-spec dual-loop; do
   mkdir -p ~/.claude/skills/$s
   cp skills/$s/SKILL.md ~/.claude/skills/$s/SKILL.md
 done
@@ -13,11 +13,23 @@ done
 On Windows the target is `C:\Users\<you>\.claude\skills\`. Start a new session (or
 `/clear`) afterwards — the skill list is read at startup.
 
-| Skill | Invocation | Auto-invocable? |
-|-------|-----------|-----------------|
-| `/recursive-spec` | explicit only | no (`disable-model-invocation: true`) |
-| `/reconcile-spec` | explicit or model-chosen | **yes** — it is the drift sensor, so it should fire without being asked |
-| `/dual-loop` | explicit only | no |
+| Skill | Role | Invocation | Auto-invocable? |
+|-------|------|-----------|-----------------|
+| `/recursive-spec` | Goal → tree of buildable leaves | explicit only | no (`disable-model-invocation: true`) |
+| `/resolve-stack` | "What actually implements this?" on one node | explicit or model-chosen | **yes** — it should fire when someone is about to build something that already exists |
+| `/reconcile-spec` | Back-Channel A drift | explicit or model-chosen | **yes** — it is the drift sensor |
+| `/dual-loop` | Outer/Inner agent separation | explicit only | no |
+
+### Typical first run
+
+```
+/recursive-spec    a booking site for music teachers
+```
+
+It will frame the goal, survey what already exists for each capability, resolve each node
+to BUY/ADOPT/WRAP/BUILD, split where those classes differ, and stop at procurement
+boundaries — leaving you a tree of `SYSTEM.md` files whose leaves each carry a real stack.
+Then `/resolve-stack` on any node you want re-examined.
 
 ## What this repo deliberately does not install
 
@@ -52,10 +64,16 @@ python -m pytest harness/test_harness.py -q
 RSS is a *process* repo — keep it as the source of truth and point consumer projects at
 it rather than copying the tree. In the consumer repo:
 
-1. Create `docs/architecture/SYSTEM.md` with `/recursive-spec`.
-2. Decompose to atomic leaves; each leaf gets §6 (test seam) and §7 (measurement seam).
-3. Publish frontier tickets to `.scratch/wayfinder-map/MAP.md` with `/wayfinder`.
+1. Run `/recursive-spec` on the goal. It creates `docs/architecture/SYSTEM.md` and
+   recurses: frame → research → resolve → split-or-stop → specify.
+2. Terminal leaves arrive with §6 (test seam), §7 (measurement seam), and §8 (technology
+   resolution). Procured nodes stop at the seam; you do not spec the vendor's internals.
+3. `DEFER` nodes become Type B tickets on `.scratch/wayfinder-map/MAP.md` — clear them
+   with `/research` or `/prototype`, then resume decomposition of that subtree.
 4. Copy `harness/measure.sh.template` and `harness/checks.sh.template` to
    `components/<leaf>/` and fill them in.
 5. Run leaves through `/dual-loop`; gate merges with `harness/hypothesis_runner.py`.
 6. Run `/reconcile-spec` after each merge to feed both back-channels.
+
+Check the **BUILD ratio** after step 1. If most terminal nodes are BUILD, the research
+phase was skipped — re-run `/resolve-stack` on the ones that look like commodities.

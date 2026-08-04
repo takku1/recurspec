@@ -12,12 +12,25 @@ The removal gate in `docs/archive/README.md` has been executed: the root essays,
 
 ## Executive summary
 
-RSS reduces ephemeral context drift and “vibe coding” by:
+RSS turns a one-line goal into a tree of components each specified well enough to build, then keeps that tree honest as the code moves. It works by:
 
-1. Building a **fractal tree** of EARS contracts (`docs/architecture/**/SYSTEM.md`)
-2. Gating stochastic LLM output at a **stochastic–deterministic boundary (SDB)**
-3. Executing via **Wayfinder** frontiers (Type A implement / Type B research)
-4. Closing the loop with **dual back-channels** (structural + empirical) and **branching measurement**
+1. **Recursively decomposing** a goal, asking of every node *what will implement this?* **before** *what are its parts?* — resolving each to `BUY` / `ADOPT` / `WRAP` / `BUILD` / `DEFER`
+2. Building a **fractal tree** of EARS contracts (`docs/architecture/**/SYSTEM.md`), each terminal node carrying a real tech stack (§8), not a topic name
+3. Gating stochastic LLM output at a **stochastic–deterministic boundary (SDB)**
+4. Executing via **Wayfinder** frontiers (Type A implement / Type B research)
+5. Closing the loop with **dual back-channels** (structural + empirical) and **branching measurement**
+
+The recursion has a floor: **a node resolved to a third-party service or library is terminal** — the vendor owns its internals. That single rule both stops "break it down further" from running to absurdity and makes reinventing the wheel a gate failure rather than a review comment.
+
+```
+- Login and user accounts          ->   Identity Verification      BUY    (managed IdP)
+                                        Session Management         WRAP   (adapter)
+  ^ one line, one afternoon of              Policy Evaluation      ADOPT  (Casbin/OPA)
+    hand-rolled password hashing            Role & Permission      BUILD  <- your domain
+                                        Recovery & Verification    BUY    (delegated)
+                                        Deletion & Export          BUILD  <- unbuyable, legally required
+                                        Auth Audit Trail           ADOPT  (OpenTelemetry)
+```
 
 ```mermaid
 graph TD
@@ -47,14 +60,20 @@ recursive-system-design/
 ├── docs/
 │   ├── README.md             # Doc index
 │   ├── glossary.md           # Ubiquitous language
+│   ├── install.md            # Installing skills + harness
 │   ├── open-work.md          # Sole incomplete-work checklist
 │   ├── research/foundation.md
+│   ├── examples/
+│   │   └── login-decomposition.md   # One flat line → 7 specified nodes
 │   ├── process/
-│   │   ├── dual-backchannel-loop.md
+│   │   ├── decomposition-loop.md    # Goal → buildable leaves (forward)
+│   │   ├── technology-resolution.md # Third-party-first gate
+│   │   ├── dual-backchannel-loop.md # Reality → blueprint (backward)
 │   │   └── multi-signal-reconciler.md
 │   ├── architecture/
 │   │   ├── SYSTEM.md         # L0
 │   │   ├── spec-engine/
+│   │   ├── technology-resolver/
 │   │   ├── reconciler/
 │   │   ├── wayfinder-connector/
 │   │   ├── ast-gatekeeper/
@@ -78,7 +97,8 @@ recursive-system-design/
 
 | Skill | Role |
 |-------|------|
-| `/recursive-spec` | Fractal `SYSTEM.md` tree + EARS + §7 seams |
+| `/recursive-spec` | Goal → fractal `SYSTEM.md` tree: decompose, resolve, EARS, §6/§7/§8 seams |
+| `/resolve-stack` | The third-party-first gate on one node — what actually implements this? |
 | `/reconcile-spec` | Back-Channel A (+ metric drift when ready) |
 | `/dual-loop` | Outer Architect/Auditor vs Inner Implementor |
 | `/wayfinder`, `/sherloc` | Frontier + formal audit |
@@ -123,6 +143,14 @@ Harness tests: `python -m pytest harness/test_harness.py -q`
 ---
 
 ## Start here
+
+**Using RSS on a project of your own** — the common case:
+
+1. [docs/process/decomposition-loop.md](./docs/process/decomposition-loop.md) — the loop
+2. [docs/examples/login-decomposition.md](./docs/examples/login-decomposition.md) — see it applied
+3. [docs/install.md](./docs/install.md) — install the skills, then run `/recursive-spec` on your goal
+
+**Working on RSS itself:**
 
 1. [docs/glossary.md](./docs/glossary.md)  
 2. [docs/architecture/SYSTEM.md](./docs/architecture/SYSTEM.md)  

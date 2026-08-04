@@ -30,14 +30,31 @@ Read [`docs/README.md`](./docs/README.md) first. Terms are defined in
 
 ## Spec tree
 
-Expand a node **only when** its subcomponents have independent interface seams — inputs
-or outputs that can change without rewriting siblings. Prefer deepening interfaces over
-lengthening prose; long arguments belong in `docs/process/` or `docs/research/`, not in a
-`SYSTEM.md`. A node past ~150 lines or 3 responsibilities is a bloat signal: split it.
+**Resolve before decomposing.** Every node is asked *what will implement this?* before
+*what are its parts?* — assign a decision class (BUY / ADOPT / WRAP / BUILD / DEFER) via
+[`docs/process/technology-resolution.md`](./docs/process/technology-resolution.md).
 
-Atomic leaves must carry §6 (test seam) and §7 (measurement seam). Invariants use EARS
-keywords (`[Ubiquitous]`, `[Event-driven]`, `[State-driven]`, `[Conditional]`) and each
-carries an `EvidenceStage`.
+- **BUILD carries the burden of proof.** Never hand-roll a solved commodity — auth,
+  payments, email, search, telemetry. A BUILD without a recorded justification in §8 is a
+  gate failure.
+- **Procurement terminates recursion.** A node resolved BUY/ADOPT is a leaf; spec the
+  seam, never the vendor's internals. This is what keeps the tree finite.
+- **Split where the decision class stops being uniform** — the BUY/BUILD fault line is a
+  real interface, because you cannot refactor across a vendor's API.
+- Otherwise split by independent interface seam. A node past ~150 lines or 3
+  responsibilities is a bloat signal.
+- Max depth 4 by default; two-child minimum; no speculative children (fog goes to the
+  Wayfinder map).
+
+Terminal nodes carry §6 (test seam), §7 (measurement seam), and §8 (technology
+resolution). Invariants use EARS keywords (`[Ubiquitous]`, `[Event-driven]`,
+`[State-driven]`, `[Conditional]`) and each carries an `EvidenceStage`.
+
+**Never invent a vendor, version, or price.** The no-fabrication rule that governs
+citations governs §8 identically — verify against live docs, or resolve `DEFER`.
+
+Full loop: [`docs/process/decomposition-loop.md`](./docs/process/decomposition-loop.md).
+Worked example: [`docs/examples/login-decomposition.md`](./docs/examples/login-decomposition.md).
 
 ## Harness
 
@@ -55,8 +72,8 @@ manufactures Measured-grade evidence from a failure. See the comparison rules in
 
 ## Skills
 
-`skills/` holds the three skills this repo owns: `recursive-spec`, `reconcile-spec`,
-`dual-loop`. Install with [`docs/install.md`](./docs/install.md).
+`skills/` holds the four skills this repo owns: `recursive-spec`, `resolve-stack`,
+`reconcile-spec`, `dual-loop`. Install with [`docs/install.md`](./docs/install.md).
 
 **Do not add `sherloc/` or `wayfinder/` copies here.** They are maintained elsewhere and
 forks of them were removed for being downgrades; `skills-lock.json` records where the

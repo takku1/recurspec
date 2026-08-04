@@ -18,6 +18,8 @@ Related: implementation tickets live in [`.scratch/wayfinder-map/MAP.md`](../.sc
 | OW-03 | Wayfinder Connector publisher | blocked | OW-01 | [wayfinder-connector](./architecture/wayfinder-connector/SYSTEM.md) |
 | OW-04 | AST Gatekeeper zero-drift checker | blocked | OW-02 | [ast-gatekeeper](./architecture/ast-gatekeeper/SYSTEM.md) |
 | OW-05 | Measurement Harness branching runner | blocked | OW-04 | [measurement-harness](./architecture/measurement-harness/SYSTEM.md) |
+| OW-06 | §8 completeness validator + lockfile drift detection (pinned version vs actual) | ready | — | [technology-resolver](./architecture/technology-resolver/SYSTEM.md) |
+| OW-07 | WRAP adapter bloat signal (adapter outgrowing its seam → re-open resolution) | ready | — | [technology-resolver](./architecture/technology-resolver/SYSTEM.md) |
 
 ---
 
@@ -43,6 +45,9 @@ Related: implementation tickets live in [`.scratch/wayfinder-map/MAP.md`](../.sc
 | OW-21 | Align consumer project (featherwAIght-rs) paths to kebab-case architecture names | ready | After this docs redesign |
 | OW-22 | Skills: replace references to `doc-readiness.md` with `open-work.md` | done | Sole offender was the stale `.agents/skills/` fork, removed with the OW-30 pass. `skills/` already cited `open-work.md` |
 | OW-23 | Harness needs its own correctness backpressure wired as a real `checks.sh` | ready | `harness/test_harness.py` exists (31 tests); no `components/harness/checks.sh` yet, so the harness cannot gate itself |
+| OW-24 | Retro-fit §8 Technology Resolution onto the five pre-existing L1 nodes | ready | Spec Engine, Reconciler, Wayfinder Connector, AST Gatekeeper, Measurement Harness predate the gate and carry no §8. `technology-resolver` dogfoods it already |
+| OW-25 | Second worked example for a non-web domain (CLI or data pipeline) | deferred | `login-decomposition` covers web/SaaS; the loop claims to be domain-agnostic and that claim is currently `EvidenceStage: Unknown` |
+| OW-26 | Decide whether decomposition depth/BUILD-ratio become measured metrics | research | `build_class_ratio` is specified in technology-resolver §7 but nothing computes it; needs OW-05 |
 
 ---
 

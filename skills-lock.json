@@ -14,6 +14,10 @@
     "recursive-spec": {
       "source": "C:\\Users\\dcarn\\aiprojects\\recursive-system-design\\skills\\recursive-spec",
       "sourceType": "local"
+    },
+    "resolve-stack": {
+      "source": "C:\\Users\\dcarn\\aiprojects\\recursive-system-design\\skills\\resolve-stack",
+      "sourceType": "local"
     }
   },
   "externalDependencies": {
