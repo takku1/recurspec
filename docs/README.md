@@ -2,7 +2,7 @@
 
 This directory is the **single source of truth** for RSS process design, architecture contracts, research grounding, and incomplete work.
 
-Root-level markdown outside `docs/` is limited to the project [README](../README.md). Skills live under `skills/`. Runtime harness code lives under `harness/`. Execution frontiers live under `.scratch/wayfinder-map/`.
+Root-level markdown outside `docs/` is limited to the project [README](../README.md) and [CLAUDE.md](../CLAUDE.md) (agent working rules). Skills live under `skills/`. Runtime harness code lives under `harness/`. Execution frontiers live under `.scratch/wayfinder-map/`.
 
 ---
 
@@ -11,6 +11,7 @@ Root-level markdown outside `docs/` is limited to the project [README](../README
 | Path | Role |
 |------|------|
 | [glossary.md](./glossary.md) | Ubiquitous language (domain terms) |
+| [install.md](./install.md) | Installing the skills + harness for Claude Code |
 | [open-work.md](./open-work.md) | **Only** active checklist of incomplete work |
 | [research/foundation.md](./research/foundation.md) | Peer-reviewed / primary research grounding |
 | [process/dual-backchannel-loop.md](./process/dual-backchannel-loop.md) | 7-stage loop: dual back-channels + branching measurement |

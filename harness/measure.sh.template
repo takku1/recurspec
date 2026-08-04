@@ -13,7 +13,15 @@ TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 # Dummy measurement placeholder — replace with actual execution
 RUN_LATENCY_MS=42.5
 
-# Emit Mochi-Swarm / RSS compliant JSON output
+# Emit the RSS measurement payload as the final JSON object on stdout.
+#
+# `direction` tells the keep/revert gate which way is better. Omit it only when
+# the metric name makes it obvious (see harness/baseline.py); an undecidable
+# direction blocks the merge rather than being guessed.
+#
+# `status` and `evidence_stage` are checked for self-contradiction: reporting
+# success without a numeric value, or claiming a stage above Measured, marks
+# the instrument broken and reverts the branch.
 cat <<EOF
 {
   "ts": "${TIMESTAMP}",
@@ -22,6 +30,7 @@ cat <<EOF
   "metric": "latency_p99_ms",
   "value": ${RUN_LATENCY_MS},
   "unit": "ms",
+  "direction": "lower",
   "evidence_stage": "Measured",
   "status": "success"
 }

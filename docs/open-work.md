@@ -26,9 +26,9 @@ Related: implementation tickets live in [`.scratch/wayfinder-map/MAP.md`](../.sc
 | ID | Item | Status | Notes |
 |----|------|--------|-------|
 | OW-10 | Dual-loop skill fully wired to packet templates in `.scratch/handoffs/` | ready | Skill exists under `skills/dual-loop/`; handoff dir convention not dogfooded end-to-end |
-| OW-11 | `.measure/` baseline layout + append-only `log.jsonl` convention enforced | ready | Harness stubs exist; no consumer project baseline yet |
+| OW-11 | `.measure/` baseline layout + append-only `log.jsonl` convention enforced | done | `harness/baseline.py` reads/writes the convention; `find_baseline` ignores non-trunk branches. No consumer-project baseline yet (see OW-21) |
 | OW-12 | Pre-commit / CI: fail on `checks.sh` fail; optional `measure.sh` on changed components | deferred | Local dogfood first |
-| OW-13 | Reconciler Signal D (metric drift → Type B Wayfinder ticket) | blocked | Needs OW-05 + OW-02 |
+| OW-13 | Reconciler Signal D (metric drift → Type B Wayfinder ticket) | ready | Harness half done: `hypothesis_runner` emits a `signal_d` event on regression beyond tolerance. Remaining: `/reconcile-spec` consuming it to open the Type B ticket |
 | OW-14 | Kitchen Loop trust model (spec surface + unbeatable tests + drift control) as explicit Q(S) reporting | research | See research foundation; no implementation yet |
 | OW-15 | Remote GitHub webhook observer for reconcile | deferred | Phase 2+; local hooks enough |
 | OW-16 | VS Code interactive tree visualizer | deferred | Phase 3+; markdown/CLI primary |
@@ -41,7 +41,8 @@ Related: implementation tickets live in [`.scratch/wayfinder-map/MAP.md`](../.sc
 |----|------|--------|-------|
 | OW-20 | Promote or delete any residual notes under `docs/archive/` | ready | Keep archive empty unless mid-extraction |
 | OW-21 | Align consumer project (featherwAIght-rs) paths to kebab-case architecture names | ready | After this docs redesign |
-| OW-22 | Skills: replace references to `doc-readiness.md` with `open-work.md` | ready | recursive-spec and others |
+| OW-22 | Skills: replace references to `doc-readiness.md` with `open-work.md` | done | Sole offender was the stale `.agents/skills/` fork, removed with the OW-30 pass. `skills/` already cited `open-work.md` |
+| OW-23 | Harness needs its own correctness backpressure wired as a real `checks.sh` | ready | `harness/test_harness.py` exists (31 tests); no `components/harness/checks.sh` yet, so the harness cannot gate itself |
 
 ---
 
@@ -49,13 +50,17 @@ Related: implementation tickets live in [`.scratch/wayfinder-map/MAP.md`](../.sc
 
 There is currently **no** `findings/` or `bugs/` tree in this repo. Policy when they appear: **archive first**, then extract — see [archive/README.md](./archive/README.md).
 
-## Removal pass (blocked until verified)
+## Removal pass
+
+Executed 2026-08-04, after `git init` made the tree recoverable and each file was
+byte-compared against its archive copy. Recover any of it with
+`git show <baseline-commit>:<path>`.
 
 | ID | Item | Status | Notes |
 |----|------|--------|-------|
-| OW-30 | Remove root essays after archive promotion verified | blocked | Sources still at repo root; snapshot in `archive/2026-08-02-pre-redesign/root/` |
-| OW-31 | Remove SCREAMING_CASE architecture dirs after kebab-case verified | blocked | Old dirs still present alongside new |
-| OW-32 | Remove `docs/doc-readiness.md` after open-work verified complete | blocked | Superseded by this file; keep until removal pass |
+| OW-30 | Remove root essays after archive promotion verified | done | 6 essays byte-identical to `archive/…/root/`; `README.md` kept (living, differs from its archived predecessor) |
+| OW-31 | Remove SCREAMING_CASE architecture dirs after kebab-case verified | done | `AST_GATEKEEPER`, `MEASUREMENT_HARNESS`, `SPEC_ENGINE`, `WAYFINDER_CONNECTOR` removed. **`RECONCILER` was never a duplicate** — on this case-insensitive filesystem it is the same inode as `reconciler/` |
+| OW-32 | Remove `docs/doc-readiness.md` after open-work verified complete | done | Byte-identical to `archive/…/architecture/doc-readiness.md` |
 
 ---
 

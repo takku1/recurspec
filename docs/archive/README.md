@@ -46,11 +46,20 @@ Full pre-redesign reference (24 files). **Do not delete this snapshot.**
 - Parallel checklists that duplicate `open-work.md` after redesign settles.
 - Invented academic references.
 
-## Removal gate (not yet executed)
+## Removal gate — executed 2026-08-04
 
-Live originals may still exist at repo root and under old `docs/architecture/*` names until an explicit **removal pass**. Removal pass checklist:
+- [x] Living docs cover all archive concepts needed for day-to-day work
+- [x] `open-work.md` holds all incomplete items formerly in doc-readiness / dual-loop phases / Wayfinder fog
+- [x] Cross-links updated (README, docs README, skills, `skills-lock.json`)
+- [x] Deleted: 6 root essays, `docs/doc-readiness.md`, 4 SCREAMING_CASE architecture dirs, the stale `.agents/skills/` fork
 
-- [ ] Living docs cover all archive concepts needed for day-to-day work
-- [ ] `open-work.md` holds all incomplete items formerly in doc-readiness / dual-loop phases / Wayfinder fog
-- [ ] Cross-links updated (README, skills, wayfinder MAP)
-- [ ] Then delete: root essays, `docs/doc-readiness.md`, SCREAMING_CASE architecture dirs (if kebab-case replacements exist)
+Each file was byte-compared against its snapshot copy before deletion, and the repo was
+placed under git first, so every removal is recoverable with
+`git show <baseline-commit>:<path>`.
+
+**`RECONCILER/` was not a duplicate.** On this case-insensitive filesystem it resolves to
+the same inode as `reconciler/`; deleting it would have destroyed the living contract.
+Verify with `stat -c '%i %n'` before assuming a SCREAMING_CASE path is a separate copy.
+
+Skill forks (`skills/sherloc`, `skills/wayfinder`) were also removed — see
+[`../install.md`](../install.md) for where the maintained versions live.
