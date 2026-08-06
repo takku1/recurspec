@@ -20,6 +20,11 @@ Related: implementation tickets live in [`.scratch/wayfinder-map/MAP.md`](../.sc
 | OW-05 | Measurement Harness branching runner | blocked | OW-04 | [measurement-harness](./architecture/measurement-harness/SYSTEM.md) |
 | OW-06 | §8 completeness validator + lockfile drift detection (pinned version vs actual) | ready | — | [technology-resolver](./architecture/technology-resolver/SYSTEM.md) |
 | OW-07 | WRAP adapter bloat signal (adapter outgrowing its seam → re-open resolution) | ready | — | [technology-resolver](./architecture/technology-resolver/SYSTEM.md) |
+| OW-40 | Job Store: verify the `sqlite3`/Python pin against live docs, then schema + atomic claim + full re-derive from markdown | ready | — | [job-store](./architecture/spec-runner/job-store/SYSTEM.md) |
+| OW-41 | Contract-surface hashing + dirty propagation (parent dirties, siblings do not) | ready | OW-40 | [job-store](./architecture/spec-runner/job-store/SYSTEM.md) |
+| OW-42 | Context Packer: bounded packet, conservative token estimate, `budget_overflow` refusal | ready | — | [context-packer](./architecture/spec-runner/context-packer/SYSTEM.md) |
+| OW-43 | Worker Pool: verify the Agent SDK package + pin against live docs; tier routing table; maker≠checker on the atomicity call | ready | OW-42 | [worker-pool](./architecture/spec-runner/worker-pool/SYSTEM.md) |
+| OW-44 | Generate the worker contract card from `recursive-spec/SKILL.md` and confirm it is a byte-stable cacheable prefix | ready | OW-42 | [context-packer](./architecture/spec-runner/context-packer/SYSTEM.md) |
 
 ---
 
@@ -34,6 +39,7 @@ Related: implementation tickets live in [`.scratch/wayfinder-map/MAP.md`](../.sc
 | OW-14 | Kitchen Loop trust model (spec surface + unbeatable tests + drift control) as explicit Q(S) reporting | research | See research foundation; no implementation yet |
 | OW-15 | Remote GitHub webhook observer for reconcile | deferred | Phase 2+; local hooks enough |
 | OW-16 | VS Code interactive tree visualizer | deferred | Phase 3+; markdown/CLI primary |
+| OW-17 | Upward synthesis check: do a node's children's §3 interfaces jointly satisfy the parent's §3? | ready | Routed to **Spec Engine** (it already owns structural validity) rather than a new Runner node — avoids duplicating a responsibility. Must run as a schema/graph check, not a model call |
 
 ---
 

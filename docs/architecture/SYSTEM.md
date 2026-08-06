@@ -12,6 +12,7 @@ RSS is a **self-healing, multi-signal specification engine** for AI-assisted sof
 |-----------|------|----------------|
 | Spec Engine | [spec-engine/SYSTEM.md](./spec-engine/SYSTEM.md) | Create/validate EARS `SYSTEM.md` trees |
 | Technology Resolver | [technology-resolver/SYSTEM.md](./technology-resolver/SYSTEM.md) | Decision class per node; third-party-first gate; recursion stopping rule |
+| Spec Runner | [spec-runner/SYSTEM.md](./spec-runner/SYSTEM.md) | Executes the loop: scheduling, context budgeting, incremental re-walk |
 | Reconciler | [reconciler/SYSTEM.md](./reconciler/SYSTEM.md) | Structural sensory signals; auto-expand |
 | Wayfinder Connector | [wayfinder-connector/SYSTEM.md](./wayfinder-connector/SYSTEM.md) | Leaf → frontier tickets |
 | AST Gatekeeper | [ast-gatekeeper/SYSTEM.md](./ast-gatekeeper/SYSTEM.md) | Deterministic zero-drift / coverage checks |
@@ -57,6 +58,17 @@ Research: [research/foundation.md](../research/foundation.md).
   - *Context:* the tree could decompose indefinitely with no rule for when to stop, and nothing biased a node toward existing solutions. Both defects have the same root: no node was ever asked *what will implement this?* before being asked *what are its parts?*  
   - *Decision:* resolution precedes decomposition. A node's decision class both selects its technology and determines whether it terminates.  
   - *Impact:* recursion gains a floor (procurement boundary); "reinvent the wheel" becomes a gate failure rather than a review comment; leaf specs carry a real stack instead of a topic name.
+- **ADR-006:** **Seven L1 components** — adds Spec Runner.
+  - *Context:* the loop was fully specified as a process and entirely manual as an
+    execution. Running it depth-first in one conversation makes cost grow with tree size,
+    re-derives context at every node, and re-walks everything after any edit.
+  - *Decision:* separate *judgment* from *scheduling*. The Runner decides what executes
+    next and what that worker may see; it never decides what the answer is. Per-node
+    context is bounded to the immediate neighbourhood, and re-walks are incremental on a
+    contract-surface hash — a build system, not a crawler.
+  - *Impact:* per-node cost becomes O(1) in tree size rather than O(depth × breadth);
+    the tree becomes executable by parallel workers without a second source of truth,
+    because the Runner's state is a regenerable cache and markdown stays sovereign.
 
 ## 6. Recursive expansion rule
 
