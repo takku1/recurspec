@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import argparse
 import filecmp
+import json
 import os
 import shutil
+import sys
 from collections.abc import Sequence
 from importlib.resources import files
 from pathlib import Path
 
 from . import __version__
+from .contract import ContractInstrumentError, validate_contract
 from .evaluation import ERROR, evaluate_change
 
 
@@ -86,6 +89,28 @@ def _run_skills(args: argparse.Namespace) -> int:
     return int(args.action == "check" and drift)
 
 
+def _run_contract_check(args: argparse.Namespace) -> int:
+    try:
+        result = validate_contract(args.path)
+    except ContractInstrumentError as exc:
+        print(f"[ERROR] contract validation instrument failed: {exc}", file=sys.stderr)
+        return 2
+
+    if args.format == "json":
+        payload = {
+            "contracts_checked": len(result.contracts),
+            "diagnostics": [diagnostic.as_dict() for diagnostic in result.diagnostics],
+            "valid": result.valid,
+        }
+        print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
+    elif result.valid:
+        print(f"PASS: {len(result.contracts)} contract(s) valid")
+    else:
+        for diagnostic in result.diagnostics:
+            print(f"{diagnostic.path}: {diagnostic.rule_code}: {diagnostic.message}")
+    return int(not result.valid)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="recurspec", description="Evidence-gated system design")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -106,6 +131,13 @@ def build_parser() -> argparse.ArgumentParser:
     skills.add_argument("action", choices=("install", "check"), nargs="?", default="install")
     skills.add_argument("--target", choices=("claude", "codex", "all"), default="all")
     skills.set_defaults(handler=_run_skills)
+
+    contract = commands.add_parser("contract", help="validate versioned Contract Nodes")
+    contract_actions = contract.add_subparsers(dest="action", required=True)
+    check = contract_actions.add_parser("check", help="validate one file or a directory tree")
+    check.add_argument("path", type=Path)
+    check.add_argument("--format", choices=("text", "json"), default="text")
+    check.set_defaults(handler=_run_contract_check)
     return parser
 
 
