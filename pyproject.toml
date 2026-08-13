@@ -19,6 +19,7 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
   "Topic :: Software Development :: Quality Assurance",
 ]
+dependencies = ["jsonschema>=4.26,<5"]
 
 [project.optional-dependencies]
 dev = ["build>=1.2", "pytest>=8", "ruff>=0.12"]
@@ -40,7 +41,7 @@ include-package-data = true
 where = ["src"]
 
 [tool.setuptools.package-data]
-recurspec = ["skill/**/*"]
+recurspec = ["schemas/*.json", "skill/**/*"]
 
 [tool.pytest.ini_options]
 addopts = "-ra"
