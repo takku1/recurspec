@@ -16,6 +16,9 @@ TITLE_RE = re.compile(r"^#\s+(.+?)\s+\(L(\d+)\)\s*$", re.MULTILINE)
 SECTION_RE = re.compile(r"^##\s+([1-8])\.\s+.+$", re.MULTILINE)
 INVARIANT_RE = re.compile(r"^-\s+\*\*\[([^]]+)]\*\*\s+(.+)$")
 EVIDENCE_RE = re.compile(r"^\s+-\s+`EvidenceStage:`\s*(\S+)\s*$")
+INTERFACE_RE = re.compile(r"^\s*-\s+\*\*(Inputs|Outputs):\*\*\s*(.*)$", re.MULTILINE)
+PORT_RE = re.compile(r"`([^`]+)`")
+LINK_RE = re.compile(r"\[[^]]+]\(([^)]+)\)")
 
 EVIDENCE_STAGES = {
     "Unknown",
@@ -184,11 +187,20 @@ def _normalize(path: Path) -> tuple[dict[str, Any] | None, list[Diagnostic]]:
             )
     invariants, problems = _invariants(sections.get("4", ""))
     diagnostics.extend(Diagnostic(display_path, code, message) for code, message in problems)
+    atomic_leaf = sections.get("2", "").strip().lower().startswith("atomic leaf.")
+    interface_lines = {
+        name.lower(): PORT_RE.findall(value)
+        for name, value in INTERFACE_RE.findall(sections.get("3", ""))
+    }
+    children = [] if atomic_leaf else LINK_RE.findall(sections.get("2", ""))
     contract: dict[str, Any] = {
         "contract_version": "1.0",
         "title": title.group(1),
         "level": int(title.group(2)),
-        "atomic_leaf": sections.get("2", "").strip().lower().startswith("atomic leaf."),
+        "atomic_leaf": atomic_leaf,
+        "inputs": interface_lines.get("inputs", []),
+        "outputs": interface_lines.get("outputs", []),
+        "children": children,
         "sections": sections,
         "invariants": invariants,
     }
@@ -227,9 +239,102 @@ def validate_contract(path: str | Path) -> ValidationResult:
 
     contracts: list[dict[str, Any]] = []
     diagnostics: list[Diagnostic] = []
+    normalized_by_path: dict[Path, dict[str, Any]] = {}
     for contract_path in paths:
         contract, contract_diagnostics = _normalize(contract_path)
         if contract is not None:
             contracts.append(contract)
+            normalized_by_path[contract_path.resolve()] = contract
         diagnostics.extend(contract_diagnostics)
+    if requested.is_dir():
+        tree_root = requested.resolve()
+        for parent_path, parent in normalized_by_path.items():
+            if parent["atomic_leaf"]:
+                continue
+            available = set(parent["inputs"])
+            remaining = []
+            seen_children: set[Path] = set()
+            for child_link in parent["children"]:
+                linked_path = Path(child_link)
+                if linked_path.is_absolute():
+                    diagnostics.append(
+                        Diagnostic(
+                            parent_path.as_posix(),
+                            "contract.child.not-relative",
+                            f"child link {child_link!r} must be relative",
+                        )
+                    )
+                    continue
+                child_path = (parent_path.parent / linked_path).resolve()
+                if not child_path.is_relative_to(tree_root):
+                    diagnostics.append(
+                        Diagnostic(
+                            parent_path.as_posix(),
+                            "contract.child.outside-tree",
+                            f"child link {child_link!r} resolves outside the checked tree",
+                        )
+                    )
+                    continue
+                if child_path.is_dir():
+                    child_path = child_path / "SYSTEM.md"
+                if child_path in seen_children:
+                    diagnostics.append(
+                        Diagnostic(
+                            parent_path.as_posix(),
+                            "contract.child.duplicate",
+                            f"child link {child_link!r} resolves to a duplicate Contract Node",
+                        )
+                    )
+                    continue
+                seen_children.add(child_path)
+                child = normalized_by_path.get(child_path)
+                if child is None:
+                    diagnostics.append(
+                        Diagnostic(
+                            parent_path.as_posix(),
+                            "contract.child.missing",
+                            f"child link {child_link!r} does not resolve to a Contract Node",
+                        )
+                    )
+                    continue
+                if child["level"] != parent["level"] + 1:
+                    diagnostics.append(
+                        Diagnostic(
+                            child_path.as_posix(),
+                            "contract.child.level",
+                            f"child level {child['level']} must equal parent level "
+                            f"{parent['level']} plus one",
+                        )
+                    )
+                    continue
+                remaining.append(child)
+            while remaining:
+                satisfiable = [child for child in remaining if set(child["inputs"]) <= available]
+                if not satisfiable:
+                    break
+                for child in satisfiable:
+                    available.update(child["outputs"])
+                    remaining.remove(child)
+            for child in remaining:
+                child_path = next(
+                    path for path, normalized in normalized_by_path.items() if normalized is child
+                )
+                for input_port in child["inputs"]:
+                    if input_port not in available:
+                        diagnostics.append(
+                            Diagnostic(
+                                child_path.as_posix(),
+                                "contract.interface.input.unsatisfied",
+                                f"child input {input_port!r} is unavailable during composition",
+                            )
+                        )
+            for output in parent["outputs"]:
+                if output not in available:
+                    diagnostics.append(
+                        Diagnostic(
+                            parent_path.as_posix(),
+                            "contract.interface.output.unsatisfied",
+                            f"parent output {output!r} is unavailable after child composition",
+                        )
+                    )
     return ValidationResult(tuple(contracts), tuple(sorted(diagnostics)))
