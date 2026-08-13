@@ -1,158 +1,108 @@
-# Recursive System Specification (RSS) Engine & Agentic Framework
+# Recurspec
 
-> PhD-grounded, multi-signal, self-healing specification process for AI-agent software engineering.
+Recurspec is an evidence-gated system design toolkit for AI-assisted software
+engineering. It turns a goal into a finite tree of buildable contracts, resolves
+technology before decomposition, evaluates candidate changes against correctness and
+measurement gates, and reconciles reality back into the design.
 
-**Living documentation:** [`docs/`](./docs/README.md)  
-**Pre-redesign snapshot (reference only):** [`docs/archive/2026-08-02-pre-redesign/`](./docs/archive/2026-08-02-pre-redesign/)  
-**Incomplete work (single checklist):** [`docs/open-work.md`](./docs/open-work.md)
+The project ships two public interfaces:
 
-The removal gate in `docs/archive/README.md` has been executed: the root essays, the SCREAMING_CASE architecture directories, and `doc-readiness.md` now exist only in the archive and in git history. `docs/` is the single living tree.
+- `recurspec`, a cross-platform Python CLI for candidate evaluation and skill setup.
+- `/recurspec`, one self-contained agent skill for design, resolution, implementation,
+  evaluation, repair, and reconciliation.
 
----
+Recurspec is alpha software. Its decision logic is tested; full worktree orchestration is
+tracked in [ROADMAP.md](./ROADMAP.md).
 
-## Executive summary
+## Why Recurspec
 
-RSS turns a one-line goal into a tree of components each specified well enough to build, then keeps that tree honest as the code moves. It works by:
+Flat plans hide radically different work behind equally sized bullets. Recurspec asks
+what implements each capability before asking for its parts, assigning one decision:
 
-1. **Recursively decomposing** a goal, asking of every node *what will implement this?* **before** *what are its parts?* — resolving each to `BUY` / `ADOPT` / `WRAP` / `BUILD` / `DEFER`
-2. Building a **fractal tree** of EARS contracts (`docs/architecture/**/SYSTEM.md`), each terminal node carrying a real tech stack (§8), not a topic name
-3. Gating stochastic LLM output at a **stochastic–deterministic boundary (SDB)**
-4. Executing via **Wayfinder** frontiers (Type A implement / Type B research)
-5. Closing the loop with **dual back-channels** (structural + empirical) and **branching measurement**
+| Decision | Meaning |
+|---|---|
+| `BUY` | Use a managed service |
+| `ADOPT` | Use an open-source library or framework feature |
+| `WRAP` | Build a narrow adapter around `BUY` or `ADOPT` |
+| `BUILD` | Implement genuinely differentiating behavior |
+| `DEFER` | Stop until research resolves the uncertainty |
 
-The recursion has a floor: **a node resolved to a third-party service or library is terminal** — the vendor owns its internals. That single rule both stops "break it down further" from running to absurdity and makes reinventing the wheel a gate failure rather than a review comment.
+`BUY` and `ADOPT` terminate recursion at a procurement seam. `BUILD` and `WRAP` stop
+when one module can be implemented in one test-driven session. This makes the contract
+tree shallow where the ecosystem has solved the problem and deep only where custom work
+is justified.
 
-```
-- Login and user accounts          ->   Identity Verification      BUY    (managed IdP)
-                                        Session Management         WRAP   (adapter)
-  ^ one line, one afternoon of              Policy Evaluation      ADOPT  (Casbin/OPA)
-    hand-rolled password hashing            Role & Permission      BUILD  <- your domain
-                                        Recovery & Verification    BUY    (delegated)
-                                        Deletion & Export          BUILD  <- unbuyable, legally required
-                                        Auth Audit Trail           ADOPT  (OpenTelemetry)
-```
-
-```mermaid
-graph TD
-    Vision --> L0[L0 SYSTEM.md]
-    L0 --> Decomp[Recursive decomposition]
-    Decomp --> SDB{SDB Gate}
-    SDB -->|Pass| WF[Wayfinder map]
-    SDB -->|Fail| Repair[Propose-Check-Repair]
-    Repair --> Decomp
-    WF --> Dual[Dual-loop TDD]
-    Dual --> Measure[Branching measure]
-    Measure --> BackA[Back-A structural]
-    Measure --> BackB[Back-B empirical]
-    BackA --> L0
-    BackB --> L0
-```
-
-Details: [docs/process/dual-backchannel-loop.md](./docs/process/dual-backchannel-loop.md) · Research: [docs/research/foundation.md](./docs/research/foundation.md)
-
----
-
-## Directory structure (living)
-
-```
-recursive-system-design/
-├── README.md                 # This file
-├── docs/
-│   ├── README.md             # Doc index
-│   ├── glossary.md           # Ubiquitous language
-│   ├── install.md            # Installing skills + harness
-│   ├── open-work.md          # Sole incomplete-work checklist
-│   ├── research/foundation.md
-│   ├── examples/
-│   │   └── login-decomposition.md   # One flat line → 7 specified nodes
-│   ├── process/
-│   │   ├── decomposition-loop.md    # Goal → buildable leaves (forward)
-│   │   ├── technology-resolution.md # Third-party-first gate
-│   │   ├── dual-backchannel-loop.md # Reality → blueprint (backward)
-│   │   └── multi-signal-reconciler.md
-│   ├── architecture/
-│   │   ├── SYSTEM.md         # L0
-│   │   ├── spec-engine/
-│   │   ├── technology-resolver/
-│   │   ├── reconciler/
-│   │   ├── wayfinder-connector/
-│   │   ├── ast-gatekeeper/
-│   │   └── measurement-harness/
-│   └── archive/
-│       ├── README.md         # Archive-first policy + removal gate
-│       └── 2026-08-02-pre-redesign/   # Full snapshot (do not delete)
-├── harness/                  # Back-Channel B measurement gate
-│   ├── baseline.py           # metric direction + keep/revert comparison
-│   ├── hypothesis_runner.py  # checks → measure → compare → keep|revert
-│   ├── evidence_logger.py    # append-only .measure/<comp>/log.jsonl
-│   ├── manifold_evaluator.py # Q(S) control surface (design intent, OW-14)
-│   └── test_harness.py       # the harness's own correctness backpressure
-├── skills/                   # recursive-spec, reconcile-spec, dual-loop, …
-└── .scratch/wayfinder-map/   # Execution frontier tickets
-```
-
----
-
-## Skills
-
-| Skill | Role |
-|-------|------|
-| `/recursive-spec` | Goal → fractal `SYSTEM.md` tree: decompose, resolve, EARS, §6/§7/§8 seams |
-| `/resolve-stack` | The third-party-first gate on one node — what actually implements this? |
-| `/reconcile-spec` | Back-Channel A (+ metric drift when ready) |
-| `/dual-loop` | Outer Architect/Auditor vs Inner Implementor |
-| `/wayfinder`, `/sherloc` | Frontier + formal audit |
-
-Compose with `/tdd`, `/research`, `/prototype`, `/graybox`, graphgraph, etc.
-
-`/sherloc` and `/wayfinder` are **maintained elsewhere** and are not installed from this repo — see [docs/install.md](./docs/install.md).
-
----
-
-## Running the measurement gate
-
-Each component supplies `components/<name>/checks.sh` (correctness backpressure) and
-`components/<name>/measure.sh` (primary metric as JSON on stdout); templates are in
-[`harness/`](./harness/).
+## Install
 
 ```bash
-# Evaluate a hypothesis worktree: checks → measure → baseline compare → keep|revert
-python harness/hypothesis_runner.py <component> hypothesis/<ticket-id>
-
-# After the Outer Loop actually merges, promote the reading to the trunk baseline
-python harness/hypothesis_runner.py <component> hypothesis/<ticket-id> --record-baseline
+python -m pip install git+https://github.com/takku1/recurspec.git
+recurspec skills install
 ```
 
-Exit `0` = keep authorized · `1` = revert · `2` = harness error. A regression beyond
-`--tolerance` (default 20%) writes a `signal_d` event to `.measure/<component>/log.jsonl`,
-which is the Back-Channel B trigger for a Wayfinder Type B research ticket.
+For local development:
 
-The gate refuses to guess: an unparseable measurement, a self-contradicting instrument,
-or a metric whose better-direction cannot be resolved all **revert** rather than pass.
-Declare `"direction": "lower"|"higher"` in `measure.sh` output when the metric name is
-ambiguous.
+```bash
+git clone https://github.com/takku1/recurspec.git
+cd recurspec
+python -m pip install -e ".[dev]"
+pytest
+```
 
-Harness tests: `python -m pytest harness/test_harness.py -q`
+The skill installer targets Claude Code and Codex by default. Verify installation without
+writing with `recurspec skills check`.
 
----
+## Use the agent skill
 
-## First consumer project
+Start with the single public skill:
 
-**[featherwAIght-rs](../featherwAIght-rs)** — greenfield Rust rebuild using this pipeline. Keep this repo as process source of truth.
+```text
+/recurspec design a booking system for independent music teachers
+```
 
----
+In Codex, select `recurspec` through `/skills` or invoke `$recurspec`. The skill inspects
+the repository state and loads only the internal phase reference it needs.
 
-## Start here
+## Evaluate a candidate
 
-**Using RSS on a project of your own** — the common case:
+Each measurable module owns two scripts:
 
-1. [docs/process/decomposition-loop.md](./docs/process/decomposition-loop.md) — the loop
-2. [docs/examples/login-decomposition.md](./docs/examples/login-decomposition.md) — see it applied
-3. [docs/install.md](./docs/install.md) — install the skills, then run `/recursive-spec` on your goal
+```text
+modules/<name>/checks.sh
+modules/<name>/measure.sh
+```
 
-**Working on RSS itself:**
+Evaluate an isolated branch:
 
-1. [docs/glossary.md](./docs/glossary.md)  
-2. [docs/architecture/SYSTEM.md](./docs/architecture/SYSTEM.md)  
-3. [docs/open-work.md](./docs/open-work.md)  
-4. Claim a ticket on [`.scratch/wayfinder-map/MAP.md`](./.scratch/wayfinder-map/MAP.md)
+```bash
+recurspec evaluate <module> candidate/<ticket-id>
+```
+
+Exit codes are stable: `0` keep, `1` revert, `2` evaluation error, `3` escalate. Evidence
+is appended under `.recurspec/evidence/<module>/log.jsonl`. A kept candidate does not
+silently become the reference baseline; after merge, promote it explicitly with
+`--record-baseline`.
+
+The gate refuses to guess. Missing or contradictory telemetry, a non-numeric reading, or
+an unresolved metric direction reverts the candidate instead of manufacturing evidence.
+
+## Repository map
+
+```text
+src/recurspec/             Python package and bundled agent skill
+tests/                     Behavioral tests at the package interfaces
+modules/evaluation-gate/   Recurspec's own checks and measurement probe
+examples/module/           Templates for consumer modules
+docs/architecture/         Recursive SYSTEM.md contract tree
+docs/process/              Design and evidence-cycle details
+docs/research/             Primary-source grounding
+CONTEXT.md                 Canonical domain language
+ROADMAP.md                 Single incomplete-work registry
+```
+
+Start with [the documentation index](./docs/index.md), then read the
+[contract-design loop](./docs/process/contract-design.md) and the
+[worked identity example](./docs/examples/identity-design.md).
+
+## License
+
+[MIT](./LICENSE)
