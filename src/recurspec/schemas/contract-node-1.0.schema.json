@@ -4,12 +4,27 @@
   "title": "Recurspec Contract Node 1.0",
   "type": "object",
   "additionalProperties": false,
-  "required": ["contract_version", "title", "level", "atomic_leaf", "sections", "invariants"],
+  "required": ["contract_version", "title", "level", "atomic_leaf", "inputs", "outputs", "children", "sections", "invariants"],
   "properties": {
     "contract_version": {"const": "1.0"},
     "title": {"type": "string", "minLength": 1},
     "level": {"type": "integer", "minimum": 0},
     "atomic_leaf": {"type": "boolean"},
+    "inputs": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "outputs": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "children": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
     "sections": {
       "type": "object",
       "required": ["1", "2", "3", "4", "5"],
