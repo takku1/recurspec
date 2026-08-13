@@ -36,23 +36,32 @@ packet, and anything it learned is in its result.
 
 - **[Ubiquitous]** A worker SHALL receive a packet and SHALL NOT read the tree directly.
   (the packet is the only abstraction barrier that makes per-node cost bounded; a worker
-  that can open files can defeat every budget)
-  - `EvidenceStage:` Unknown
+  that can open files can defeat every budget; the adapter's own call signature is
+  structurally incapable of forwarding a tree_root or path -
+  `test_worker_only_ever_receives_the_packet_never_a_filesystem_path` - though full
+  runtime-level filesystem sandboxing is the injected runtime's own responsibility, not
+  something this adapter controls once a real agent runtime is plugged in)
+  - `EvidenceStage:` Sampled
 - **[Ubiquitous]** The pool SHALL route mechanical phases (FRAME, structural checks) to
-  the cheap tier and RESOLVE to the capable tier. (OW-43)
-  - `EvidenceStage:` Unknown
+  the cheap tier and RESOLVE to the capable tier.
+  (`test_tier_for_phase_routes_mechanical_cheap_and_resolve_capable`)
+  - `EvidenceStage:` Sampled
 - **[Conditional]** IF a worker's spend reaches `max_tokens_per_node` THEN THE SYSTEM
   SHALL abort that worker and record `budget_exceeded`, and SHALL NOT return a partial
-  spec as if complete. (refuse rather than guess)
-  - `EvidenceStage:` Unknown
+  spec as if complete. (refuse rather than guess;
+  `test_budget_exceeded_discards_the_body_rather_than_return_a_partial_node`)
+  - `EvidenceStage:` Sampled
 - **[Conditional]** IF a worker produced the node under review THEN THE SYSTEM SHALL NOT
   assign that worker its `[BRANCH]`/`[ATOMIC]` check. (maker ≠ checker,
   [Recurspec](../../../../src/recurspec/skill/SKILL.md) — a decomposer grading its own
-  termination call is the failure mode this rule exists for)
-  - `EvidenceStage:` Unknown
+  termination call is the failure mode this rule exists for;
+  `test_maker_cannot_check_the_node_it_produced`)
+  - `EvidenceStage:` Sampled
 - **[State-driven]** WHILE sibling nodes are independent THE SYSTEM SHALL be permitted to
   execute them concurrently up to the configured limit.
-  - `EvidenceStage:` Unknown
+  (`test_concurrency_cap_is_never_exceeded`, timing-based, run repeatedly to rule out
+  flakiness)
+  - `EvidenceStage:` Sampled
 
 ## 5. Architectural Decisions (ADRs)
 
@@ -65,12 +74,18 @@ packet, and anything it learned is in its result.
 
 ## 6. Leaf Execution & Test Seam
 
-- **Implementation:** not yet built; planned seam `src/recurspec/spec_runner/workers.py`
-  (adapter over the agent runtime) — same `spec_runner` subpackage as context-packer and
-  job-store.
-- **Tests:** `tests/test_worker_pool.py` — must cover: worker cannot reach the filesystem
+- **Implementation:** `src/recurspec/spec_runner/workers.py` — same `spec_runner`
+  subpackage as context-packer and job-store. Implements the pool's own policy (budget,
+  tier routing, maker ≠ checker, concurrency cap) against an injected `RuntimeCall`; does
+  not ship a concrete agent-runtime integration (see §8 - the SDK pin is still
+  unverified, deliberately not asserted).
+- **Tests:** `tests/test_worker_pool.py` (8 tests) — worker cannot reach the filesystem
   outside its packet; budget abort yields `budget_exceeded` not a partial node; maker ≠
-  checker enforced on the atomicity call; concurrency cap respected
+  checker enforced on the atomicity call; concurrency cap respected (timing-based, run
+  repeatedly to rule out flakiness); tier routing; invalid concurrency rejected.
+- **Open work:** wiring a real `RuntimeCall` against a verified Claude Agent SDK pin
+  (OW-43) remains open — this leaf's own policy logic is complete and tested against a
+  fake runtime, but nothing in this repo yet calls a real agent runtime end to end.
 - **Open work:** OW-43
 
 ## 7. Measurement Seams
@@ -101,7 +116,8 @@ packet, and anything it learned is in its result.
   | Bare threads calling a completion endpoint | No tool use, so RESEARCH cannot run inside a worker |
 - **Fit gap:** the SDK does not know Recurspec's phases, tiering policy, or budget rule. That gap
   is the thin adapter in `workers.py` — and it is the only custom code here.
-- **Seam:** `src/recurspec/spec_runner/workers.py` (planned); the Runner sees `run(packet) -> Result`
+- **Seam:** `src/recurspec/spec_runner/workers.py`; the Runner sees
+  `WorkerPool.dispatch(node_id, packet, phase, worker_id, max_tokens_per_node) -> WorkerResult`
 - **Exit cost:** MEDIUM — swapping runtimes rewrites the adapter and the tool wiring, but
   no packet, store, or spec format changes. Contained by design.
 - **Cost model:** per-token inference at the tier used. This is the dominant recurring cost

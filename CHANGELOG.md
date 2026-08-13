@@ -31,6 +31,19 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
   conservative heuristic (3 chars/token), not a real tokenizer - documented as open work,
   not claimed as more than it is. 7 tests, including one asserting a grandparent's content
   never reaches a grandchild's packet.
+- Implemented Worker Pool (ROADMAP R-201): `src/recurspec/spec_runner/workers.py`.
+  Owns the pool's own policy - phase-to-tier routing, budget enforcement (discards a
+  response's body on overflow so a partial spec can never surface as complete),
+  maker ≠ checker enforced via a real tracked-state registry (not a prompt instruction),
+  and a concurrency cap enforced by a semaphore inside `dispatch` itself, not just its
+  `dispatch_many` convenience wrapper. Deliberately does not ship a concrete Claude Agent
+  SDK integration: the SDK's package name and version must be read from live
+  documentation before pinning it (per the node's own §8), which cannot be verified from
+  here, and asserting an unverified pin would violate the project's own evidence policy.
+  Callers inject a `RuntimeCall`; the pool's full policy is implemented and tested against
+  a fake one. 8 tests, including a concurrency-cap test run repeatedly to rule out
+  flakiness. R-201 shipped as `done` without waiting on R-200 (worktree lifecycle) - the
+  roadmap's "blocked by" was an assumed build order, not a real technical dependency.
 
 ### Fixed
 

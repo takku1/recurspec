@@ -33,7 +33,7 @@ Statuses: `ready`, `blocked`, `research`, `deferred`, `done`.
 | ID | Outcome | Status | Blocked by | Contract |
 |---|---|---|---|---|
 | R-200 | Create, evaluate, merge, and dispose Candidate worktrees | ready | R-101 | [Evaluation Gate](./docs/architecture/evaluation-gate/SYSTEM.md) |
-| R-201 | Enforce maker/checker identity separation in state, not prompts alone | ready | R-200 | [Worker Pool](./docs/architecture/spec-runner/worker-pool/SYSTEM.md) |
+| R-201 | Enforce maker/checker identity separation in state, not prompts alone | done | — | [Worker Pool](./docs/architecture/spec-runner/worker-pool/SYSTEM.md) |
 | R-202 | Persist atomic claims and re-derive state from Markdown | done | R-100 | [Job Store](./docs/architecture/spec-runner/job-store/SYSTEM.md) |
 | R-203 | Add CI that runs checks and evaluates changed measurable modules | deferred | R-200 | [Evaluation Gate](./docs/architecture/evaluation-gate/SYSTEM.md) |
 
