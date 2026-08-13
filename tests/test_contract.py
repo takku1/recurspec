@@ -18,6 +18,23 @@ def _tree_variant(tmp_path: Path, replacements: dict[str, tuple[str, str]]) -> P
     return tree
 
 
+def test_validate_contract_recognizes_a_bold_annotated_atomic_leaf_declaration(
+    tmp_path: Path,
+):
+    contract_path = tmp_path / "SYSTEM.md"
+    contract_path.write_text(
+        (FIXTURES / "valid" / "SYSTEM.md")
+        .read_text(encoding="utf-8")
+        .replace("Atomic leaf.", "**Atomic leaf (procured).**"),
+        encoding="utf-8",
+    )
+
+    result = validate_contract(contract_path)
+
+    assert result.valid, result.diagnostics
+    assert result.contracts[0]["atomic_leaf"] is True
+
+
 def test_validate_contract_accepts_a_complete_versioned_atomic_leaf():
     result = validate_contract(FIXTURES / "valid" / "SYSTEM.md")
 
@@ -26,6 +43,71 @@ def test_validate_contract_accepts_a_complete_versioned_atomic_leaf():
     assert len(result.contracts) == 1
     assert result.contracts[0]["contract_version"] == "1.0"
     assert result.contracts[0]["atomic_leaf"] is True
+
+
+def test_validate_contract_recognizes_a_genuinely_combined_complex_ears_pattern():
+    result = validate_contract(FIXTURES / "valid" / "SYSTEM.md")
+
+    assert result.valid
+    complex_invariants = [
+        invariant
+        for invariant in result.contracts[0]["invariants"]
+        if invariant["ears_pattern"] == "Complex"
+    ]
+    assert complex_invariants == [
+        {
+            "ears_pattern": "Complex",
+            "statement": (
+                "WHILE a directory scan is active, WHEN a malformed file is found THE "
+                "SYSTEM SHALL record a diagnostic and continue scanning."
+            ),
+            "evidence_stage": "Sampled",
+        }
+    ]
+
+
+def test_validate_contract_rejects_complex_tagged_on_a_single_keyword_statement(
+    tmp_path: Path,
+):
+    contract_path = tmp_path / "SYSTEM.md"
+    contract_path.write_text(
+        (FIXTURES / "valid" / "SYSTEM.md")
+        .read_text(encoding="utf-8")
+        .replace(
+            "WHILE a directory scan is active, WHEN a malformed file is found THE SYSTEM "
+            "SHALL record a diagnostic and continue scanning.",
+            "WHILE a directory scan is active THE SYSTEM SHALL record a diagnostic.",
+        ),
+        encoding="utf-8",
+    )
+
+    result = validate_contract(contract_path)
+
+    assert not result.valid
+    assert any(
+        diagnostic.rule_code == "contract.invariant.ears" for diagnostic in result.diagnostics
+    )
+
+
+def test_validate_contract_recognizes_the_optional_feature_ears_pattern():
+    result = validate_contract(FIXTURES / "valid" / "SYSTEM.md")
+
+    assert result.valid
+    optional_invariants = [
+        invariant
+        for invariant in result.contracts[0]["invariants"]
+        if invariant["ears_pattern"] == "Optional"
+    ]
+    assert optional_invariants == [
+        {
+            "ears_pattern": "Optional",
+            "statement": (
+                "WHERE the `--format json` flag is given THE SYSTEM SHALL emit a stable "
+                "machine-readable payload."
+            ),
+            "evidence_stage": "Sampled",
+        }
+    ]
 
 
 def test_validate_contract_accepts_an_independently_authored_two_stage_tree():
@@ -202,3 +284,10 @@ def test_validate_contract_accepts_wrapped_invariants_from_the_contract_engine_s
         "evidence_stage": "Sampled",
     }
     assert len(result.contracts[0]["invariants"]) == 8
+
+
+def test_recurspecs_own_architecture_tree_passes_its_own_contract_engine():
+    result = validate_contract(Path("docs/architecture"))
+
+    assert result.valid, result.diagnostics
+    assert len(result.contracts) == 11

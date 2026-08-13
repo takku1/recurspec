@@ -1,5 +1,7 @@
 # Stack Resolver (L1)
 
+<!-- recurspec-contract: 1.0 -->
+
 > Process detail: [stack-resolution.md](../../process/stack-resolution.md) ·
 > [contract-design.md](../../process/contract-design.md) ·
 > Worked example: [examples/identity-design.md](../../examples/identity-design.md)
@@ -23,35 +25,38 @@ StalenessAuditor (review triggers).
 
 ## 3. Interface Contracts
 
-| | |
-|--|--|
-| **Inputs** | Node responsibility statement; non-goals; constraints (budget, scale, compliance regime, existing stack); survey results from `/research` |
-| **Outputs** | Decision class; selected product + pin; alternatives table with reasons; fit gap; seam path; exit cost; cost model; liability transfer; §8 block; DEFER → Type B ticket intent |
+- **Inputs:** Node responsibility statement; non-goals; constraints (budget, scale,
+  compliance regime, existing stack); survey results from /research.
+- **Outputs:** Decision class; selected product + pin; alternatives table with reasons;
+  fit gap; seam path; exit cost; cost model; liability transfer; §8 block; DEFER → Type B
+  ticket intent.
 
 ## 4. Invariants (EARS + Epistemic Stage)
 
 - **[Ubiquitous]** The Resolver SHALL assign exactly one decision class to every node
-  before that node is decomposed or specified.
-  - `EvidenceStage:` Asserted (process rule)
+  before that node is decomposed or specified. (process rule)
+  - `EvidenceStage:` Unknown
 - **[Ubiquitous]** The Resolver SHALL treat BUILD as the class requiring recorded
   justification; BUY, ADOPT, and WRAP need no defence beyond their §8 block.
-  - `EvidenceStage:` Asserted
+  - `EvidenceStage:` Unknown
 - **[Conditional]** IF a node resolves to BUY or ADOPT THEN THE SYSTEM SHALL mark it
-  terminal and SHALL NOT decompose the vendor's internals.
-  - `EvidenceStage:` Asserted — this is the loop's termination guarantee
+  terminal and SHALL NOT decompose the vendor's internals. (this is the loop's
+  termination guarantee)
+  - `EvidenceStage:` Unknown
 - **[Conditional]** IF a node's parts would resolve to differing decision classes THEN
-  THE SYSTEM SHALL split the node at that boundary.
-  - `EvidenceStage:` Asserted — a procurement boundary is a real interface seam
+  THE SYSTEM SHALL split the node at that boundary. (a procurement boundary is a real
+  interface seam)
+  - `EvidenceStage:` Unknown
 - **[Conditional]** IF the capability survey cannot be completed from primary sources
   THEN THE SYSTEM SHALL resolve `DEFER` and emit a Type B ticket, and SHALL NOT guess a
-  vendor.
-  - `EvidenceStage:` Asserted — same no-fabrication rule as [research foundation](../../research/foundations.md)
+  vendor. (same no-fabrication rule as [research foundation](../../research/foundations.md))
+  - `EvidenceStage:` Unknown
 - **[Event-driven]** WHEN a §8 pinned version diverges from the project lockfile THE
-  SYSTEM SHALL raise a Structural Feedback drift signal.
-  - `EvidenceStage:` Asserted · *Open:* OW-06
+  SYSTEM SHALL raise a Structural Feedback drift signal. (open: OW-06)
+  - `EvidenceStage:` Unknown
 - **[State-driven]** WHILE a WRAP adapter grows beyond its seam THE SYSTEM SHALL treat
-  the growth as a bloat signal and re-open the resolution.
-  - `EvidenceStage:` Asserted · *Open:* OW-07
+  the growth as a bloat signal and re-open the resolution. (open: OW-07)
+  - `EvidenceStage:` Unknown
 
 ## 5. Architectural Decisions (ADRs)
 
@@ -71,10 +76,13 @@ StalenessAuditor (review triggers).
 
 ## 6. Leaf Execution & Test Seam
 
-- **Implementation:** `src/technology_resolver/resolver.py`
-- **Tests:** `tests/test_technology_resolver.py` — must cover: §8 completeness validation,
-  DEFER on incomplete survey, refusal to emit a vendor without a source
-- **Open work:** OW-06, OW-07
+- **Implementation:** not yet built; planned seam `src/recurspec/technology_resolver.py`
+  — a standalone L1 leaf with no children, so it stays flat alongside `contract.py` /
+  `evaluation.py` rather than nesting in a subpackage.
+- **Tests:** none yet; planned `tests/test_technology_resolver.py` — must cover: §8
+  completeness validation, DEFER on incomplete survey, refusal to emit a vendor without a
+  source.
+- **Open work:** OW-06, OW-07; tracked as ROADMAP R-103.
 
 ## 7. Measurement Seams
 
@@ -104,7 +112,7 @@ StalenessAuditor (review triggers).
   | Architecture-decision SaaS | Decisions leave the repo; cannot be reviewed in a diff alongside the code they govern |
   | SBOM / dependency scanners | Answer "what is installed", not "what should we use and why" — complementary, not substitute |
 - **Fit gap:** n/a (custom by intent)
-- **Seam:** `src/technology_resolver/` — the spec tree only sees emitted §8 blocks
+- **Seam:** `src/recurspec/technology_resolver.py` (planned) — the spec tree only sees emitted §8 blocks
 - **Exit cost:** n/a
 - **Cost model:** our engineering time
 - **Liability transferred:** none

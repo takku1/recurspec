@@ -34,7 +34,30 @@ EARS_PATTERNS = {
     "Conditional": re.compile(r"^IF\b.+\bTHEN\b.+\bSHALL\b", re.IGNORECASE),
     "Event-driven": re.compile(r"^WHEN\b.+\bSHALL\b", re.IGNORECASE),
     "State-driven": re.compile(r"^WHILE\b.+\bSHALL\b", re.IGNORECASE),
+    "Optional": re.compile(r"^WHERE\b.+\bSHALL\b", re.IGNORECASE),
 }
+
+# Complex requirements combine two or more EARS keyword clauses in one statement
+# (Mavin et al., e.g. "WHILE <state>, WHEN <trigger>, THE SYSTEM SHALL ..."). A
+# statement only qualifies if it leads with a recognized keyword and actually
+# combines at least two of the four keyword-anchored patterns below (Ubiquitous
+# is excluded: bare SHALL is not a combinable keyword clause).
+COMPLEX_LEAD_RE = re.compile(r"^(WHILE|WHEN|IF|WHERE)\b", re.IGNORECASE)
+COMPLEX_KEYWORDS = {
+    "State-driven": re.compile(r"\bWHILE\b", re.IGNORECASE),
+    "Event-driven": re.compile(r"\bWHEN\b", re.IGNORECASE),
+    "Conditional": re.compile(r"\bIF\b.+\bTHEN\b", re.IGNORECASE),
+    "Optional": re.compile(r"\bWHERE\b", re.IGNORECASE),
+}
+
+
+def _matches_ears_pattern(pattern: str, statement: str) -> bool:
+    if pattern == "Complex":
+        if not COMPLEX_LEAD_RE.match(statement):
+            return False
+        keyword_hits = sum(1 for regex in COMPLEX_KEYWORDS.values() if regex.search(statement))
+        return keyword_hits >= 2 and bool(re.search(r"\bSHALL\b", statement, re.IGNORECASE))
+    return pattern in EARS_PATTERNS and bool(EARS_PATTERNS[pattern].search(statement))
 
 
 class ContractInstrumentError(RuntimeError):
@@ -73,6 +96,15 @@ def _schema() -> dict[str, Any]:
         ) from exc
 
 
+ATOMIC_LEAF_RE = re.compile(r"^\*{0,2}atomic leaf\s*(\([^)]*\))?\s*\.", re.IGNORECASE)
+
+
+def _is_atomic_leaf(section_two: str) -> bool:
+    """Section 2 declares a leaf via "Atomic leaf.", optionally bold and/or annotated
+    with a parenthetical stage or reason, e.g. "**Atomic leaf (procured).**"."""
+    return bool(ATOMIC_LEAF_RE.match(section_two.strip()))
+
+
 def _sections(text: str) -> dict[str, str]:
     matches = list(SECTION_RE.finditer(text))
     return {
@@ -104,9 +136,7 @@ def _invariants(section: str) -> tuple[list[dict[str, str]], list[tuple[str, str
             if continuation.strip():
                 statement_lines.append(continuation.strip())
         statement = " ".join(statement_lines)
-        if pattern not in EARS_PATTERNS or not EARS_PATTERNS.get(pattern, re.compile(r"a^")).search(
-            statement
-        ):
+        if not _matches_ears_pattern(pattern, statement):
             problems.append(
                 (
                     "contract.invariant.ears",
@@ -121,7 +151,7 @@ def _invariants(section: str) -> tuple[list[dict[str, str]], list[tuple[str, str
                 )
             )
         if (
-            pattern in EARS_PATTERNS
+            _matches_ears_pattern(pattern, statement)
             and evidence is not None
             and evidence.group(1) in EVIDENCE_STAGES
         ):
@@ -174,7 +204,7 @@ def _normalize(path: Path) -> tuple[dict[str, Any] | None, list[Diagnostic]]:
 
     sections = _sections(text)
     required_sections = ("1", "2", "3", "4", "5")
-    if sections.get("2", "").strip().lower().startswith("atomic leaf."):
+    if _is_atomic_leaf(sections.get("2", "")):
         required_sections += ("6", "7", "8")
     for number in required_sections:
         if number not in sections:
@@ -187,7 +217,7 @@ def _normalize(path: Path) -> tuple[dict[str, Any] | None, list[Diagnostic]]:
             )
     invariants, problems = _invariants(sections.get("4", ""))
     diagnostics.extend(Diagnostic(display_path, code, message) for code, message in problems)
-    atomic_leaf = sections.get("2", "").strip().lower().startswith("atomic leaf.")
+    atomic_leaf = _is_atomic_leaf(sections.get("2", ""))
     interface_lines = {
         name.lower(): PORT_RE.findall(value)
         for name, value in INTERFACE_RE.findall(sections.get("3", ""))

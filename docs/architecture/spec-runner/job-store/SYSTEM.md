@@ -1,5 +1,7 @@
 # Job Store (L2)
 
+<!-- recurspec-contract: 1.0 -->
+
 ## 1. System Intent & Responsibility
 
 Hold the Runner's durable state: node status, contract hashes, the ready queue, and the
@@ -15,10 +17,15 @@ engine's internals are not ours to decompose.
 
 ## 3. Interface Contracts
 
-| | |
-|--|--|
-| **Inputs** | Node upserts `{node_id, parent_id, class, status, contract_hash}`; survey writes `{capability_key, result, sources, fetched_at}`; claim/release requests |
-| **Outputs** | Next ready node (atomic claim); dirty set for a given change; survey hit or `stale`/`miss`; the derived `tree.json` projection |
+- **Inputs:** Node upserts {node_id, parent_id, class, status, contract_hash}; survey
+  writes {capability_key, result, sources, fetched_at}; claim/release requests.
+- **Outputs:** `node_id` (the next ready node, atomic claim); `survey_result` (cached
+  survey hit or stale/miss); dirty set for a given change; the derived tree.json
+  projection.
+- **Interface syntax:** `node_id` and `survey_result` are declared as ports because
+  context-packer consumes both by those exact names (see [context-packer/SYSTEM.md](../context-packer/SYSTEM.md)
+  §3). The dirty set and tree.json projection stay prose — nothing in the subtree consumes
+  them as a port yet.
 
 **Contract hash** covers §1 responsibility, §3 interfaces, and §8 class + selection — the
 node's *contract surface*. Editing §5 prose does not dirty anything downstream.
@@ -26,21 +33,21 @@ node's *contract surface*. Editing §5 prose does not dirty anything downstream.
 ## 4. Invariants (EARS + Epistemic Stage)
 
 - **[Ubiquitous]** The Store SHALL be reconstructible in full from the markdown tree plus
-  git history; losing it SHALL cost time, never information.
-  - `EvidenceStage:` Asserted · OW-40
+  git history; losing it SHALL cost time, never information. (OW-40)
+  - `EvidenceStage:` Unknown
 - **[State-driven]** WHILE multiple workers are active THE SYSTEM SHALL hand a given node
   to at most one worker (atomic claim).
-  - `EvidenceStage:` Asserted
+  - `EvidenceStage:` Unknown
 - **[Event-driven]** WHEN a node's contract hash changes THE SYSTEM SHALL mark that node
-  and its parent dirty, and SHALL NOT mark its siblings dirty.
-  - `EvidenceStage:` Asserted — sibling isolation is what makes re-walks cheap; a sibling
-    only dirties if it names the changed node in its own §3
+  and its parent dirty, and SHALL NOT mark its siblings dirty. (sibling isolation is what
+  makes re-walks cheap; a sibling only dirties if it names the changed node in its own §3)
+  - `EvidenceStage:` Unknown
 - **[Conditional]** IF a survey row's `fetched_at` is older than `survey_ttl_days` THEN
-  THE SYSTEM SHALL report `stale` and SHALL NOT return it as a hit.
-  - `EvidenceStage:` Asserted (recency rule)
+  THE SYSTEM SHALL report `stale` and SHALL NOT return it as a hit. (recency rule)
+  - `EvidenceStage:` Unknown
 - **[Conditional]** IF the store disagrees with the markdown tree THEN THE SYSTEM SHALL
-  discard the store's row and re-derive it.
-  - `EvidenceStage:` Asserted — markdown is sovereign
+  discard the store's row and re-derive it. (markdown is sovereign)
+  - `EvidenceStage:` Unknown
 
 ## 5. Architectural Decisions (ADRs)
 
@@ -56,7 +63,9 @@ node's *contract surface*. Editing §5 prose does not dirty anything downstream.
 
 ## 6. Leaf Execution & Test Seam
 
-- **Implementation:** `src/spec_runner/store.py` (seam over the embedded engine)
+- **Implementation:** not yet built; planned seam `src/recurspec/spec_runner/store.py`
+  (seam over the embedded engine) — same `spec_runner` subpackage as context-packer and
+  worker-pool.
 - **Tests:** `tests/test_job_store.py` — must cover: atomic claim under concurrency;
   sibling non-invalidation; TTL expiry returns `stale` not a hit; full rebuild from
   markdown reproduces the store; markdown wins on disagreement
@@ -96,7 +105,7 @@ node's *contract surface*. Editing §5 prose does not dirty anything downstream.
 - **Fit gap:** SQLite gives durability and transactions but no queue semantics, no TTL, and
   no dirty-propagation — those are the thin layer `store.py` adds. **This gap is why the
   parent node has a BUILD child at all**, and it is deliberately kept this small.
-- **Seam:** `src/spec_runner/store.py` — no SQL escapes this module
+- **Seam:** `src/recurspec/spec_runner/store.py` (planned) — no SQL escapes this module
 - **Exit cost:** LOW — the schema is five tables and the store is regenerable from
   markdown, so a migration is a rebuild, not a data export
 - **Cost model:** zero licence, zero hosting; disk only

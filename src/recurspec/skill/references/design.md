@@ -96,22 +96,33 @@ uniformly deep tree means RESEARCH is being skipped.
 
 ## Invariants — EARS + Epistemic Stage
 
-Every invariant uses an EARS pattern and carries an evidence tag.
+Every invariant uses an EARS pattern and carries an evidence tag. These are the five
+patterns from [Mavin et al.](../../../../docs/research/foundations.md#1-constrained-natural-language-requirements-ears);
+`Conditional` is Recurspec's label for what the paper calls *unwanted behaviour* — the
+IF/THEN form is used here for any conditional response, not only error paths.
 
 - **[Ubiquitous]** `The [System] SHALL [behavior]`
 - **[Event-driven]** `WHEN [trigger] THE SYSTEM SHALL [behavior]`
 - **[State-driven]** `WHILE [state] THE SYSTEM SHALL [behavior]`
 - **[Conditional]** `IF [condition] THEN THE SYSTEM SHALL [behavior]`
+- **[Optional]** `WHERE [feature is included] THE SYSTEM SHALL [behavior]`
+- **[Complex]** two or more of the above keyword clauses combined in one statement, e.g.
+  `WHILE [state], WHEN [trigger] THE SYSTEM SHALL [behavior]`. Must genuinely combine at
+  least two keywords — tagging a single-keyword statement `Complex` is rejected.
 
 | Stage | Meaning |
 |-------|---------|
-| `Unknown` | Asserted without inspection |
+| `Unknown` | Declared without inspection |
 | `Observed` | Verified in syntax/AST |
 | `Sampled` | Unit tests / mock probes — **never** promotable to Proved |
 | `Inferred` | Structural pattern match |
 | `Measured` | Hardware-benchmarked with variance (`measure.sh`) |
 | `Proved` | Solver (Z3/SMT) or algebraic rule |
 | `Refuted` | Contradicted by counterexample |
+
+These seven are the complete, exhaustive set the schema accepts — do not invent another
+label (e.g. `Asserted`, `Checked`); `Unknown` is the correct stage for a declared-but-
+unverified claim.
 
 ---
 
@@ -141,7 +152,7 @@ Single-sentence responsibility. Explicit non-goals ("does not own: ...").
 
 ## 4. Invariants (EARS + Epistemic Stage)
 - [Ubiquitous] The module SHALL ...
-  - `EvidenceStage:` Asserted | Sampled | Measured | Proved
+  - `EvidenceStage:` Unknown | Observed | Sampled | Inferred | Measured | Proved | Refuted
 
 ## 5. Architectural Decisions (ADRs)
 - **ADR-001:** [Title] — context, decision, impact.

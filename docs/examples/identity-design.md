@@ -58,13 +58,13 @@ identity may do, or how the session persists.
 **Invariants**
 
 - **[Ubiquitous]** The system SHALL NOT store user passwords in any form.
-  `EvidenceStage:` Checked — enforced by absence of a credential column
+  `EvidenceStage:` Observed — enforced by absence of a credential column
 - **[Event-driven]** WHEN identity verification succeeds THE SYSTEM SHALL receive a
   signed OIDC ID token carrying a stable subject identifier.
-  `EvidenceStage:` Checked
+  `EvidenceStage:` Observed
 - **[Conditional]** IF the IdP is unreachable THEN THE SYSTEM SHALL fail closed and
   surface a retry, never fall back to a local credential path.
-  `EvidenceStage:` Asserted — needs a failure-injection test
+  `EvidenceStage:` Unknown — needs a failure-injection test
 
 ```markdown
 ## 8. Technology Resolution
@@ -111,13 +111,13 @@ bounded it to an adapter.
 **Invariants**
 
 - **[Ubiquitous]** The system SHALL derive session state only from a validated IdP token.
-  `EvidenceStage:` Checked
+  `EvidenceStage:` Observed
 - **[State-driven]** WHILE a session is active THE SYSTEM SHALL re-validate the token
   signature and expiry on every authenticated request.
-  `EvidenceStage:` Checked
+  `EvidenceStage:` Observed
 - **[Event-driven]** WHEN a user signs out THE SYSTEM SHALL revoke the refresh token at
   the IdP, not merely clear the local cookie.
-  `EvidenceStage:` Asserted — OW candidate
+  `EvidenceStage:` Unknown — OW candidate
 
 ```markdown
 ## 8. Technology Resolution

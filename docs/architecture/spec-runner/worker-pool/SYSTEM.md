@@ -1,5 +1,7 @@
 # Worker Pool (L2)
 
+<!-- recurspec-contract: 1.0 -->
+
 ## 1. System Intent & Responsibility
 
 Run one node's loop turn in an isolated agent session, given a packet, and return a
@@ -16,10 +18,16 @@ decompose tool-use loops, retry backoff, or streaming.
 
 ## 3. Interface Contracts
 
-| | |
-|--|--|
-| **Inputs** | A packet from context-packer; phase; model tier; `max_tokens_per_node`; concurrency limit |
-| **Outputs** | Structured result — child frames, or a decision class + §8 draft, or a full node body; plus actual token/latency counts; or a typed failure (`budget_exceeded`, `tool_error`, `refused`) |
+- **Inputs:** `packet`; `max_tokens_per_node`; `concurrency`; phase; model tier.
+- **Outputs:** Structured result — child frames, or a decision class + §8 draft, or a
+  full node body; plus actual token/latency counts; or a typed failure (budget_exceeded,
+  tool_error, refused).
+- **Interface syntax:** `packet` comes from context-packer's output (see
+  [context-packer/SYSTEM.md](../context-packer/SYSTEM.md) §3); `max_tokens_per_node` and
+  `concurrency` come from Spec Runner's own input boundary (see
+  [spec-runner/SYSTEM.md](../SYSTEM.md) §3). The structured result has no declared
+  consumer elsewhere in the tree yet, so it stays prose rather than a port — the Runner's
+  own write-back into job-store is real but not yet specified at that level of detail.
 
 Workers are **stateless between nodes**. Anything a worker needed to know is in its
 packet, and anything it learned is in its result.
@@ -27,22 +35,24 @@ packet, and anything it learned is in its result.
 ## 4. Invariants (EARS + Epistemic Stage)
 
 - **[Ubiquitous]** A worker SHALL receive a packet and SHALL NOT read the tree directly.
-  - `EvidenceStage:` Asserted — the packet is the only abstraction barrier that makes
-    per-node cost bounded; a worker that can open files can defeat every budget
+  (the packet is the only abstraction barrier that makes per-node cost bounded; a worker
+  that can open files can defeat every budget)
+  - `EvidenceStage:` Unknown
 - **[Ubiquitous]** The pool SHALL route mechanical phases (FRAME, structural checks) to
-  the cheap tier and RESOLVE to the capable tier.
-  - `EvidenceStage:` Asserted · OW-43
+  the cheap tier and RESOLVE to the capable tier. (OW-43)
+  - `EvidenceStage:` Unknown
 - **[Conditional]** IF a worker's spend reaches `max_tokens_per_node` THEN THE SYSTEM
   SHALL abort that worker and record `budget_exceeded`, and SHALL NOT return a partial
-  spec as if complete.
-  - `EvidenceStage:` Asserted — refuse rather than guess
+  spec as if complete. (refuse rather than guess)
+  - `EvidenceStage:` Unknown
 - **[Conditional]** IF a worker produced the node under review THEN THE SYSTEM SHALL NOT
-  assign that worker its `[BRANCH]`/`[ATOMIC]` check.
-  - `EvidenceStage:` Asserted — maker ≠ checker ([Recurspec](../../../../src/recurspec/skill/SKILL.md));
-    a decomposer grading its own termination call is the failure mode this rule exists for
-- **[State-driven]** WHILE sibling nodes are independent THE SYSTEM MAY execute them
-  concurrently up to the configured limit.
-  - `EvidenceStage:` Asserted
+  assign that worker its `[BRANCH]`/`[ATOMIC]` check. (maker ≠ checker,
+  [Recurspec](../../../../src/recurspec/skill/SKILL.md) — a decomposer grading its own
+  termination call is the failure mode this rule exists for)
+  - `EvidenceStage:` Unknown
+- **[State-driven]** WHILE sibling nodes are independent THE SYSTEM SHALL be permitted to
+  execute them concurrently up to the configured limit.
+  - `EvidenceStage:` Unknown
 
 ## 5. Architectural Decisions (ADRs)
 
@@ -55,7 +65,9 @@ packet, and anything it learned is in its result.
 
 ## 6. Leaf Execution & Test Seam
 
-- **Implementation:** `src/spec_runner/workers.py` (adapter over the agent runtime)
+- **Implementation:** not yet built; planned seam `src/recurspec/spec_runner/workers.py`
+  (adapter over the agent runtime) — same `spec_runner` subpackage as context-packer and
+  job-store.
 - **Tests:** `tests/test_worker_pool.py` — must cover: worker cannot reach the filesystem
   outside its packet; budget abort yields `budget_exceeded` not a partial node; maker ≠
   checker enforced on the atomicity call; concurrency cap respected
@@ -89,7 +101,7 @@ packet, and anything it learned is in its result.
   | Bare threads calling a completion endpoint | No tool use, so RESEARCH cannot run inside a worker |
 - **Fit gap:** the SDK does not know Recurspec's phases, tiering policy, or budget rule. That gap
   is the thin adapter in `workers.py` — and it is the only custom code here.
-- **Seam:** `src/spec_runner/workers.py`; the Runner sees `run(packet) -> Result`
+- **Seam:** `src/recurspec/spec_runner/workers.py` (planned); the Runner sees `run(packet) -> Result`
 - **Exit cost:** MEDIUM — swapping runtimes rewrites the adapter and the tool wiring, but
   no packet, store, or spec format changes. Contained by design.
 - **Cost model:** per-token inference at the tier used. This is the dominant recurring cost

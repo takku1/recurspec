@@ -1,5 +1,7 @@
 # Spec Runner (L1)
 
+<!-- recurspec-contract: 1.0 -->
+
 > Process: [contract-design.md](../../process/contract-design.md) ·
 > Resolution gate: [stack-resolution.md](../../process/stack-resolution.md)
 
@@ -28,42 +30,57 @@ lines (contract-design §4):
 Two are procured and terminate immediately; only the packer is custom, because only the
 packer encodes Recurspec's own §-structure. That ratio is the point.
 
+None of the three exist yet. When built, all three share one `src/recurspec/spec_runner/`
+subpackage rather than three unrelated top-level packages — the grouping in this table is
+the code layout, not just the doc layout, so the tree and the source cannot silently
+drift apart on this point.
+
 **Distinct failure modes** (depth guard 3): store corrupt → resume impossible; worker
 fails → node never specified; packer wrong → bad spec or blown budget. Independent.
 
 ## 3. Interface Contracts
 
-| | |
-|--|--|
-| **Inputs** | Tree root path; a goal (cold start) or a changed-node set (warm); budget config (`max_tokens_per_node`, `concurrency`, `survey_ttl_days`, `max_depth`) |
-| **Outputs** | Node executions in dependency order; per-run cost ledger (tokens, calls, cache hits); derived index `tree.json`; exit report — node count, depth, **BUILD ratio**, total tokens |
+- **Inputs:** `max_tokens_per_node`; `concurrency`; tree root path; a goal (cold start) or
+  a changed-node set (warm); remaining budget config (survey_ttl_days, max_depth).
+- **Interface syntax:** `max_tokens_per_node` and `concurrency` are declared as ports here
+  because context-packer and worker-pool both consume them by that exact name (see their
+  own §3). `survey_ttl_days` and `max_depth` stay prose — nothing in the subtree consumes
+  them as a machine-checkable port yet.
+- **Outputs:** Node executions in dependency order; per-run cost ledger (tokens, calls,
+  cache hits); derived index tree.json; exit report — node count, depth, BUILD ratio,
+  total tokens.
 
 ## 4. Invariants (EARS + Epistemic Stage)
 
 - **[Ubiquitous]** The Runner SHALL bound a node's packet to its parent's §1 and §3 plus
-  its siblings' §3 — never ancestors above the parent, never uncle subtrees.
-  - `EvidenceStage:` Asserted · design intent; becomes Measured under OW-44
+  its siblings' §3 — never ancestors above the parent, never uncle subtrees. (design
+  intent; becomes Measured under OW-44)
+  - `EvidenceStage:` Unknown
 - **[Conditional]** IF a packed context exceeds `max_tokens_per_node` THEN THE SYSTEM
   SHALL fail that node with a budget-overflow signal and SHALL NOT truncate the packet.
-  - `EvidenceStage:` Asserted — same contract as `src/recurspec/metrics.py`: refuse rather than
-    guess. A truncated packet manufactures a confident spec from missing information.
+  (same contract as `src/recurspec/metrics.py`: refuse rather than guess — a truncated
+  packet manufactures a confident spec from missing information)
+  - `EvidenceStage:` Unknown
 - **[Event-driven]** WHEN a node's contract hash is unchanged since the last run THE
-  SYSTEM SHALL skip it and every ancestor whose children's hashes are all unchanged.
-  - `EvidenceStage:` Asserted · OW-41
+  SYSTEM SHALL skip it and every ancestor whose children's hashes are all unchanged. (OW-41)
+  - `EvidenceStage:` Unknown
 - **[Conditional]** IF a validation is expressible as a schema assertion THEN THE SYSTEM
-  SHALL evaluate it in code and SHALL NOT spend a model call on it.
-  - `EvidenceStage:` Asserted (process rule) — §8 field completeness, EARS keyword
-    presence, two-child minimum, and depth caps are all schema checks
+  SHALL evaluate it in code and SHALL NOT spend a model call on it. (process rule — §8
+  field completeness, EARS keyword presence, two-child minimum, and depth caps are all
+  schema checks)
+  - `EvidenceStage:` Unknown
 - **[Conditional]** IF a cached capability survey is older than `survey_ttl_days` THEN THE
-  SYSTEM SHALL re-run the survey and SHALL NOT reuse it in a §8 block.
-  - `EvidenceStage:` Asserted — the recency rule (contract-design §2). A cache with no
-    TTL is a mechanism for laundering stale pricing into a resolution
+  SYSTEM SHALL re-run the survey and SHALL NOT reuse it in a §8 block. (the recency rule,
+  contract-design §2 — a cache with no TTL is a mechanism for laundering stale pricing
+  into a resolution)
+  - `EvidenceStage:` Unknown
 - **[Ubiquitous]** The Runner SHALL treat `tree.json` as a derived cache regenerable from
-  the markdown tree; on disagreement the markdown SHALL win.
-  - `EvidenceStage:` Asserted — preserves hard rule 1 (one incomplete-work surface)
+  the markdown tree; on disagreement the markdown SHALL win. (preserves hard rule 1: one
+  incomplete-work surface)
+  - `EvidenceStage:` Unknown
 - **[State-driven]** WHILE workers execute concurrently THE SYSTEM SHALL serialize all
-  tree writes through a job-store transaction.
-  - `EvidenceStage:` Asserted · OW-40
+  tree writes through a job-store transaction. (OW-40)
+  - `EvidenceStage:` Unknown
 
 ## 5. Architectural Decisions (ADRs)
 

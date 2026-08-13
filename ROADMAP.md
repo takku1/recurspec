@@ -24,15 +24,17 @@ Statuses: `ready`, `blocked`, `research`, `deferred`, `done`.
 | R-101 | Validate EARS invariants, Evidence Stages, and terminal §6–§8 sections | done | R-100 | [Contract Engine](./docs/architecture/contract-engine/SYSTEM.md) |
 | R-102 | Validate parent/child interface satisfaction | done | R-100 | [Contract Engine](./docs/architecture/contract-engine/SYSTEM.md) |
 | R-103 | Detect stale dependency pins and incomplete technology resolutions | ready | R-100 | [Stack Resolver](./docs/architecture/stack-resolver/SYSTEM.md) |
-| R-104 | Generate a byte-stable, bounded worker contract card | ready | R-100 | [Context Packer](./docs/architecture/design-runner/context-packer/SYSTEM.md) |
+| R-104 | Generate a byte-stable, bounded worker contract card | ready | R-100 | [Context Packer](./docs/architecture/spec-runner/context-packer/SYSTEM.md) |
+| R-105 | Declare explicit machine-checkable ports for the Spec Runner subtree's already-narrated job-store → context-packer → worker-pool data flow, fed from three real root-level ports (`contract_path`, `max_tokens_per_node`, `concurrency`). The remaining root L1 modules (Stack Resolver, Contract Reconciler, Frontier Adapter, Structure Gate, Evaluation Gate) are independently-invoked CLI gates, not a single-invocation pipeline — investigated and found to have no real cross-sibling data flow to port, so they stay prose-only Interface Contracts by design, not by omission | done | R-102 | [Spec Runner](./docs/architecture/spec-runner/SYSTEM.md) |
+| R-106 | Parse combined EARS patterns (e.g. state + event in one invariant) as a single invariant, per the design inference already recorded in [foundations.md §1](./docs/research/foundations.md#1-constrained-natural-language-requirements-ears) | done | R-101 | [Contract Engine](./docs/architecture/contract-engine/SYSTEM.md) |
 
 ## 2.0: isolated execution
 
 | ID | Outcome | Status | Blocked by | Contract |
 |---|---|---|---|---|
 | R-200 | Create, evaluate, merge, and dispose Candidate worktrees | ready | R-101 | [Evaluation Gate](./docs/architecture/evaluation-gate/SYSTEM.md) |
-| R-201 | Enforce maker/checker identity separation in state, not prompts alone | ready | R-200 | [Worker Pool](./docs/architecture/design-runner/worker-pool/SYSTEM.md) |
-| R-202 | Persist atomic claims and re-derive state from Markdown | ready | R-100 | [Job Store](./docs/architecture/design-runner/job-store/SYSTEM.md) |
+| R-201 | Enforce maker/checker identity separation in state, not prompts alone | ready | R-200 | [Worker Pool](./docs/architecture/spec-runner/worker-pool/SYSTEM.md) |
+| R-202 | Persist atomic claims and re-derive state from Markdown | ready | R-100 | [Job Store](./docs/architecture/spec-runner/job-store/SYSTEM.md) |
 | R-203 | Add CI that runs checks and evaluates changed measurable modules | deferred | R-200 | [Evaluation Gate](./docs/architecture/evaluation-gate/SYSTEM.md) |
 
 ## 3.0: closed-loop reconciliation

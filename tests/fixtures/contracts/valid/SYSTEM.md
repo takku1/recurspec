@@ -23,6 +23,10 @@ Atomic leaf.
   - `EvidenceStage:` Sampled
 - **[State-driven]** WHILE a directory is checked THE SYSTEM SHALL inspect every Contract Node.
   - `EvidenceStage:` Sampled
+- **[Optional]** WHERE the `--format json` flag is given THE SYSTEM SHALL emit a stable machine-readable payload.
+  - `EvidenceStage:` Sampled
+- **[Complex]** WHILE a directory scan is active, WHEN a malformed file is found THE SYSTEM SHALL record a diagnostic and continue scanning.
+  - `EvidenceStage:` Sampled
 
 ## 5. Architectural Decisions (ADRs)
 

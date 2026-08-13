@@ -116,27 +116,98 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     commands = parser.add_subparsers(dest="command", required=True)
 
-    evaluate = commands.add_parser("evaluate", help="evaluate a candidate branch")
-    evaluate.add_argument("module")
-    evaluate.add_argument("candidate_branch")
-    evaluate.add_argument("--tolerance", type=float, default=20.0)
-    evaluate.add_argument("--baseline-branch", default="main")
-    evaluate.add_argument("--log-dir", default=".recurspec/evidence")
-    evaluate.add_argument("--record-baseline", action="store_true")
-    evaluate.add_argument("--stagnation-limit", type=int, default=5)
-    evaluate.add_argument("--attempt-ceiling", type=int, default=8)
+    defaults_formatter = argparse.ArgumentDefaultsHelpFormatter
+
+    evaluate = commands.add_parser(
+        "evaluate",
+        help="evaluate a candidate branch",
+        formatter_class=defaults_formatter,
+    )
+    evaluate.add_argument(
+        "module", help="module name under modules/<name>/ providing checks.sh and measure.sh"
+    )
+    evaluate.add_argument(
+        "candidate_branch",
+        help=(
+            "label for the branch or state being evaluated, recorded in the evidence log; "
+            "does not check out or isolate a branch itself"
+        ),
+    )
+    evaluate.add_argument(
+        "--tolerance",
+        type=float,
+        default=20.0,
+        help="allowed percent regression on non-hard_gate metrics before reverting",
+    )
+    evaluate.add_argument(
+        "--baseline-branch",
+        default="main",
+        help="branch whose promoted Best Known State this candidate is compared against",
+    )
+    evaluate.add_argument(
+        "--log-dir",
+        default=".recurspec/evidence",
+        help="directory for the append-only evidence JSONL log",
+    )
+    evaluate.add_argument(
+        "--record-baseline",
+        action="store_true",
+        help="promote this run's measurement to the new Best Known State baseline",
+    )
+    evaluate.add_argument(
+        "--stagnation-limit",
+        type=int,
+        default=5,
+        help="consecutive reverts on this branch before returning ESCALATE",
+    )
+    evaluate.add_argument(
+        "--attempt-ceiling",
+        type=int,
+        default=8,
+        help="total reverts on this branch before returning ESCALATE",
+    )
     evaluate.set_defaults(handler=_run_evaluate)
 
-    skills = commands.add_parser("skills", help="install or verify the bundled agent skill")
-    skills.add_argument("action", choices=("install", "check"), nargs="?", default="install")
-    skills.add_argument("--target", choices=("claude", "codex", "all"), default="all")
+    skills = commands.add_parser(
+        "skills",
+        help="install or verify the bundled agent skill",
+        formatter_class=defaults_formatter,
+    )
+    skills.add_argument(
+        "action",
+        choices=("install", "check"),
+        nargs="?",
+        default="install",
+        help="install writes the bundled skill; check reports drift without writing",
+    )
+    skills.add_argument(
+        "--target",
+        choices=("claude", "codex", "all"),
+        default="all",
+        help="which tool's skill directory to target",
+    )
     skills.set_defaults(handler=_run_skills)
 
-    contract = commands.add_parser("contract", help="validate versioned Contract Nodes")
+    contract = commands.add_parser(
+        "contract",
+        help="validate versioned Contract Nodes",
+        formatter_class=defaults_formatter,
+    )
     contract_actions = contract.add_subparsers(dest="action", required=True)
-    check = contract_actions.add_parser("check", help="validate one file or a directory tree")
-    check.add_argument("path", type=Path)
-    check.add_argument("--format", choices=("text", "json"), default="text")
+    check = contract_actions.add_parser(
+        "check",
+        help="validate one file or a directory tree",
+        formatter_class=defaults_formatter,
+    )
+    check.add_argument(
+        "path", type=Path, help="a SYSTEM.md file, or a directory checked recursively for them"
+    )
+    check.add_argument(
+        "--format",
+        choices=("text", "json"),
+        default="text",
+        help="text prints diagnostics; json prints a stable machine-readable payload",
+    )
     check.set_defaults(handler=_run_contract_check)
     return parser
 

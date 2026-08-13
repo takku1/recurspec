@@ -1,5 +1,7 @@
 # Context Packer (L2)
 
+<!-- recurspec-contract: 1.0 -->
+
 ## 1. System Intent & Responsibility
 
 Assemble the smallest packet that lets a worker complete one loop turn on one node, and
@@ -14,10 +16,16 @@ the correctness of the spec a worker produces (Contract Engine).
 
 ## 3. Interface Contracts
 
-| | |
-|--|--|
-| **Inputs** | `node_id`; the tree index; `max_tokens_per_node`; phase (`frame` \| `resolve` \| `specify`); cached survey rows for this node's capability |
-| **Outputs** | A packet — contract card, parent §1+§3, sibling §3 index, own current draft, cached survey; a token estimate; **or** a `budget_overflow` refusal naming the oversized part |
+- **Inputs:** `node_id`; `max_tokens_per_node`; `survey_result`; the tree index; phase
+  (frame | resolve | specify).
+- **Outputs:** `packet` — contract card, parent §1+§3, sibling §3 index, own current
+  draft, cached survey; a token estimate; or a `budget_overflow` refusal naming the
+  oversized part.
+- **Interface syntax:** `node_id` and `survey_result` come from job-store's outputs (see
+  [job-store/SYSTEM.md](../job-store/SYSTEM.md) §3); `max_tokens_per_node` comes from
+  Spec Runner's own input boundary (see [spec-runner/SYSTEM.md](../SYSTEM.md) §3). `packet`
+  is consumed by worker-pool (see [worker-pool/SYSTEM.md](../worker-pool/SYSTEM.md) §3).
+  The tree index and phase stay prose.
 
 The packet is the entire abstraction barrier. If a worker needs something absent from it,
 that is a missing interface contract in the tree, not a reason to widen the packet.
@@ -25,22 +33,23 @@ that is a missing interface contract in the tree, not a reason to widen the pack
 ## 4. Invariants (EARS + Epistemic Stage)
 
 - **[Ubiquitous]** The Packer SHALL include a node's parent §1 and §3 and its siblings'
-  §3, and SHALL NOT include ancestors above the parent or any uncle subtree.
-  - `EvidenceStage:` Asserted · design intent
+  §3, and SHALL NOT include ancestors above the parent or any uncle subtree. (design intent)
+  - `EvidenceStage:` Unknown
 - **[Ubiquitous]** The Packer SHALL include sibling **interfaces only** (§3), never
   sibling bodies — packet size is then linear in sibling count, not sibling depth.
-  - `EvidenceStage:` Asserted
+  - `EvidenceStage:` Unknown
 - **[Conditional]** IF the estimated packet exceeds `max_tokens_per_node` THEN THE SYSTEM
   SHALL return `budget_overflow` naming the largest contributor and SHALL NOT truncate,
-  summarize, or drop a section to fit.
-  - `EvidenceStage:` Asserted — refuse rather than guess
+  summarize, or drop a section to fit. (refuse rather than guess)
+  - `EvidenceStage:` Unknown
 - **[Conditional]** IF a validation is expressible as a schema assertion THEN THE PACKER
   SHALL run it before dispatch and SHALL NOT dispatch a node that already fails it.
-  - `EvidenceStage:` Asserted — catches two-child-minimum and §8-completeness violations
-    for zero tokens instead of one model call plus a rejected result
+  (catches two-child-minimum and §8-completeness violations for zero tokens instead of
+  one model call plus a rejected result)
+  - `EvidenceStage:` Unknown
 - **[Ubiquitous]** The Packer SHALL emit the contract card as the packet's leading bytes,
-  byte-identical across nodes, so it forms a cacheable shared prefix.
-  - `EvidenceStage:` Asserted · OW-44
+  byte-identical across nodes, so it forms a cacheable shared prefix. (OW-44)
+  - `EvidenceStage:` Unknown
 
 ## 5. Architectural Decisions (ADRs)
 
@@ -53,7 +62,9 @@ that is a missing interface contract in the tree, not a reason to widen the pack
 
 ## 6. Leaf Execution & Test Seam
 
-- **Implementation:** `src/spec_runner/context_packer.py`
+- **Implementation:** not yet built; planned seam `src/recurspec/spec_runner/context_packer.py`
+  — nested under the `spec_runner` subpackage shared with its two siblings (job-store,
+  worker-pool), not flattened alongside unrelated L1 modules.
 - **Tests:** `tests/test_context_packer.py` — must cover: no ancestor above parent leaks
   in; sibling bodies excluded; overflow refuses rather than truncates; card is
   byte-identical across two different nodes; schema pre-check rejects before dispatch
@@ -77,7 +88,7 @@ that is a missing interface contract in the tree, not a reason to widen the pack
 - **Justification:** *Differentiator + fatal fit gap.* The packet is defined in terms of
   Recurspec's own §1–§8 contract shape and its bounded-neighbour rule. No third party models
   that structure, and this is precisely where token cost is won or lost.
-- **Selected:** Python module in `src/spec_runner/`; token estimation via the vendor's
+- **Selected:** Python module in `src/recurspec/spec_runner/`; token estimation via the vendor's
   published counting endpoint where available, else a conservative local heuristic
 - **Standard / protocol:** none — internal
 - **Alternatives considered:**
@@ -87,7 +98,7 @@ that is a missing interface contract in the tree, not a reason to widen the pack
   | Generic prompt-template libraries | Solve interpolation, not budgeting or neighbour-scoping — the two things that matter here |
   | Let each worker read files itself | This is the naive baseline being replaced: unbounded reads, no budget, no cacheable prefix |
 - **Fit gap:** n/a (custom by intent)
-- **Seam:** `src/spec_runner/context_packer.py` — workers receive packets, never paths
+- **Seam:** `src/recurspec/spec_runner/context_packer.py` (planned) — workers receive packets, never paths
 - **Exit cost:** n/a
 - **Cost model:** our engineering time; expected to *reduce* per-run inference spend
 - **Liability transferred:** none

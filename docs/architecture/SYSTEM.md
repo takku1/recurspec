@@ -1,10 +1,16 @@
-# Recurspec Engine (L0 Root)
+# Recurspec Engine (L0)
+
+<!-- recurspec-contract: 1.0 -->
 
 ## 1. System Intent & Responsibility
 
-Recurspec is a research-informed contract and evaluation system for AI-assisted software engineering. It maintains a Contract Tree of machine-usable `SYSTEM.md` nodes, executes work through Research Frontiers, and reconciles Structural and Empirical Feedback under a deterministic verification gate.
+Recurspec is a research-informed contract and evaluation system for AI-assisted software engineering. It maintains a Contract Tree of machine-usable `SYSTEM.md` nodes, executes work through Research Frontiers, and reconciles Structural and Empirical Feedback under a deterministic verification gate. This is the tree root.
 
 **Does not own:** product application code of consumer repos; those *use* Recurspec process and may mirror this tree shape.
+
+Process (not code modules): [contract-design](../process/contract-design.md), [stack-resolution](../process/stack-resolution.md), [evidence-cycle](../process/evidence-cycle.md), [contract-reconciliation](../process/contract-reconciliation.md).
+Incomplete work: [ROADMAP.md](../../ROADMAP.md).
+Research: [research/foundations.md](../research/foundations.md).
 
 ## 2. Sub-System Decomposition
 
@@ -12,39 +18,34 @@ Recurspec is a research-informed contract and evaluation system for AI-assisted 
 |-----------|------|----------------|
 | Contract Engine | [contract-engine/SYSTEM.md](./contract-engine/SYSTEM.md) | Create/validate EARS `SYSTEM.md` trees |
 | Stack Resolver | [stack-resolver/SYSTEM.md](./stack-resolver/SYSTEM.md) | Decision class per node; third-party-first gate; recursion stopping rule |
-| Spec Runner | [design-runner/SYSTEM.md](./design-runner/SYSTEM.md) | Executes the loop: scheduling, context budgeting, incremental re-walk |
+| Spec Runner | [spec-runner/SYSTEM.md](./spec-runner/SYSTEM.md) | Executes the loop: scheduling, context budgeting, incremental re-walk |
 | Contract Reconciler | [contract-reconciler/SYSTEM.md](./contract-reconciler/SYSTEM.md) | Structural sensory signals; auto-expand |
 | Frontier Adapter | [frontier-adapter/SYSTEM.md](./frontier-adapter/SYSTEM.md) | Leaf → frontier tickets |
 | Structure Gate | [structure-gate/SYSTEM.md](./structure-gate/SYSTEM.md) | Deterministic zero-drift / coverage checks |
 | Evaluation Gate | [evaluation-gate/SYSTEM.md](./evaluation-gate/SYSTEM.md) | Branching measure; Empirical Feedback inputs |
 
-Process (not code modules): [contract-design](../process/contract-design.md), [stack-resolution](../process/stack-resolution.md), [evidence-cycle](../process/evidence-cycle.md), [contract-reconciliation](../process/contract-reconciliation.md).
-Incomplete work: [ROADMAP.md](../../ROADMAP.md).
-Research: [research/foundations.md](../research/foundations.md).
-
 ## 3. Interface Contracts
 
-| Direction | Artifacts |
-|-----------|-----------|
-| **Inputs** | Product vision / NL scope; git diffs; existing code ASTs; measure baselines |
-| **Outputs** | Fractal `docs/architecture/**/SYSTEM.md`; Wayfinder tickets; pass/fail gate reports; baseline logs under `.recurspec/evidence/` |
+- **Inputs:** `contract_path`; `max_tokens_per_node`; `concurrency`; product vision / NL scope; git diffs; existing code ASTs; measure baselines.
+- **Outputs:** Fractal docs/architecture/**/SYSTEM.md tree; Wayfinder tickets; pass/fail gate reports; baseline logs under .recurspec/evidence/.
+- **Interface syntax:** these three ports are declared this level down because a real child already consumes each by that exact name: `contract_path` by Contract Engine (see [contract-engine/SYSTEM.md](./contract-engine/SYSTEM.md) §3), `max_tokens_per_node` and `concurrency` by Spec Runner and its own children (see [spec-runner/SYSTEM.md](./spec-runner/SYSTEM.md) §3). The other L1 modules (Stack Resolver, Contract Reconciler, Frontier Adapter, Structure Gate, Evaluation Gate) are independently-invoked CLI gates with no cross-sibling data flow to formalize as ports — see R-105 in [ROADMAP.md](../../ROADMAP.md) for that finding.
 
 ## 4. Invariants (EARS + Epistemic Stage)
 
-- **[Ubiquitous]** The Root System SHALL treat `ROADMAP.md` as the sole incomplete-work registry.
-  - `EvidenceStage:` Asserted (process rule)
+- **[Ubiquitous]** The Root System SHALL treat `ROADMAP.md` as the sole incomplete-work registry. (process rule)
+  - `EvidenceStage:` Unknown
 - **[Ubiquitous]** Every architectural module SHALL maintain an explicit `SYSTEM.md` contract under `docs/architecture/`.
-  - `EvidenceStage:` Asserted
-- **[Event-driven]** WHEN a spec node exceeds the bloat threshold (~150 lines or >3 separable responsibilities) THE SYSTEM SHALL trigger file-to-folder expansion via the Contract Reconciler.
-  - `EvidenceStage:` Asserted (policy; automation OW-02)
-- **[Conditional]** IF a committed source file has no parent architecture node THEN THE SYSTEM SHALL fail the Structure Gate / pre-commit path.
-  - `EvidenceStage:` Asserted (automation OW-04)
-- **[Conditional]** IF only L4 model-judge evidence is available THEN THE SYSTEM SHALL NOT authorize merge on that evidence alone.
-  - `EvidenceStage:` Asserted (research foundation §5)
-- **[Ubiquitous]** Every node SHALL carry a decision class before it is decomposed or specified; every terminal node SHALL carry a §8 Technology Resolution block.
-  - `EvidenceStage:` Asserted (process rule; automation OW-06)
-- **[Conditional]** IF a node resolves to BUY or ADOPT THEN THE SYSTEM SHALL treat it as terminal and SHALL NOT decompose the vendor's internals.
-  - `EvidenceStage:` Asserted (recursion termination guarantee)
+  - `EvidenceStage:` Unknown
+- **[Event-driven]** WHEN a spec node exceeds the bloat threshold (~150 lines or >3 separable responsibilities) THE SYSTEM SHALL trigger file-to-folder expansion via the Contract Reconciler. (policy; automation OW-02)
+  - `EvidenceStage:` Unknown
+- **[Conditional]** IF a committed source file has no parent architecture node THEN THE SYSTEM SHALL fail the Structure Gate / pre-commit path. (automation OW-04)
+  - `EvidenceStage:` Unknown
+- **[Conditional]** IF only L4 model-judge evidence is available THEN THE SYSTEM SHALL NOT authorize merge on that evidence alone. (research foundation §5)
+  - `EvidenceStage:` Unknown
+- **[Ubiquitous]** Every node SHALL carry a decision class before it is decomposed or specified; every terminal node SHALL carry a §8 Technology Resolution block. (process rule; automation OW-06)
+  - `EvidenceStage:` Unknown
+- **[Conditional]** IF a node resolves to BUY or ADOPT THEN THE SYSTEM SHALL treat it as terminal and SHALL NOT decompose the vendor's internals. (recursion termination guarantee)
+  - `EvidenceStage:` Unknown
 
 ## 5. Architectural Decisions (ADRs)
 

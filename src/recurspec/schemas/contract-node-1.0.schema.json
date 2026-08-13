@@ -49,7 +49,7 @@
         "required": ["ears_pattern", "statement", "evidence_stage"],
         "properties": {
           "ears_pattern": {
-            "enum": ["Ubiquitous", "Event-driven", "State-driven", "Conditional"]
+            "enum": ["Ubiquitous", "Event-driven", "State-driven", "Conditional", "Optional", "Complex"]
           },
           "statement": {"type": "string", "minLength": 1},
           "evidence_stage": {

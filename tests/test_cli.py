@@ -18,6 +18,22 @@ def test_parser_exposes_the_public_commands():
     assert contract.path == Path("docs")
 
 
+def test_every_cli_argument_documents_itself():
+    parser = build_parser()
+
+    def actions(subparser):
+        return [action for action in subparser._actions if action.dest != "help"]
+
+    evaluate = parser._subparsers._group_actions[0].choices["evaluate"]
+    skills = parser._subparsers._group_actions[0].choices["skills"]
+    contract = parser._subparsers._group_actions[0].choices["contract"]
+    check = contract._subparsers._group_actions[0].choices["check"]
+
+    for subparser in (evaluate, skills, check):
+        for action in actions(subparser):
+            assert action.help, f"{subparser.prog} {action.dest} is missing help text"
+
+
 def test_skill_sync_installs_one_self_contained_skill(tmp_path: Path):
     assert sync_skill(tmp_path, check=True) is False
     assert sync_skill(tmp_path) is False
