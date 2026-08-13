@@ -10,6 +10,9 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 - `recurspec contract check PATH` with stable text/JSON diagnostics and distinct invalid
   contract versus instrument-failure exit codes.
 - Contract Engine checks, fixtures, and a correctly labeled `Sampled` acceptance metric.
+- Deterministic Contract Tree composition validation for child paths, levels, explicit
+  interface ports, missing producers, and dependency cycles.
+- Progressive adoption and project-fit guidance for teams that do not need the full loop.
 
 ## [0.1.0] - 2026-08-12
 

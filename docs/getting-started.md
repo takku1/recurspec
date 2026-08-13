@@ -40,6 +40,17 @@ Add `<!-- recurspec-contract: 1.0 -->` below the title of each opted-in `SYSTEM.
 Validation fails closed on unsupported versions, missing required headings, malformed
 EARS invariants, missing Evidence Stages, or an empty directory.
 
+For tree composition, declare stable ports as backtick identifiers on Section 3 lines:
+
+```markdown
+- **Inputs:** `source_document`
+- **Outputs:** `validated_contract`
+```
+
+Non-Atomic nodes link children from Section 2. Validation resolves those links inside the
+checked tree and verifies that parent inputs and satisfiable sibling outputs supply every
+child input and declared parent output.
+
 Copy the templates into a named module:
 
 ```bash

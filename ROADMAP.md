@@ -14,6 +14,7 @@ Statuses: `ready`, `blocked`, `research`, `deferred`, `done`.
 | R-003 | Tiered Evaluation Gate with explicit baseline promotion | done | Behavioral test suite |
 | R-004 | Bounded retries and Negative Pattern memory | done | Behavioral test suite |
 | R-005 | Canonical public vocabulary and repository layout | done | Link and legacy-name audits |
+| R-006 | Progressive adoption modes and project-fit guidance | done | [Adoption guide](./docs/adoption.md) |
 
 ## 1.0: machine-checkable contracts
 
@@ -21,7 +22,7 @@ Statuses: `ready`, `blocked`, `research`, `deferred`, `done`.
 |---|---|---|---|---|
 | R-100 | Define a versioned schema for `SYSTEM.md` Contract Nodes | done | — | [Contract Engine](./docs/architecture/contract-engine/SYSTEM.md) |
 | R-101 | Validate EARS invariants, Evidence Stages, and terminal §6–§8 sections | done | R-100 | [Contract Engine](./docs/architecture/contract-engine/SYSTEM.md) |
-| R-102 | Validate parent/child interface satisfaction | ready | R-100 | [Contract Engine](./docs/architecture/contract-engine/SYSTEM.md) |
+| R-102 | Validate parent/child interface satisfaction | done | R-100 | [Contract Engine](./docs/architecture/contract-engine/SYSTEM.md) |
 | R-103 | Detect stale dependency pins and incomplete technology resolutions | ready | R-100 | [Stack Resolver](./docs/architecture/stack-resolver/SYSTEM.md) |
 | R-104 | Generate a byte-stable, bounded worker contract card | ready | R-100 | [Context Packer](./docs/architecture/design-runner/context-packer/SYSTEM.md) |
 

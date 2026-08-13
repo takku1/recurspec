@@ -45,13 +45,13 @@ seam and cannot fail independently from a user's perspective.
   - `EvidenceStage:` Sampled
 - **[Conditional]** IF a non-Atomic Contract Node links children THEN THE SYSTEM SHALL
   require every link to resolve within the checked tree at exactly the next level.
-  - `EvidenceStage:` Unknown
+  - `EvidenceStage:` Sampled
 - **[Conditional]** IF a child declares an input port THEN THE SYSTEM SHALL require that
   port to be supplied by the parent input boundary or an already satisfiable sibling.
-  - `EvidenceStage:` Unknown
+  - `EvidenceStage:` Sampled
 - **[Conditional]** IF a parent declares an output port THEN THE SYSTEM SHALL require that
   port to be available after child interface composition reaches a fixed point.
-  - `EvidenceStage:` Unknown
+  - `EvidenceStage:` Sampled
 
 ## 5. Architectural Decisions (ADRs)
 

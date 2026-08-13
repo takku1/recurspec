@@ -98,6 +98,18 @@ silently become the reference baseline; after merge, promote it explicitly with
 The gate refuses to guess. Missing or contradictory telemetry, a non-numeric reading, or
 an unresolved metric direction reverts the candidate instead of manufacturing evidence.
 
+## Start only as deep as needed
+
+Recurspec is deliberately progressive:
+
+1. **Check only:** validate Contract Nodes and tree interfaces with `contract check`.
+2. **Check + evaluate:** add measurement gates for risky or performance-sensitive work.
+3. **Full loop:** use isolated Candidates, maker/checker separation, repair memory, and
+   reconciliation for long-lived systems with costly failures.
+
+Small, short-lived, or low-risk projects may not need Recurspec at all. See the
+[project-fit and adoption guide](./docs/adoption.md) before introducing process overhead.
+
 ## Repository map
 
 ```text
@@ -114,7 +126,7 @@ ROADMAP.md                 Single incomplete-work registry
 ```
 
 Start with [the documentation index](./docs/index.md), then read the
-[contract-design loop](./docs/process/contract-design.md) and the
+[adoption guide](./docs/adoption.md), [contract-design loop](./docs/process/contract-design.md), and the
 [worked identity example](./docs/examples/identity-design.md).
 
 ## License

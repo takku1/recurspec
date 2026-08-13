@@ -3,10 +3,11 @@
 ## Start here
 
 1. [Getting started](./getting-started.md)
-2. [Canonical language](../CONTEXT.md)
-3. [Contract design](./process/contract-design.md)
-4. [Worked identity design](./examples/identity-design.md)
-5. [Evidence cycle](./process/evidence-cycle.md)
+2. [Project fit and progressive adoption](./adoption.md)
+3. [Canonical language](../CONTEXT.md)
+4. [Contract design](./process/contract-design.md)
+5. [Worked identity design](./examples/identity-design.md)
+6. [Evidence cycle](./process/evidence-cycle.md)
 
 ## Design process
 
