@@ -33,23 +33,28 @@ that is a missing interface contract in the tree, not a reason to widen the pack
 ## 4. Invariants (EARS + Epistemic Stage)
 
 - **[Ubiquitous]** The Packer SHALL include a node's parent §1 and §3 and its siblings'
-  §3, and SHALL NOT include ancestors above the parent or any uncle subtree. (design intent)
-  - `EvidenceStage:` Unknown
+  §3, and SHALL NOT include ancestors above the parent or any uncle subtree. (design
+  intent; `test_pack_includes_parent_context_but_never_the_grandparent`)
+  - `EvidenceStage:` Sampled
 - **[Ubiquitous]** The Packer SHALL include sibling **interfaces only** (§3), never
   sibling bodies — packet size is then linear in sibling count, not sibling depth.
-  - `EvidenceStage:` Unknown
+  (`test_pack_includes_sibling_interfaces_but_never_sibling_bodies`)
+  - `EvidenceStage:` Sampled
 - **[Conditional]** IF the estimated packet exceeds `max_tokens_per_node` THEN THE SYSTEM
   SHALL return `budget_overflow` naming the largest contributor and SHALL NOT truncate,
-  summarize, or drop a section to fit. (refuse rather than guess)
-  - `EvidenceStage:` Unknown
+  summarize, or drop a section to fit. (refuse rather than guess;
+  `test_pack_refuses_with_budget_overflow_rather_than_truncate`)
+  - `EvidenceStage:` Sampled
 - **[Conditional]** IF a validation is expressible as a schema assertion THEN THE PACKER
   SHALL run it before dispatch and SHALL NOT dispatch a node that already fails it.
-  (catches two-child-minimum and §8-completeness violations for zero tokens instead of
-  one model call plus a rejected result)
-  - `EvidenceStage:` Unknown
+  (today this is whole-tree validity via `build_tree_index`, not yet a narrower
+  two-child-minimum/§8-completeness check scoped to just the target node - see Open
+  work below; `test_pack_returns_schema_rejected_instead_of_dispatching_an_invalid_tree`)
+  - `EvidenceStage:` Sampled
 - **[Ubiquitous]** The Packer SHALL emit the contract card as the packet's leading bytes,
-  byte-identical across nodes, so it forms a cacheable shared prefix. (OW-44)
-  - `EvidenceStage:` Unknown
+  byte-identical across nodes, so it forms a cacheable shared prefix.
+  (`test_contract_card_is_byte_identical_across_two_different_nodes`)
+  - `EvidenceStage:` Sampled
 
 ## 5. Architectural Decisions (ADRs)
 
@@ -62,13 +67,19 @@ that is a missing interface contract in the tree, not a reason to widen the pack
 
 ## 6. Leaf Execution & Test Seam
 
-- **Implementation:** not yet built; planned seam `src/recurspec/spec_runner/context_packer.py`
-  — nested under the `spec_runner` subpackage shared with its two siblings (job-store,
-  worker-pool), not flattened alongside unrelated L1 modules.
-- **Tests:** `tests/test_context_packer.py` — must cover: no ancestor above parent leaks
+- **Implementation:** `src/recurspec/spec_runner/context_packer.py` — nested under the
+  `spec_runner` subpackage shared with its two siblings (job-store, worker-pool).
+- **Tests:** `tests/test_context_packer.py` (7 tests) — no ancestor above parent leaks
   in; sibling bodies excluded; overflow refuses rather than truncates; card is
-  byte-identical across two different nodes; schema pre-check rejects before dispatch
-- **Open work:** OW-42
+  byte-identical across two different nodes; schema pre-check rejects before dispatch;
+  unknown node_id raises rather than silently packing nothing; token estimate is
+  conservative and zero for empty text.
+- **Open work:** token estimation uses a fixed chars-per-token heuristic
+  (`CHARS_PER_TOKEN = 3`), not the vendor's published counting endpoint §8 originally
+  named — revisit once a live endpoint is actually wired up. The schema pre-check is
+  whole-tree validity today, not the narrower per-node two-child-minimum/§8-completeness
+  check the invariant originally described; scoping it down is real remaining work, not
+  a correctness bug (the current check is strictly more conservative, never less).
 
 ## 7. Measurement Seams
 
@@ -88,8 +99,9 @@ that is a missing interface contract in the tree, not a reason to widen the pack
 - **Justification:** *Differentiator + fatal fit gap.* The packet is defined in terms of
   Recurspec's own §1–§8 contract shape and its bounded-neighbour rule. No third party models
   that structure, and this is precisely where token cost is won or lost.
-- **Selected:** Python module in `src/recurspec/spec_runner/`; token estimation via the vendor's
-  published counting endpoint where available, else a conservative local heuristic
+- **Selected:** Python module in `src/recurspec/spec_runner/`; token estimation is
+  currently a fixed conservative chars-per-token heuristic (3 chars/token, biased high).
+  Switching to the vendor's published counting endpoint remains open work, not yet done.
 - **Standard / protocol:** none — internal
 - **Alternatives considered:**
   | Option | Why not |
@@ -98,7 +110,7 @@ that is a missing interface contract in the tree, not a reason to widen the pack
   | Generic prompt-template libraries | Solve interpolation, not budgeting or neighbour-scoping — the two things that matter here |
   | Let each worker read files itself | This is the naive baseline being replaced: unbounded reads, no budget, no cacheable prefix |
 - **Fit gap:** n/a (custom by intent)
-- **Seam:** `src/recurspec/spec_runner/context_packer.py` (planned) — workers receive packets, never paths
+- **Seam:** `src/recurspec/spec_runner/context_packer.py` — workers receive packets, never paths
 - **Exit cost:** n/a
 - **Cost model:** our engineering time; expected to *reduce* per-run inference spend
 - **Liability transferred:** none
@@ -106,4 +118,5 @@ that is a missing interface contract in the tree, not a reason to widen the pack
 - **Failure mode:** a packer bug either over-packs (budget blown, silently expensive) or
   under-packs (worker specs a node blind). The `sections_included` telemetry field exists
   to make the second case detectable rather than invisible.
-- **Open questions:** OW-42, OW-44
+- **Open questions:** vendor token-counting endpoint integration; scoping the schema
+  pre-check down from whole-tree validity to a narrower per-node check.

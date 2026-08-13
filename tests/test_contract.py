@@ -2,7 +2,14 @@ import shutil
 from importlib.resources import files
 from pathlib import Path
 
-from recurspec.contract import decision_class, resolve_child_path, validate_contract
+import pytest
+
+from recurspec.contract import (
+    build_tree_index,
+    decision_class,
+    resolve_child_path,
+    validate_contract,
+)
 
 FIXTURES = Path(__file__).parent / "fixtures" / "contracts"
 
@@ -37,6 +44,22 @@ def test_resolve_child_path_expands_a_directory_link_to_its_system_md(tmp_path: 
     resolved = resolve_child_path(parent, "./child")
 
     assert resolved == (tmp_path / "root" / "child" / "SYSTEM.md").resolve()
+
+
+def test_build_tree_index_maps_node_id_to_parent_id():
+    index = build_tree_index(FIXTURES / "valid-tree")
+
+    assert index["SYSTEM.md"]["parent_id"] is None
+    assert index["transform/SYSTEM.md"]["parent_id"] == "SYSTEM.md"
+    assert index["publish/SYSTEM.md"]["parent_id"] == "SYSTEM.md"
+    assert set(index) == {"SYSTEM.md", "transform/SYSTEM.md", "publish/SYSTEM.md"}
+
+
+def test_build_tree_index_refuses_an_invalid_tree(tmp_path: Path):
+    (tmp_path / "SYSTEM.md").write_text("# Broken (L0)\nno contract marker\n", encoding="utf-8")
+
+    with pytest.raises(Exception):
+        build_tree_index(tmp_path)
 
 
 def test_validate_contract_recognizes_a_bold_annotated_atomic_leaf_declaration(

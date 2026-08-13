@@ -16,12 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from ..contract import (
-    ContractInstrumentError,
-    decision_class,
-    resolve_child_path,
-    validate_contract,
-)
+from ..contract import build_tree_index, decision_class
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS nodes (
@@ -325,52 +320,20 @@ class JobStore:
     def rebuild_from_tree(self, tree_root: str | Path) -> RebuildReport:
         """Reconstruct node state from the markdown Contract Tree (invariant 1).
 
-        Refuses to run against an invalid tree rather than guess. Any stored
-        node absent from a fresh walk is discarded - markdown always wins
-        (invariant 5).
+        Refuses to run against an invalid tree rather than guess (delegated to
+        ``build_tree_index``). Any stored node absent from a fresh walk is
+        discarded - markdown always wins (invariant 5).
         """
-        tree_root = Path(tree_root)
-        result = validate_contract(tree_root)
-        if not result.valid:
-            raise ContractInstrumentError(
-                f"cannot rebuild the job store from an invalid Contract Tree: {result.diagnostics}"
-            )
-        paths = sorted(tree_root.rglob("SYSTEM.md"), key=lambda item: item.as_posix())
-        if len(paths) != len(result.contracts):
-            raise ContractInstrumentError(
-                "contract discovery and validation disagree on node count"
-            )
-        contracts_by_path = dict(zip(paths, result.contracts, strict=True))
-        resolved_root = tree_root.resolve()
-
-        node_ids: dict[Path, str] = {
-            path: path.resolve().relative_to(resolved_root).as_posix() for path in paths
-        }
-
-        parent_of: dict[Path, Path | None] = dict.fromkeys(paths)
-        for path, contract in contracts_by_path.items():
-            if contract["atomic_leaf"]:
-                continue
-            for child_link in contract["children"]:
-                child_path = resolve_child_path(path, child_link)
-                if child_path in parent_of:
-                    parent_of[child_path] = path
-
-        fresh_ids: set[str] = set()
-        for path in paths:
-            contract = contracts_by_path[path]
-            node_id = node_ids[path]
-            fresh_ids.add(node_id)
-            parent_path = parent_of[path]
-            parent_id = node_ids[parent_path] if parent_path is not None else None
+        index = build_tree_index(tree_root)
+        for node in index.values():
             self.upsert_node(
-                node_id=node_id,
-                parent_id=parent_id,
-                node_class=decision_class(contract["sections"]),
-                contract_hash=compute_contract_hash(contract),
+                node_id=node["node_id"],
+                parent_id=node["parent_id"],
+                node_class=decision_class(node["sections"]),
+                contract_hash=compute_contract_hash(node),
             )
 
-        removed = tuple(sorted(self._all_node_ids() - fresh_ids))
+        removed = tuple(sorted(self._all_node_ids() - set(index)))
         for node_id in removed:
             self._delete_node(node_id)
-        return RebuildReport(node_count=len(fresh_ids), removed=removed)
+        return RebuildReport(node_count=len(index), removed=removed)

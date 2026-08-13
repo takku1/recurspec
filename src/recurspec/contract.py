@@ -394,3 +394,48 @@ def validate_contract(path: str | Path) -> ValidationResult:
                         )
                     )
     return ValidationResult(tuple(contracts), tuple(sorted(diagnostics)))
+
+
+def build_tree_index(tree_root: str | Path) -> dict[str, dict[str, Any]]:
+    """Discover every node in a valid Contract Tree, keyed by ``node_id`` (the
+    path relative to ``tree_root``, POSIX-normalized). Each entry is the node's
+    normalized contract dict plus ``node_id``, ``parent_id`` (``None`` at the
+    root), and ``path`` (the resolved filesystem ``Path``).
+
+    Refuses (raises ``ContractInstrumentError``) on an invalid tree rather than
+    guess at structure - callers that need a durable index over this data
+    (job-store, context-packer) share this one walk instead of each
+    re-deriving parent/child relationships independently.
+    """
+    tree_root = Path(tree_root)
+    result = validate_contract(tree_root)
+    if not result.valid:
+        raise ContractInstrumentError(
+            f"cannot index an invalid Contract Tree: {result.diagnostics}"
+        )
+    paths = sorted(tree_root.rglob("SYSTEM.md"), key=lambda item: item.as_posix())
+    if len(paths) != len(result.contracts):
+        raise ContractInstrumentError("contract discovery and validation disagree on node count")
+    contracts_by_path = dict(zip(paths, result.contracts, strict=True))
+    resolved_root = tree_root.resolve()
+    node_ids = {path: path.resolve().relative_to(resolved_root).as_posix() for path in paths}
+
+    parent_of: dict[Path, Path | None] = dict.fromkeys(paths)
+    for path, contract in contracts_by_path.items():
+        if contract["atomic_leaf"]:
+            continue
+        for child_link in contract["children"]:
+            child_path = resolve_child_path(path, child_link)
+            if child_path in parent_of:
+                parent_of[child_path] = path
+
+    index: dict[str, dict[str, Any]] = {}
+    for path in paths:
+        node_id = node_ids[path]
+        parent_path = parent_of[path]
+        entry = dict(contracts_by_path[path])
+        entry["node_id"] = node_id
+        entry["parent_id"] = node_ids[parent_path] if parent_path is not None else None
+        entry["path"] = path
+        index[node_id] = entry
+    return index

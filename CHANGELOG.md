@@ -18,6 +18,19 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
   Two small, genuinely reusable helpers were added to `contract.py` to support this:
   `decision_class()` (parses §8's Decision class) and `resolve_child_path()` (extracted
   from `validate_contract`'s own child-link resolution, now shared instead of duplicated).
+- Added `build_tree_index()` to `contract.py`: discovers every node in a valid Contract
+  Tree keyed by `node_id`, with `parent_id` resolved. Refactored Job Store's
+  `rebuild_from_tree` to use it instead of its own duplicated parent-mapping walk.
+- Implemented Context Packer (ROADMAP R-104): `src/recurspec/spec_runner/context_packer.py`.
+  Assembles the bounded packet for one node's turn - parent §1+§3, siblings' §3 only
+  (never sibling bodies), the node's own current draft, survey context, and a
+  byte-identical contract card generated from `design.md` - or refuses with
+  `BudgetOverflow` naming the largest contributor rather than truncate. An invalid
+  Contract Tree anywhere refuses to pack (`SchemaRejected`) rather than dispatch a worker
+  against ground that can't be trusted. Token estimation is an explicitly-labeled
+  conservative heuristic (3 chars/token), not a real tokenizer - documented as open work,
+  not claimed as more than it is. 7 tests, including one asserting a grandparent's content
+  never reaches a grandchild's packet.
 
 ### Fixed
 
