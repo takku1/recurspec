@@ -15,10 +15,15 @@ seam and cannot fail independently from a user's perspective.
 
 ## 3. Interface Contracts
 
-- **Inputs:** A `SYSTEM.md` file or directory containing Contract Nodes marked with
+- **Inputs:** `contract_path`
+  A `SYSTEM.md` file or directory containing Contract Nodes marked with
   `<!-- recurspec-contract: 1.0 -->`.
-- **Outputs:** A normalized Contract Node conforming to the bundled JSON Schema and
-  stable diagnostics containing path, rule code, and message.
+- **Outputs:** `normalized_contract`, `diagnostics`
+  A normalized Contract Node conforming to the bundled JSON Schema and stable
+  diagnostics containing path, rule code, and message.
+- **Interface syntax:** Section 3 declares machine-checkable ports as backtick identifiers
+  on `**Inputs:**` and `**Outputs:**` lines. Descriptive prose remains human context but
+  does not create a port.
 - **CLI:** `recurspec contract check PATH [--format text|json]`.
 - **Exit status:** `0` valid, `1` contract invalid, `2` validation instrument failed.
 
@@ -38,6 +43,15 @@ seam and cannot fail independently from a user's perspective.
 - **[Conditional]** IF a directory is checked THEN THE SYSTEM SHALL validate every
   recursively discovered `SYSTEM.md` file.
   - `EvidenceStage:` Sampled
+- **[Conditional]** IF a non-Atomic Contract Node links children THEN THE SYSTEM SHALL
+  require every link to resolve within the checked tree at exactly the next level.
+  - `EvidenceStage:` Unknown
+- **[Conditional]** IF a child declares an input port THEN THE SYSTEM SHALL require that
+  port to be supplied by the parent input boundary or an already satisfiable sibling.
+  - `EvidenceStage:` Unknown
+- **[Conditional]** IF a parent declares an output port THEN THE SYSTEM SHALL require that
+  port to be available after child interface composition reaches a fixed point.
+  - `EvidenceStage:` Unknown
 
 ## 5. Architectural Decisions (ADRs)
 
@@ -47,6 +61,9 @@ seam and cannot fail independently from a user's perspective.
   stay readable Markdown and render cleanly on GitHub.
 - **ADR-003:** Version 1.0 requires explicit metadata and fails closed; unversioned
   documents are migration candidates, not implicitly valid legacy contracts.
+- **ADR-004:** Interface satisfaction uses a deterministic fixed-point traversal over
+  explicit port identifiers. This detects missing producers and dependency cycles without
+  pretending that prose similarity proves compatibility.
 
 ## 6. Leaf Execution & Test Seam
 
@@ -58,6 +75,7 @@ seam and cannot fail independently from a user's perspective.
 ## 7. Measurement Seams
 
 - **Primary Metric:** `valid_fixture_acceptance_rate` (target `1.0`, direction: higher).
+- **Tree Metric:** `valid_tree_fixture_acceptance_rate` (target `1.0`, direction: higher).
 - **Harness Path:** `modules/contract-engine/measure.sh`.
 - **Correctness Backpressure:** `modules/contract-engine/checks.sh`.
 - **Telemetry Surface:** stable JSON diagnostic list written to stdout on request.
@@ -77,9 +95,10 @@ seam and cannot fail independently from a user's perspective.
   | Pydantic 2.13.x | Excellent Python validation, but makes Python models the primary contract and adds domain coupling at the interoperability seam. |
   | Pure standard-library validation | Avoids a dependency but would reimplement a mature standard and error traversal. |
   | Python-Markdown 3.10.x | Produces HTML and intentionally does not implement CommonMark; more machinery than the bounded structural adapter needs. |
+  | NetworkX 3.6.x | Mature graph algorithms, but unnecessary runtime weight for a deterministic fixed-point traversal over a small Contract Tree. |
 
-- **Fit gap:** JSON Schema cannot parse Markdown or enforce EARS sentence forms; the
-  adapter owns extraction and semantic checks.
+- **Fit gap:** JSON Schema cannot parse Markdown, enforce EARS sentence forms, or validate
+  composition across Contract Nodes; the adapter owns extraction and tree semantics.
 - **Seam:** `src/recurspec/contract.py`.
 - **Exit cost:** LOW — replace the validator behind one normalized mapping.
 - **Cost model:** No service spend; reconsider only if dependency weight or startup time
