@@ -6,6 +6,29 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ### Added
 
+- Implemented the deterministic Structure Gate (ROADMAP R-300) with a standard-library
+  Python AST adapter, Contract Node §6 ownership and test-surface checks, bounded
+  changed-file scans, stable diagnostics, CLI exit codes, and a seeded false-negative
+  measurement seam. The installable package no longer depends on interactive graph
+  tooling for this gate.
+- Implemented the draft-only Contract Reconciler (ROADMAP R-301). It converts Structure
+  Gate diagnostics and line-count bloat into deterministic review actions, emits
+  schema-valid `Unknown` leaf drafts without writing them, refuses broken structural
+  evidence, and explicitly defers Signal D to the Evaluation Gate.
+- Implemented Stack Resolver audits (ROADMAP R-103 and R-302): required §8 field checks,
+  exact pin comparison against explicit dependency inventories, indeterminate refusal
+  when pin evidence is missing, DEFER vendor guards, and WRAP seam-spread/line-growth
+  signals. Dogfooding corrected stale Contract Engine and Worker Pool decision classes.
+- Implemented Candidate worktree orchestration (ROADMAP R-200) behind
+  `evaluate_isolated_candidate`: the CLI now requires a clean checked-out baseline,
+  evaluates an existing local Candidate branch in a temporary worktree, fast-forwards
+  only on KEEP, retains evidence outside the disposable worktree, and removes the
+  worktree on success, revert, escalation, or instrument failure. The merge path now
+  requires and records authorization issued from completed Worker Pool maker/checker
+  state and bound to the exact Candidate branch/commit, rejects Candidate mutations
+  made by evaluation probes, and prunes stale worktree registrations. `--record-baseline`
+  now re-evaluates and promotes the baseline only after merge. Five real-git lifecycle
+  tests cover merge, revert, cleanup, promotion ordering, and unsafe-baseline refusal.
 - Implemented Job Store (ROADMAP R-202): `src/recurspec/spec_runner/store.py`, a
   SQLite-backed store for the Runner's durable state (node status, contract hashes,
   atomic claims, TTL'd capability-survey cache, a `tree.json` projection), matching
@@ -28,9 +51,9 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
   `BudgetOverflow` naming the largest contributor rather than truncate. An invalid
   Contract Tree anywhere refuses to pack (`SchemaRejected`) rather than dispatch a worker
   against ground that can't be trusted. Token estimation is an explicitly-labeled
-  conservative heuristic (3 chars/token), not a real tokenizer - documented as open work,
-  not claimed as more than it is. 7 tests, including one asserting a grandparent's content
-  never reaches a grandchild's packet.
+  conservative heuristic (3 chars/token), not a real tokenizer; exact vendor counting was
+  pruned as needless dependency work because it does not change the refusal seam. 7 tests,
+  including one asserting a grandparent's content never reaches a grandchild's packet.
 - Implemented Worker Pool (ROADMAP R-201): `src/recurspec/spec_runner/workers.py`.
   Owns the pool's own policy - phase-to-tier routing, budget enforcement (discards a
   response's body on overflow so a partial spec can never surface as complete),
@@ -44,6 +67,11 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
   a fake one. 8 tests, including a concurrency-cap test run repeatedly to rule out
   flakiness. R-201 shipped as `done` without waiting on R-200 (worktree lifecycle) - the
   roadmap's "blocked by" was an assumed build order, not a real technical dependency.
+- Consolidated legacy `OW-*` readiness remnants into the sole incomplete-work registry,
+  `ROADMAP.md`. Stale references to completed Job Store, Context Packer, and Candidate
+  lifecycle work were removed; hypothetical tokenizer integration was rejected rather
+  than carried as permanent process debt; the one real unfinished runtime adapter is now
+  ROADMAP R-204.
 
 ### Fixed
 

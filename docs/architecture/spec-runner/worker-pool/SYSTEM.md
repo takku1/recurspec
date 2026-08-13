@@ -21,7 +21,8 @@ decompose tool-use loops, retry backoff, or streaming.
 - **Inputs:** `packet`; `max_tokens_per_node`; `concurrency`; phase; model tier.
 - **Outputs:** Structured result — child frames, or a decision class + §8 draft, or a
   full node body; plus actual token/latency counts; or a typed failure (budget_exceeded,
-  tool_error, refused).
+  tool_error, refused). A successful independent CHECK may persist merge authorization
+  state for the Evaluation Gate.
 - **Interface syntax:** `packet` comes from context-packer's output (see
   [context-packer/SYSTEM.md](../context-packer/SYSTEM.md) §3); `max_tokens_per_node` and
   `concurrency` come from Spec Runner's own input boundary (see
@@ -83,10 +84,13 @@ packet, and anything it learned is in its result.
   outside its packet; budget abort yields `budget_exceeded` not a partial node; maker ≠
   checker enforced on the atomicity call; concurrency cap respected (timing-based, run
   repeatedly to rule out flakiness); tier routing; invalid concurrency rejected.
-- **Open work:** wiring a real `RuntimeCall` against a verified Claude Agent SDK pin
-  (OW-43) remains open — this leaf's own policy logic is complete and tested against a
-  fake runtime, but nothing in this repo yet calls a real agent runtime end to end.
-- **Open work:** OW-43
+- **Runtime adapter:** the module's policy is complete and tested against a fake adapter;
+  the primary-source-verified production adapter is tracked only as ROADMAP R-204.
+- **Authorization seam:** `WorkerPool` persists maker/checker state only after successful
+  within-budget produce and independent CHECK turns, then binds authorization to one
+  Candidate branch and commit; `load_merge_authorization()` refuses incomplete records.
+  (`test_completed_independent_check_persists_merge_authorization`,
+  `test_budget_rejected_producer_cannot_establish_merge_authorization`)
 
 ## 7. Measurement Seams
 
@@ -101,12 +105,13 @@ packet, and anything it learned is in its result.
 
 ## 8. Technology Resolution
 
-- **Decision class:** ADOPT
-- **Selected:** the Claude Agent SDK as the worker runtime — it already provides session
-  isolation, tool use, retries, structured output, and concurrent sessions.
-  - **Pin:** not recorded. Package name and version must be read from live documentation at
-    implementation (OW-43); this spec does not assert a version it has not verified.
-- **Standard / protocol:** MCP for any tools workers are granted
+- **Decision class:** BUILD
+- **Justification:** The implemented value is Recurspec-specific dispatch policy: bounded
+  concurrency, phase routing, budget refusal, and maker/checker state. A concrete runtime
+  is intentionally outside this leaf until R-204 resolves it from primary sources.
+- **Selected:** Python `WorkerPool` over an injected `RuntimeCall` protocol.
+- **Standard / protocol:** internal immutable dataclasses; MCP may be selected by the
+  future runtime adapter but is not asserted here.
 - **Alternatives considered:**
   | Option | Why not |
   |--------|---------|
@@ -114,16 +119,16 @@ packet, and anything it learned is in its result.
   | CrewAI / AutoGen | Role and conversation abstractions add a layer we do not need; a worker here is a stateless function from packet to result |
   | Raw HTTP against the model API | Cheapest to start, then rebuilds tool-use, retry, and session isolation by hand — the classic BUILD that fails the commodity test |
   | Bare threads calling a completion endpoint | No tool use, so RESEARCH cannot run inside a worker |
-- **Fit gap:** the SDK does not know Recurspec's phases, tiering policy, or budget rule. That gap
-  is the thin adapter in `workers.py` — and it is the only custom code here.
+- **Fit gap:** no concrete production agent-runtime adapter is shipped; R-204 owns that
+  separately resolved integration.
 - **Seam:** `src/recurspec/spec_runner/workers.py`; the Runner sees
   `WorkerPool.dispatch(node_id, packet, phase, worker_id, max_tokens_per_node) -> WorkerResult`
-- **Exit cost:** MEDIUM — swapping runtimes rewrites the adapter and the tool wiring, but
-  no packet, store, or spec format changes. Contained by design.
-- **Cost model:** per-token inference at the tier used. This is the dominant recurring cost
-  of the whole system, which is why the parent's levers target it directly.
-- **Liability transferred:** model hosting, tool sandboxing, retry semantics
-- **Operational owner:** vendor (runtime) / us (adapter)
-- **Failure mode:** runtime outage stalls the run; the job-store keeps claimed nodes
-  recoverable so a restart resumes rather than re-walks.
-- **Open questions:** OW-43 (pin + tier routing table)
+- **Exit cost:** LOW — runtime integrations implement one injected call protocol; pool
+  policy, packets, and stored state remain unchanged.
+- **Cost model:** local policy has no service spend; runtime inference cost remains
+  unresolved under R-204.
+- **Liability transferred:** none until a runtime is selected.
+- **Operational owner:** us.
+- **Failure mode:** an injected runtime error returns `tool_error`; absence of a production
+  adapter prevents production dispatch rather than guessing an integration.
+- **Open questions:** none outside ROADMAP R-204.

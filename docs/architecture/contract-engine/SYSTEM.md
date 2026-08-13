@@ -84,9 +84,13 @@ seam and cannot fail independently from a user's perspective.
 
 ## 8. Technology Resolution
 
-- **Decision class:** WRAP
-- **Selected:** `jsonschema>=4.26,<5` over JSON Schema Draft 2020-12, wrapped by the
-  Recurspec Markdown adapter.
+- **Decision class:** BUILD
+- **Justification:** The Contract Tree normalization, EARS checks, parent/child
+  composition, and deterministic diagnostics are Recurspec-specific and substantially
+  exceed a thin validator adapter. `jsonschema>=4.26,<5` remains a procured implementation
+  dependency for the commodity schema-validation portion.
+- **Selected:** Python Contract Engine using JSON Schema Draft 2020-12 for its normalized
+  representation.
 - **Standard / protocol:** JSON Schema Draft 2020-12.
 - **Alternatives considered:**
 

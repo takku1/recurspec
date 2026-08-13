@@ -66,11 +66,14 @@ the name is ambiguous.
 Evaluate an isolated candidate:
 
 ```bash
-recurspec evaluate checkout candidate/OW-42
+recurspec evaluate checkout candidate/R-200 \
+  --worker-state .recurspec/worker-authorizations.json --authorization-id R-200
 ```
 
-Use `--record-baseline` only after the accepted Candidate is merged. Evidence is local and
-append-only under `.recurspec/evidence/`.
+The authorization record must have been emitted after a successful independent Worker
+Pool CHECK. Use `--record-baseline` only
+after the accepted Candidate is merged. Evidence is local and append-only under
+`.recurspec/evidence/`.
 
 The evaluation scripts require a POSIX shell. On Windows, Git Bash is supported and can be
 selected explicitly through `RECURSPEC_BASH`.

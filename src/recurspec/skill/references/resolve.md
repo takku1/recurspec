@@ -5,7 +5,7 @@ Technology Resolution block backed by a real survey.
 
 Use when:
 
-- A spec node says what a module *does* but not what it *is built from*.
+- A Contract Node says what a module *does* but not what it *is built from*.
 - Someone is about to write code for a problem that may already be solved.
 - A §8 has gone stale (version drift, pricing change, vendor unmaintained).
 - You want a second opinion on a build-vs-buy call already made.

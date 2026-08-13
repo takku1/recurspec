@@ -76,8 +76,7 @@ node's *contract surface*. Editing §5 prose does not dirty anything downstream.
   non-invalidation; TTL expiry returns `stale` not a hit; full rebuild from markdown
   reproduces the store; markdown wins on disagreement; removal of nodes no longer
   present in the tree.
-- **Open work:** none for this leaf. The Runner's own scheduling loop (R-200) still
-  needs to call this store; that orchestration lives above this node.
+- **Roadmap:** none for this leaf.
 
 ## 7. Measurement Seams
 
@@ -122,5 +121,4 @@ node's *contract surface*. Editing §5 prose does not dirty anything downstream.
 - **Operational owner:** us
 - **Failure mode:** a corrupt store halts the run. Recovery is `rm` plus a full re-derive
   from markdown — which is exactly why invariant 1 forbids it holding unique information.
-- **Open questions:** none. OW-40 (pin + schema) and OW-41 (dirty-propagation rules) are
-  resolved by this implementation and its tests.
+- **Open questions:** none.

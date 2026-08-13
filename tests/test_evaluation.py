@@ -5,6 +5,9 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -31,6 +34,45 @@ from recurspec.metrics import (
     resolve_tier,
     telemetry_contradiction,
 )
+from recurspec.spec_runner.workers import RuntimeResponse, WorkerPool
+
+
+def _independent_review(repo: Path):
+    pool = WorkerPool(lambda *_args: RuntimeResponse({}, 1, 1, 1.0), concurrency=1)
+    pool.dispatch("R-200", {}, "frame", "worker-1", 100)
+    branch = "candidate/R-200"
+    oid = _git(repo, "rev-parse", branch)
+    pool.dispatch("R-200", {}, "check", "worker-2", 100, branch, oid)
+    return pool.merge_authorization(
+        "R-200"
+    )
+
+
+def _git(repo: Path, *args: str) -> str:
+    result = subprocess.run(
+        ["git", "-C", str(repo), *args],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip()
+
+
+def _repo_with_candidate(tmp_path: Path) -> Path:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-b", "main", str(repo)], check=True, capture_output=True)
+    _git(repo, "config", "user.email", "tests@example.invalid")
+    _git(repo, "config", "user.name", "Recurspec Tests")
+    (repo / "state.txt").write_text("baseline\n", encoding="utf-8")
+    _git(repo, "add", "state.txt")
+    _git(repo, "commit", "-m", "baseline")
+    _git(repo, "switch", "-c", "candidate/R-200")
+    (repo / "state.txt").write_text("candidate\n", encoding="utf-8")
+    _git(repo, "add", "state.txt")
+    _git(repo, "commit", "-m", "candidate")
+    _git(repo, "switch", "main")
+    return repo
 
 # --- direction resolution ---------------------------------------------------
 
@@ -191,7 +233,7 @@ def test_find_baseline_ignores_candidate_branches(tmp_path):
         "comp",
         "measurement",
         {"metric": "latency_p99_ms", "value": 10.0},
-        branch="candidate/OW-01",
+        branch="candidate/R-001",
         log_dir=log_dir,
     )
 
@@ -404,7 +446,7 @@ def test_read_negative_patterns_returns_logged_entries(tmp_path):
         "negative_pattern",
         {},
         evidence_stage="Refuted",
-        branch="candidate/OW-01",
+        branch="candidate/R-001",
         verdict="revert",
         reason="checks.sh failed",
         log_dir=log_dir,
@@ -414,7 +456,7 @@ def test_read_negative_patterns_returns_logged_entries(tmp_path):
         "decision",
         {},
         evidence_stage="Measured",
-        branch="candidate/OW-01",
+        branch="candidate/R-001",
         verdict="keep",
         log_dir=log_dir,
     )
@@ -467,7 +509,7 @@ def test_evaluation_gate_logs_negative_patterns_and_enforces_total_attempt_ceili
     tmp_path, monkeypatch, capsys
 ):
     log_dir = str(tmp_path)
-    branch = "candidate/OW-99"
+    branch = "candidate/R-099"
     monkeypatch.setattr(gate, "run_script", lambda *_args, **_kwargs: (1, "", "failed"))
 
     code, _ = gate.evaluate_change(
@@ -493,7 +535,7 @@ def test_evaluation_gate_promotes_baseline_only_when_explicitly_requested(tmp_pa
     script_results = iter([(0, "", ""), (0, json.dumps(payload), "")])
     monkeypatch.setattr(gate, "run_script", lambda *_args, **_kwargs: next(script_results))
 
-    code, _ = gate.evaluate_change("comp", "candidate/OW-98", log_dir=log_dir, record_baseline=True)
+    code, _ = gate.evaluate_change("comp", "main", log_dir=log_dir, record_baseline=True)
 
     assert code == gate.KEEP
     baseline = find_baseline("comp", "latency_p99_ms", log_dir)
@@ -533,11 +575,11 @@ def test_evaluation_gate_reverts_unparseable_measurement(tmp_path, monkeypatch):
     script_results = iter([(0, "", ""), (0, "not-json", "")])
     monkeypatch.setattr(gate, "run_script", lambda *_args, **_kwargs: next(script_results))
 
-    code, reason = gate.evaluate_change("checkout", "candidate/OW-100", log_dir=str(tmp_path))
+    code, reason = gate.evaluate_change("checkout", "candidate/R-100", log_dir=str(tmp_path))
 
     assert code == gate.REVERT
     assert reason == "unparseable measurement"
-    assert read_negative_patterns("checkout", str(tmp_path))[-1]["branch"] == "candidate/OW-100"
+    assert read_negative_patterns("checkout", str(tmp_path))[-1]["branch"] == "candidate/R-100"
 
 
 def test_evaluation_gate_reverts_a_tiered_regression(tmp_path, monkeypatch):
@@ -564,9 +606,224 @@ def test_evaluation_gate_reverts_a_tiered_regression(tmp_path, monkeypatch):
     monkeypatch.setattr(gate, "run_script", lambda *_args, **_kwargs: next(script_results))
 
     code, reason = gate.evaluate_change(
-        "checkout", "candidate/OW-101", log_dir=log_dir, tolerance_pct=20
+        "checkout", "candidate/R-101", log_dir=log_dir, tolerance_pct=20
     )
 
     assert code == gate.REVERT
     assert reason == "HARD GATE regressed/unknown: latency_p99_ms"
     assert any(event["event_type"] == "signal_d" for event in read_events("checkout", log_dir))
+
+
+def test_isolated_candidate_keep_fast_forwards_baseline_and_disposes_worktree(
+    tmp_path, monkeypatch
+):
+    repo = _repo_with_candidate(tmp_path)
+    calls = []
+
+    def evaluate(module, branch, **kwargs):
+        calls.append((module, branch, kwargs))
+        work_dir = Path(kwargs["work_dir"])
+        assert work_dir != repo
+        assert (work_dir / "state.txt").read_text(encoding="utf-8") == "candidate\n"
+        return gate.KEEP, "checks and metrics passed"
+
+    monkeypatch.setattr(gate, "evaluate_change", evaluate)
+
+    code, reason = gate.evaluate_isolated_candidate(
+        repo,
+        "checkout",
+        "candidate/R-200",
+        baseline_branch="main",
+        authorization=_independent_review(repo),
+    )
+
+    assert (code, reason) == (gate.KEEP, "checks and metrics passed")
+    assert (repo / "state.txt").read_text(encoding="utf-8") == "candidate\n"
+    assert _git(repo, "branch", "--show-current") == "main"
+    assert _git(repo, "worktree", "list", "--porcelain").count("worktree ") == 1
+    assert Path(calls[0][2]["log_dir"]) == repo / ".recurspec" / "evidence"
+    assert calls[0][2]["record_baseline"] is False
+    authorization = [
+        event
+        for event in read_events("checkout", str(repo / ".recurspec" / "evidence"))
+        if event["event_type"] == "merge_authorization"
+    ]
+    assert authorization[-1]["metrics"] == {
+        "maker_id": "worker-1",
+        "checker_id": "worker-2",
+    }
+    assert authorization[-1]["evidence_stage"] == "Observed"
+
+
+def test_isolated_candidate_revert_leaves_baseline_unchanged_and_disposes_worktree(
+    tmp_path, monkeypatch
+):
+    repo = _repo_with_candidate(tmp_path)
+    monkeypatch.setattr(
+        gate,
+        "evaluate_change",
+        lambda *_args, **_kwargs: (gate.REVERT, "correctness failed"),
+    )
+
+    code, reason = gate.evaluate_isolated_candidate(
+        repo, "checkout", "candidate/R-200", authorization=_independent_review(repo)
+    )
+
+    assert (code, reason) == (gate.REVERT, "correctness failed")
+    assert (repo / "state.txt").read_text(encoding="utf-8") == "baseline\n"
+    assert _git(repo, "worktree", "list", "--porcelain").count("worktree ") == 1
+
+
+def test_isolated_candidate_refuses_probe_mutations_instead_of_merging_an_unevaluated_tree(
+    tmp_path, monkeypatch
+):
+    repo = _repo_with_candidate(tmp_path)
+
+    def mutating_evaluator(_module, _branch, **kwargs):
+        worktree = Path(kwargs["work_dir"])
+        (worktree / "state.txt").write_text("mutated by probe\n", encoding="utf-8")
+        (worktree / "untracked.txt").write_text("also dirty\n", encoding="utf-8")
+        return gate.KEEP, "passed against dirty state"
+
+    monkeypatch.setattr(gate, "evaluate_change", mutating_evaluator)
+
+    with pytest.raises(gate.CandidateLifecycleError, match="modified the Candidate worktree"):
+        gate.evaluate_isolated_candidate(
+            repo, "checkout", "candidate/R-200", authorization=_independent_review(repo)
+        )
+
+    assert (repo / "state.txt").read_text(encoding="utf-8") == "baseline\n"
+    assert _git(repo, "worktree", "list", "--porcelain").count("worktree ") == 1
+
+
+def test_isolated_candidate_promotes_baseline_only_after_merge(tmp_path, monkeypatch):
+    repo = _repo_with_candidate(tmp_path)
+    calls = []
+
+    def evaluate(module, branch, **kwargs):
+        calls.append((branch, kwargs))
+        return gate.KEEP, "passed"
+
+    monkeypatch.setattr(gate, "evaluate_change", evaluate)
+
+    code, _ = gate.evaluate_isolated_candidate(
+        repo,
+        "checkout",
+        "candidate/R-200",
+        baseline_branch="main",
+        record_baseline=True,
+        authorization=_independent_review(repo),
+    )
+
+    assert code == gate.KEEP
+    assert [branch for branch, _ in calls] == ["candidate/R-200", "main"]
+    assert calls[0][1]["record_baseline"] is False
+    assert calls[1][1]["record_baseline"] is True
+    assert Path(calls[1][1]["work_dir"]) == repo
+    assert (repo / "state.txt").read_text(encoding="utf-8") == "candidate\n"
+
+
+def test_isolated_candidate_disposes_worktree_when_evaluation_crashes(tmp_path, monkeypatch):
+    repo = _repo_with_candidate(tmp_path)
+
+    def broken_evaluator(*_args, **_kwargs):
+        raise RuntimeError("instrument crashed")
+
+    monkeypatch.setattr(gate, "evaluate_change", broken_evaluator)
+
+    with pytest.raises(RuntimeError, match="instrument crashed"):
+        gate.evaluate_isolated_candidate(
+            repo, "checkout", "candidate/R-200", authorization=_independent_review(repo)
+        )
+
+    assert _git(repo, "worktree", "list", "--porcelain").count("worktree ") == 1
+
+
+def test_isolated_candidate_prunes_stale_registration_before_creating_worktree(
+    tmp_path, monkeypatch
+):
+    repo = _repo_with_candidate(tmp_path)
+    stale = tmp_path / "stale-worktree"
+    _git(repo, "worktree", "add", str(stale), "candidate/R-200")
+    shutil.rmtree(stale)
+    monkeypatch.setattr(
+        gate,
+        "evaluate_change",
+        lambda *_args, **_kwargs: (gate.REVERT, "expected rejection"),
+    )
+
+    code, reason = gate.evaluate_isolated_candidate(
+        repo, "checkout", "candidate/R-200", authorization=_independent_review(repo)
+    )
+
+    assert (code, reason) == (gate.REVERT, "expected rejection")
+    assert _git(repo, "worktree", "list", "--porcelain").count("worktree ") == 1
+
+
+def test_isolated_candidate_prunes_metadata_when_worktree_directory_disappears(
+    tmp_path, monkeypatch
+):
+    repo = _repo_with_candidate(tmp_path)
+
+    def evaluator_that_loses_worktree(_module, _branch, **kwargs):
+        shutil.rmtree(kwargs["work_dir"])
+        return gate.REVERT, "instrument removed its worktree"
+
+    monkeypatch.setattr(gate, "evaluate_change", evaluator_that_loses_worktree)
+
+    code, reason = gate.evaluate_isolated_candidate(
+        repo, "checkout", "candidate/R-200", authorization=_independent_review(repo)
+    )
+
+    assert (code, reason) == (gate.REVERT, "instrument removed its worktree")
+    assert _git(repo, "worktree", "list", "--porcelain").count("worktree ") == 1
+
+
+def test_isolated_candidate_refuses_a_dirty_or_wrong_baseline(tmp_path, monkeypatch):
+    repo = _repo_with_candidate(tmp_path)
+    (repo / "state.txt").write_text("do not merge over me\n", encoding="utf-8")
+    monkeypatch.setattr(
+        gate,
+        "evaluate_change",
+        lambda *_args, **_kwargs: pytest.fail("dirty baseline must not be evaluated"),
+    )
+
+    with pytest.raises(gate.CandidateLifecycleError, match="clean"):
+        gate.evaluate_isolated_candidate(
+            repo, "checkout", "candidate/R-200", authorization=_independent_review(repo)
+        )
+
+    (repo / "state.txt").write_text("baseline\n", encoding="utf-8")
+    _git(repo, "switch", "candidate/R-200")
+    with pytest.raises(gate.CandidateLifecycleError, match="checked out"):
+        gate.evaluate_isolated_candidate(
+            repo, "checkout", "candidate/R-200", authorization=_independent_review(repo)
+        )
+
+
+def test_worker_pool_cannot_issue_merge_authorization_to_the_maker():
+    pool = WorkerPool(lambda *_args: RuntimeResponse({}, 1, 1, 1.0), concurrency=1)
+    pool.dispatch("R-200", {}, "frame", "worker-1", 100)
+
+    refused = pool.dispatch(
+        "R-200", {}, "check", "worker-1", 100, "candidate/R-200", "abc123"
+    )
+
+    assert refused.outcome == "refused"
+    with pytest.raises(ValueError, match="no completed maker/checker authorization"):
+        pool.merge_authorization("R-200")
+
+
+def test_isolated_candidate_refuses_worker_authorization_for_another_candidate(tmp_path):
+    repo = _repo_with_candidate(tmp_path)
+    pool = WorkerPool(lambda *_args: RuntimeResponse({}, 1, 1, 1.0), concurrency=1)
+    pool.dispatch("R-999", {}, "frame", "worker-1", 100)
+    pool.dispatch("R-999", {}, "check", "worker-2", 100, "candidate/R-999", "abc123")
+
+    with pytest.raises(gate.CandidateLifecycleError, match="does not match"):
+        gate.evaluate_isolated_candidate(
+            repo,
+            "checkout",
+            "candidate/R-200",
+            authorization=pool.merge_authorization("R-999"),
+        )

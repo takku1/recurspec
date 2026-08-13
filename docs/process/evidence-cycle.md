@@ -12,7 +12,7 @@ Test-green-only agent loops fail in three ways:
 |---------|---------|--------|
 | Verification debt | “Done” but wrong on untested inputs | No measurement beyond the test seam |
 | Authority drift | Contracts weakened so tests pass | Implementor grades own work |
-| Comprehension rot | Blueprint diverges from behavior | Spec updated only on structural drift |
+| Comprehension rot | Contract Tree diverges from behavior | Contract updated only on structural drift |
 
 Fix: Structural and Empirical Feedback, maker-checker separation, branching measurement, and an SDB gate (see research foundations).
 
@@ -60,7 +60,7 @@ graph TB
 
 ## Structural Feedback — Structural
 
-**Direction:** artifacts → blueprint. **Skills:** `/recurspec`, Structure Gate.
+**Direction:** artifacts → Contract Tree. **Skills:** `/recurspec`, Structure Gate.
 
 | Signal | Trigger | Action |
 |--------|---------|--------|
@@ -68,7 +68,7 @@ graph TB
 | Line Bloat | Spec > ~150 lines or > 3 responsibilities | File → folder recursive split |
 | Test Seam | New mock/adapter in TDD | Update parent interfaces |
 
-*Does the blueprint describe what exists?*
+*Does the Contract Tree describe what exists?*
 
 Detail: [contract-reconciliation.md](./contract-reconciliation.md).
 
@@ -76,7 +76,8 @@ Detail: [contract-reconciliation.md](./contract-reconciliation.md).
 
 ## Empirical Feedback — Empirical
 
-**Direction:** measured behavior → blueprint. **Skills:** measure evaluation gate, `/graybox`, `/sherloc`.
+**Direction:** measured behavior → Contract Tree. **Skills:** measure Evaluation Gate,
+`/graybox`, `/sherloc`.
 
 | Signal | Trigger | Action |
 |--------|---------|--------|
@@ -85,7 +86,7 @@ Detail: [contract-reconciliation.md](./contract-reconciliation.md).
 | Telemetry Contradiction | Self-metrics disagree (graybox red) | Flag instrument; block merge |
 | Unknown Boundary | Behavior unclear | Type B research/prototype ticket |
 
-*Does the blueprint describe how it behaves?*
+*Does the Contract Tree describe how it behaves?*
 
 **Rule:** Implementor self-assessment is non-authoritative. Auditor runs measurement on an isolated branch.
 
@@ -108,7 +109,7 @@ The **trunk baseline** (`find_baseline`, promoted only via `--record-baseline` a
 OUTER (Architect/Auditor)
   baseline → strategy packet → hand Inner worktree
   on done: checks → measure → graybox → keep|revert
-  update blueprint via A/B → Wayfinder
+  update Contract Tree via A/B → Wayfinder
 
 INNER (Implementor)
   strategy packet only · /tdd · no authoritative merge · no parent contract edits
@@ -120,7 +121,7 @@ INNER (Implementor)
 
 | Stage | Role | Skills | Verification |
 |-------|------|--------|--------------|
-| 1 SPEC | Architect | `/recurspec`, `/wayfinder`, domain modeling | EARS + open-work gate |
+| 1 SPEC | Architect | `/recurspec`, `/wayfinder`, domain modeling | EARS + ROADMAP gate |
 | 2 PLAN | Architect | bounded strategy handoffs | Handoff completeness |
 | 3 EXECUTE | Implementor (Inner) | `/tdd`, `/implement` | Self-check only |
 | 4 MEASURE | Auditor (Outer) | measure, graybox, sherloc | L1 metrics + L3 fixtures |
@@ -151,7 +152,7 @@ graph LR
 
 ---
 
-## Session flow (example: OW-01 / ticket 01)
+## Session flow (example: R-200 / ticket 200)
 
 1. Claim ticket on Wayfinder map
 2. Load `docs/architecture/contract-engine/SYSTEM.md`
@@ -160,6 +161,6 @@ graph LR
 5. Inner: implement via `/tdd`
 6. Outer: checks → measure → graybox
 7. Reconcile-A / Reconcile-B
-8. SDB verify; close ticket; update open-work
+8. SDB verify; close ticket; update `ROADMAP.md`
 
 Incomplete infrastructure for this flow: [ROADMAP.md](../../ROADMAP.md).

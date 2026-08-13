@@ -7,13 +7,14 @@ measurement gates, and reconciles reality back into the design.
 
 The project ships two public interfaces:
 
-- `recurspec`, a cross-platform Python CLI for contract validation, candidate evaluation,
-  and skill setup.
+- `recurspec`, a cross-platform Python CLI for contract validation, Candidate evaluation,
+  structural/reconciliation/stack audits, and skill setup.
 - `/recurspec`, one self-contained agent skill for design, resolution, implementation,
   evaluation, repair, and reconciliation.
 
-Recurspec is alpha software. Its decision logic is tested; full worktree orchestration is
-tracked in [ROADMAP.md](./ROADMAP.md).
+Recurspec is alpha software. Its contracts, decision logic, and isolated Candidate
+lifecycle are tested; broader validation and remaining modules are tracked in
+[ROADMAP.md](./ROADMAP.md).
 
 ## Why Recurspec
 
@@ -84,16 +85,51 @@ modules/<name>/checks.sh
 modules/<name>/measure.sh
 ```
 
-Evaluate an isolated branch:
+Evaluate an existing local Candidate branch while the clean baseline branch is checked
+out:
 
 ```bash
-recurspec evaluate <module> candidate/<ticket-id>
+recurspec evaluate <module> candidate/<ticket-id> \
+  --worker-state .recurspec/worker-authorizations.json \
+  --authorization-id <completed-node-id> \
+  [--record-baseline]
 ```
 
 Exit codes are stable: `0` keep, `1` revert, `2` evaluation error, `3` escalate. Evidence
-is appended under `.recurspec/evidence/<module>/log.jsonl`. A kept candidate does not
-silently become the reference baseline; after merge, promote it explicitly with
-`--record-baseline`.
+is appended under `.recurspec/evidence/<module>/log.jsonl`, including maker/checker
+identities loaded from completed Worker Pool state. The gate evaluates in a temporary
+worktree, rejects probe mutations, fast-forwards the baseline only on KEEP, and prunes
+the disposable worktree registration on every exit path. `--record-baseline` performs a
+second evaluation after merge and explicitly
+promotes that trunk measurement; a kept candidate never silently becomes the reference.
+
+Check source ownership and declared test surfaces against the Contract Tree:
+
+```bash
+recurspec structure check . [--changed-file src/recurspec/example.py] [--format json]
+```
+
+The Structure Gate returns `0` for a clean tree, `1` for detected drift, and `2` when
+the deterministic instrument cannot inspect its inputs.
+
+Turn those diagnostics into reviewable proposals without changing repository files:
+
+```bash
+recurspec reconcile plan . [--evidence-log .recurspec/evidence/<module>/log.jsonl] \
+  [--format json]
+```
+
+Draft leaves remain `Unknown`; Signal D stays with the Evaluation Gate. Exit `1` means
+reviewable actions were proposed, while exit `2` means the evidence instrument failed.
+
+Audit Technology Resolution completeness, exact pins, and WRAP seam growth:
+
+```bash
+recurspec stack check . [--inventory dependency-inventory.json] [--format json]
+```
+
+External pins without an authoritative inventory return indeterminate exit `2`; Recurspec
+never substitutes an installed or remembered version.
 
 The gate refuses to guess. Missing or contradictory telemetry, a non-numeric reading, or
 an unresolved metric direction reverts the candidate instead of manufacturing evidence.

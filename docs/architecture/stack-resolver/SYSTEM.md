@@ -8,7 +8,7 @@
 
 ## 1. System Intent & Responsibility
 
-Assign every spec node a **decision class** (BUY / ADOPT / WRAP / BUILD / DEFER), select a
+Assign every Contract Node a **decision class** (BUY / ADOPT / WRAP / BUILD / DEFER), select a
 concrete technology for procured nodes, and emit the §8 Technology Resolution block. Owns
 the third-party-first bias and the **stopping rule** for recursive decomposition: a node
 resolved to BUY or ADOPT is terminal.
@@ -26,7 +26,8 @@ StalenessAuditor (review triggers).
 ## 3. Interface Contracts
 
 - **Inputs:** Node responsibility statement; non-goals; constraints (budget, scale,
-  compliance regime, existing stack); survey results from /research.
+  compliance regime, existing stack); survey results from /research; Contract Tree;
+  optional authoritative dependency inventory; WRAP line threshold.
 - **Outputs:** Decision class; selected product + pin; alternatives table with reasons;
   fit gap; seam path; exit cost; cost model; liability transfer; §8 block; DEFER → Type B
   ticket intent.
@@ -49,14 +50,27 @@ StalenessAuditor (review triggers).
   - `EvidenceStage:` Unknown
 - **[Conditional]** IF the capability survey cannot be completed from primary sources
   THEN THE SYSTEM SHALL resolve `DEFER` and emit a Type B ticket, and SHALL NOT guess a
-  vendor. (same no-fabrication rule as [research foundation](../../research/foundations.md))
-  - `EvidenceStage:` Unknown
+  vendor. (`test_resolution_audit_reports_incomplete_fields_and_refuses_vendor_on_defer`)
+  - `EvidenceStage:` Sampled
 - **[Event-driven]** WHEN a §8 pinned version diverges from the project lockfile THE
-  SYSTEM SHALL raise a Structural Feedback drift signal. (open: OW-06)
-  - `EvidenceStage:` Unknown
+  SYSTEM SHALL raise a Structural Feedback drift signal.
+  (`test_resolution_audit_detects_pin_drift_against_authoritative_inventory`)
+  - `EvidenceStage:` Sampled
+- **[Conditional]** IF an external BUY, ADOPT, or WRAP pin has no authoritative dependency
+  inventory THEN THE SYSTEM SHALL report the audit as indeterminate and SHALL NOT infer a
+  current version. (`test_resolution_audit_is_indeterminate_without_inventory_for_an_external_pin`)
+  - `EvidenceStage:` Sampled
+- **[Conditional]** IF a terminal §8 block omits a required field THEN THE SYSTEM SHALL
+  emit a completeness diagnostic. (`test_resolution_audit_reports_incomplete_fields_and_refuses_vendor_on_defer`)
+  - `EvidenceStage:` Sampled
 - **[State-driven]** WHILE a WRAP adapter grows beyond its seam THE SYSTEM SHALL treat
-  the growth as a bloat signal and re-open the resolution. (open: OW-07)
-  - `EvidenceStage:` Unknown
+  the growth as a bloat signal and re-open the resolution.
+  (`test_resolution_audit_reopens_a_wrap_that_spreads_past_or_outgrows_its_seam`)
+  - `EvidenceStage:` Sampled
+- **[Conditional]** IF a WRAP omits its adapter namespace THEN THE SYSTEM SHALL refuse to
+  claim complete growth detection; files found inside that namespace but outside the seam
+  SHALL re-open the resolution. (`test_resolution_audit_reopens_a_wrap_that_spreads_past_or_outgrows_its_seam`)
+  - `EvidenceStage:` Sampled
 
 ## 5. Architectural Decisions (ADRs)
 
@@ -76,13 +90,10 @@ StalenessAuditor (review triggers).
 
 ## 6. Leaf Execution & Test Seam
 
-- **Implementation:** not yet built; planned seam `src/recurspec/technology_resolver.py`
-  — a standalone L1 leaf with no children, so it stays flat alongside `contract.py` /
-  `evaluation.py` rather than nesting in a subpackage.
-- **Tests:** none yet; planned `tests/test_technology_resolver.py` — must cover: §8
-  completeness validation, DEFER on incomplete survey, refusal to emit a vendor without a
-  source.
-- **Open work:** OW-06, OW-07; tracked as ROADMAP R-103.
+- **Implementation:** `src/recurspec/technology_resolver.py`; public seam
+  `audit_resolutions()`.
+- **Tests:** `tests/test_technology_resolver.py`, plus CLI coverage in `tests/test_cli.py`.
+- **Roadmap:** dependency staleness is R-103; procurement-seam growth is R-302.
 
 ## 7. Measurement Seams
 
@@ -93,6 +104,8 @@ StalenessAuditor (review triggers).
 - **Evaluation Gate:** `modules/stack-resolver/measure.sh`
 - **Backpressure:** `modules/stack-resolver/checks.sh`
 - **Telemetry:** per-node `{class, has_alternatives, has_exit_cost, survey_sources}`
+- **Audit telemetry:** `{completeness, diagnostics, indeterminate, valid}` with stable
+  diagnostic codes for field, pin, inventory, and WRAP seam failures.
 - **Branching:** worktree candidate; keep only on checks pass ∧ no completeness regression
 
 ## 8. Technology Resolution
@@ -105,6 +118,8 @@ StalenessAuditor (review triggers).
   procured (see below).
 - **Selected:** Python module driven by the `/recurspec` skill; §8 blocks are Markdown
   in `SYSTEM.md`, not a separate database
+- **Standard / protocol:** Contract Node 1.0 Markdown and an explicit JSON dependency
+  inventory mapping normalized package names to exact versions.
 - **Alternatives considered:**
   | Option | Why not |
   |--------|---------|
@@ -112,11 +127,11 @@ StalenessAuditor (review triggers).
   | Architecture-decision SaaS | Decisions leave the repo; cannot be reviewed in a diff alongside the code they govern |
   | SBOM / dependency scanners | Answer "what is installed", not "what should we use and why" — complementary, not substitute |
 - **Fit gap:** n/a (custom by intent)
-- **Seam:** `src/recurspec/technology_resolver.py` (planned) — the spec tree only sees emitted §8 blocks
+- **Seam:** `src/recurspec/technology_resolver.py` — the Contract Tree only sees §8 audit diagnostics.
 - **Exit cost:** n/a
 - **Cost model:** our engineering time
 - **Liability transferred:** none
 - **Operational owner:** us
 - **Failure mode:** a wrong or stale resolution ships a bad dependency. Mitigated by
   retained alternatives (§5 ADR-004) and the review triggers in the process doc
-- **Open questions:** OW-06 (lockfile drift detection), OW-07 (adapter bloat signal)
+- **Open questions:** none.

@@ -54,7 +54,7 @@ fails → node never specified; packer wrong → bad spec or blown budget. Indep
 
 - **[Ubiquitous]** The Runner SHALL bound a node's packet to its parent's §1 and §3 plus
   its siblings' §3 — never ancestors above the parent, never uncle subtrees. (design
-  intent; becomes Measured under OW-44)
+  intent; runtime measurement remains governed by the evaluation roadmap)
   - `EvidenceStage:` Unknown
 - **[Conditional]** IF a packed context exceeds `max_tokens_per_node` THEN THE SYSTEM
   SHALL fail that node with a budget-overflow signal and SHALL NOT truncate the packet.
@@ -62,7 +62,7 @@ fails → node never specified; packer wrong → bad spec or blown budget. Indep
   packet manufactures a confident spec from missing information)
   - `EvidenceStage:` Unknown
 - **[Event-driven]** WHEN a node's contract hash is unchanged since the last run THE
-  SYSTEM SHALL skip it and every ancestor whose children's hashes are all unchanged. (OW-41)
+  SYSTEM SHALL skip it and every ancestor whose children's hashes are all unchanged. (Job Store implementation coverage)
   - `EvidenceStage:` Unknown
 - **[Conditional]** IF a validation is expressible as a schema assertion THEN THE SYSTEM
   SHALL evaluate it in code and SHALL NOT spend a model call on it. (process rule — §8
@@ -79,7 +79,7 @@ fails → node never specified; packer wrong → bad spec or blown budget. Indep
   incomplete-work surface)
   - `EvidenceStage:` Unknown
 - **[State-driven]** WHILE workers execute concurrently THE SYSTEM SHALL serialize all
-  tree writes through a job-store transaction. (OW-40)
+  tree writes through a job-store transaction. (Job Store implementation coverage)
   - `EvidenceStage:` Unknown
 
 ## 5. Architectural Decisions (ADRs)
@@ -129,4 +129,7 @@ Ranked by savings, largest first. Only the last two are new machinery:
 
 ## 6. Non-leaf note
 
-Not an atomic leaf. Implementation proceeds via the three children — OW-40 … OW-42.
+- **Package implementation glue:** `src/recurspec/spec_runner/__init__.py`.
+
+Not an atomic leaf. Its child modules are tracked by ROADMAP R-104, R-201, R-202, and
+R-204.

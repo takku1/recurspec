@@ -202,6 +202,6 @@ Full version with §8 stacks, alternatives, exit costs, and EARS invariants:
 | Alternatives + exit cost | ADR history when a vendor is later swapped |
 
 The loop runs **forward** (vision → leaves). The feedback paths run **backward**
-(reality → blueprint). A §8 entry whose pinned version no longer matches the lockfile is
+(reality → Contract Tree). A §8 entry whose pinned version no longer matches the lockfile is
 exactly the kind of drift [`/recurspec`](../../src/recurspec/skill/SKILL.md) exists
 to catch.

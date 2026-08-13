@@ -74,12 +74,10 @@ that is a missing interface contract in the tree, not a reason to widen the pack
   byte-identical across two different nodes; schema pre-check rejects before dispatch;
   unknown node_id raises rather than silently packing nothing; token estimate is
   conservative and zero for empty text.
-- **Open work:** token estimation uses a fixed chars-per-token heuristic
-  (`CHARS_PER_TOKEN = 3`), not the vendor's published counting endpoint §8 originally
-  named — revisit once a live endpoint is actually wired up. The schema pre-check is
-  whole-tree validity today, not the narrower per-node two-child-minimum/§8-completeness
-  check the invariant originally described; scoping it down is real remaining work, not
-  a correctness bug (the current check is strictly more conservative, never less).
+- **Selected behavior:** token estimation uses a fixed conservative chars-per-token
+  heuristic (`CHARS_PER_TOKEN = 3`). Exact vendor counting would add a dependency without
+  changing the refusal seam. The schema pre-check intentionally validates the whole tree;
+  narrowing it remains unnecessary unless measurement shows a material cost.
 
 ## 7. Measurement Seams
 
@@ -101,7 +99,6 @@ that is a missing interface contract in the tree, not a reason to widen the pack
   that structure, and this is precisely where token cost is won or lost.
 - **Selected:** Python module in `src/recurspec/spec_runner/`; token estimation is
   currently a fixed conservative chars-per-token heuristic (3 chars/token, biased high).
-  Switching to the vendor's published counting endpoint remains open work, not yet done.
 - **Standard / protocol:** none — internal
 - **Alternatives considered:**
   | Option | Why not |
@@ -118,5 +115,5 @@ that is a missing interface contract in the tree, not a reason to widen the pack
 - **Failure mode:** a packer bug either over-packs (budget blown, silently expensive) or
   under-packs (worker specs a node blind). The `sections_included` telemetry field exists
   to make the second case detectable rather than invisible.
-- **Open questions:** vendor token-counting endpoint integration; scoping the schema
-  pre-check down from whole-tree validity to a narrower per-node check.
+- **Open questions:** none. Re-open the whole-tree pre-check only if measured profiling
+  shows it is a material cost.

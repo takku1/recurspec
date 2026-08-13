@@ -13,6 +13,8 @@ dist/
 .recurspec/handoffs/
 .scratch/handoffs/
 .measure/
+graphify-out/
+.graphgraph/
 
 # OS
 Thumbs.db

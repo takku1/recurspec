@@ -47,7 +47,9 @@ requires the user. Keep process debt in one `ROADMAP.md`.
 4. Have an independent checker run:
 
    ```text
-   recurspec evaluate <module> candidate/<ticket-id>
+   recurspec evaluate <module> candidate/<ticket-id> \
+     --worker-state .recurspec/worker-authorizations.json \
+     --authorization-id <completed-node-id>
    ```
 
 5. Apply the result:

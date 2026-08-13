@@ -36,14 +36,17 @@ Research: [research/foundations.md](../research/foundations.md).
   - `EvidenceStage:` Unknown
 - **[Ubiquitous]** Every architectural module SHALL maintain an explicit `SYSTEM.md` contract under `docs/architecture/`.
   - `EvidenceStage:` Unknown
-- **[Event-driven]** WHEN a spec node exceeds the bloat threshold (~150 lines or >3 separable responsibilities) THE SYSTEM SHALL trigger file-to-folder expansion via the Contract Reconciler. (policy; automation OW-02)
-  - `EvidenceStage:` Unknown
-- **[Conditional]** IF a committed source file has no parent architecture node THEN THE SYSTEM SHALL fail the Structure Gate / pre-commit path. (automation OW-04)
-  - `EvidenceStage:` Unknown
+- **[Event-driven]** WHEN a Contract Node exceeds the 150-line bloat threshold THE SYSTEM
+  SHALL emit a Contract Reconciler split-review action; Architect review decides the
+  interface-driven expansion. (`test_reconciler_proposes_review_for_bloat_and_uncontracted_test_seams`)
+  - `EvidenceStage:` Sampled
+- **[Conditional]** IF a committed source file has no parent Contract Node THEN THE
+  SYSTEM SHALL fail the Structure Gate. (`test_structure_gate_reports_each_public_symbol_in_an_uncontracted_source_file`)
+  - `EvidenceStage:` Sampled
 - **[Conditional]** IF only L4 model-judge evidence is available THEN THE SYSTEM SHALL NOT authorize merge on that evidence alone. (research foundation §5)
   - `EvidenceStage:` Unknown
-- **[Ubiquitous]** Every node SHALL carry a decision class before it is decomposed or specified; every terminal node SHALL carry a §8 Technology Resolution block. (process rule; automation OW-06)
-  - `EvidenceStage:` Unknown
+- **[Ubiquitous]** Every node SHALL carry a decision class before it is decomposed or specified; every terminal node SHALL carry a complete §8 Technology Resolution block. (`test_resolution_audit_reports_incomplete_fields_and_refuses_vendor_on_defer`)
+  - `EvidenceStage:` Sampled
 - **[Conditional]** IF a node resolves to BUY or ADOPT THEN THE SYSTEM SHALL treat it as terminal and SHALL NOT decompose the vendor's internals. (recursion termination guarantee)
   - `EvidenceStage:` Unknown
 
@@ -73,10 +76,14 @@ Research: [research/foundations.md](../research/foundations.md).
 
 ## 6. Recursive expansion rule
 
+- **Package implementation glue:** `src/recurspec/__init__.py`,
+  `src/recurspec/__main__.py`.
+- **Test Surface Seam:** `tests/test_repository.py`.
+
 Resolve before decomposing. Decompose a node **only when** either its parts would resolve to *different* decision classes (split at that fault line), or it is uniformly BUILD and too large for one TDD session (split by independent interface seam — inputs/outputs that can change without rewriting siblings). Stop at procurement boundaries and at one-session build units. Full rule with depth guards: [contract-design.md](../process/contract-design.md).
 
 Expand research narrative **only** with citations in the research foundation. Prefer deepening interfaces over lengthening prose.
 
 ## 7. Non-leaf note
 
-L0 is not an atomic leaf. Implementation proceeds via L1 leaves and Wayfinder tickets OW-01…OW-05.
+L0 is not an atomic leaf. Incomplete implementation is tracked only in `ROADMAP.md`.

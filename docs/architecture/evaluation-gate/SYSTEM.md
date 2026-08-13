@@ -16,19 +16,34 @@ Empirical Feedback infrastructure: explicit Best Known State (BKS) baselines, `m
 
 ## 3. Interface Contracts
 
-- **Inputs:** Leaf §7 seams, worktree path, candidate description, prior BKS metric vector, prior Negative Patterns.
+- **Inputs:** Leaf §7 seams, worktree path, candidate description, completed Worker Pool
+  authorization state, prior BKS metric vector, prior Negative Patterns.
 - **Outputs:** Diff vs BKS, keep/revert/escalate decision, Signal D and Negative Pattern events in .recurspec/evidence/<module>/log.jsonl.
 
 ## 4. Invariants (EARS + Epistemic Stage)
 
-- **[Ubiquitous]** The Evaluation Gate SHALL compare a candidate against the trunk BKS and SHALL promote a new baseline only through explicit `--record-baseline` after merge. (`find_baseline` and baseline-promotion unit coverage; production automation OW-05)
+- **[Ubiquitous]** The Evaluation Gate SHALL compare a candidate against the trunk BKS and SHALL promote a new baseline only through explicit `--record-baseline` after merge. (`find_baseline`, baseline-promotion, and isolated-lifecycle coverage)
   - `EvidenceStage:` Sampled
 - **[Event-driven]** WHEN `checks.sh` fails THE SYSTEM SHALL block keep regardless of primary metric improvement. (`test_runner_logs_negative_patterns_and_enforces_total_attempt_ceiling`)
   - `EvidenceStage:` Sampled
-- **[Conditional]** IF telemetry self-contradiction is detected THEN THE SYSTEM SHALL flag the instrument broken and halt Empirical Feedback blueprint updates. (legacy and multi-metric contradiction tests)
+- **[Conditional]** IF telemetry self-contradiction is detected THEN THE SYSTEM SHALL flag the instrument broken and halt Empirical Feedback Contract Tree updates. (legacy and multi-metric contradiction tests)
   - `EvidenceStage:` Sampled
-- **[State-driven]** WHILE a candidate branch is active THE SYSTEM SHALL isolate mutations from the main blueprint branch. (policy specified; production worktree lifecycle remains OW-05; research: BranchBench / autoresearch branch–mutate–evaluate, [foundation](../../research/foundations.md) §4)
-  - `EvidenceStage:` Unknown
+- **[State-driven]** WHILE a Candidate branch is active THE SYSTEM SHALL isolate mutations from the baseline branch. (`test_isolated_candidate_keep_fast_forwards_baseline_and_disposes_worktree`; research: BranchBench / autoresearch branch–mutate–evaluate, [foundation](../../research/foundations.md) §4)
+  - `EvidenceStage:` Sampled
+- **[Conditional]** IF evaluation probes modify the Candidate worktree THEN THE SYSTEM
+  SHALL refuse KEEP rather than merge a tree other than the one evaluated.
+  (`test_isolated_candidate_refuses_probe_mutations_instead_of_merging_an_unevaluated_tree`)
+  - `EvidenceStage:` Sampled
+- **[Conditional]** IF merge authorization was not issued from completed Worker Pool
+  maker/checker state THEN THE SYSTEM SHALL refuse evaluation; otherwise it SHALL append
+  those identities to the evidence log. (`test_worker_pool_cannot_issue_merge_authorization_to_the_maker`,
+  `test_completed_independent_check_persists_merge_authorization`)
+  - `EvidenceStage:` Sampled
+- **[Conditional]** IF the authorized Candidate branch or commit differs from the branch
+  tip being evaluated THEN THE SYSTEM SHALL refuse evaluation before running probes.
+  (`test_isolated_candidate_refuses_worker_authorization_for_another_candidate` and
+  exact-tip lifecycle coverage)
+  - `EvidenceStage:` Sampled
 - **[Conditional]** IF a metric omits `tier` THEN THE SYSTEM SHALL treat it as `hard_gate`; `hard_gate`, `target`, and `optimization` regressions or unknown comparisons SHALL block keep, while `observation` SHALL never block. (`resolve_tier` / `evaluate_candidate` unit coverage)
   - `EvidenceStage:` Sampled
 - **[Event-driven]** WHEN any candidate is reverted THE SYSTEM SHALL append one branch-scoped Negative Pattern and SHALL surface prior patterns before the next repair pass. (runner integration coverage)
@@ -49,8 +64,12 @@ Empirical Feedback infrastructure: explicit Best Known State (BKS) baselines, `m
 
 - **Current prototype:** `src/recurspec/metrics.py`, `src/recurspec/evaluation.py`, `src/recurspec/evidence.py`
 - **Current implementation:** `src/recurspec/evaluation.py`
-- **Tests:** `python -m pytest tests/test_evaluation.py -q` (59 sampled checks)
-- **Open work:** OW-05 (worktree lifecycle; blocked by OW-04), OW-10 (packet/report templates and dogfood), OW-12, OW-13 (Signal D consumer)
+- **Tests:** `tests/test_evaluation.py`, `tests/test_cli.py`.
+- **Lifecycle seam:** `evaluate_isolated_candidate` requires a clean checked-out baseline,
+  a completed Worker Pool merge authorization, and an existing local Candidate branch. It
+  evaluates the Candidate in a temporary worktree, refuses probe mutations, fast-forwards
+  only on KEEP, persists authorization and evaluation evidence in the baseline worktree,
+  and prunes the disposable worktree registration on every exit path.
 
 ## 7. Measurement Seams (meta)
 
@@ -89,4 +108,4 @@ Empirical Feedback infrastructure: explicit Best Known State (BKS) baselines, `m
 - **Operational owner:** us.
 - **Failure mode:** a broken instrument (non-numeric reading, contradictory telemetry)
   reverts the candidate rather than guessing; see invariant 3.
-- **Open questions:** OW-05 (worktree lifecycle automation).
+- **Open questions:** none.

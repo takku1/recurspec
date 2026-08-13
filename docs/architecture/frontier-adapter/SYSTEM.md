@@ -10,7 +10,7 @@ Publish frontier tickets for atomic leaves and Type B research/prototype gaps. D
 
 ## 2. Sub-System Decomposition
 
-**Atomic leaf (Phase 0).** Later: LocalMarkdownPublisher | GitHubAdapter | LinearAdapter — only if multi-tracker support is in open-work (remote webhook is deferred OW-15).
+**Atomic leaf (Phase 0).** Local publication comes first; remote tracker adapters remain deferred under ROADMAP R-303.
 
 ## 3. Interface Contracts
 
@@ -21,7 +21,7 @@ Publish frontier tickets for atomic leaves and Type B research/prototype gaps. D
 
 - **[Ubiquitous]** The Connector SHALL use project domain vocabulary in issue titles (see [CONTEXT.md](../../../CONTEXT.md)).
   - `EvidenceStage:` Unknown
-- **[Event-driven]** WHEN a new atomic leaf is created THE SYSTEM SHALL publish a corresponding frontier ticket. (blocked: OW-03 depends on OW-01)
+- **[Event-driven]** WHEN a new atomic leaf is created THE SYSTEM SHALL publish a corresponding frontier ticket. (tracked by ROADMAP R-303)
   - `EvidenceStage:` Unknown
 - **[Conditional]** IF the architectural boundary is unknown THEN THE SYSTEM SHALL emit a Type B ticket, not a false Type A implement ticket. (Wayfinder skill policy)
   - `EvidenceStage:` Unknown
@@ -35,7 +35,7 @@ Publish frontier tickets for atomic leaves and Type B research/prototype gaps. D
 
 - **Implementation:** not yet built; planned seam `src/recurspec/frontier.py`.
 - **Tests:** none yet; planned `tests/test_frontier.py`.
-- **Open work:** OW-03; tracked as ROADMAP R-303 (deferred).
+- **Roadmap:** R-303 (deferred).
 
 ## 7. Measurement Seams
 
@@ -52,7 +52,7 @@ Publish frontier tickets for atomic leaves and Type B research/prototype gaps. D
   `.scratch/wayfinder-map/`, with the remote tracker (GitHub/Linear) as an optional adapter
   behind the same publish seam.
 - **Standard / protocol:** none for the default local tracker; REST for optional remote
-  adapters (GitHub Issues API, Linear API) — deferred (OW-15).
+  adapters (GitHub Issues API, Linear API) — deferred under ROADMAP R-303.
 - **Alternatives considered:**
 
   | Option | Why not |
@@ -71,4 +71,4 @@ Publish frontier tickets for atomic leaves and Type B research/prototype gaps. D
 - **Operational owner:** us.
 - **Failure mode:** a broken publish leaves a leaf without a ticket; caught by
   `ticket_to_leaf_link_integrity` in §7.
-- **Open questions:** OW-03, OW-15 (remote webhook support).
+- **Open questions:** none outside ROADMAP R-303.

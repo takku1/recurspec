@@ -15,10 +15,12 @@ and only that gap, is this module.
 
 from __future__ import annotations
 
+import json
 import threading
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 # FRAME and CHECK are mechanical/structural; RESOLVE and SPECIFY need the capable tier.
@@ -28,6 +30,40 @@ CAPABLE_PHASES = {"resolve", "specify"}
 # A worker "produces" a node in these phases; CHECK reviews what was produced.
 PRODUCE_PHASES = {"frame", "resolve", "specify"}
 CHECK_PHASES = {"check"}
+_AUTHORIZATION_ISSUER = object()
+
+
+@dataclass(frozen=True)
+class MergeAuthorization:
+    node_id: str
+    candidate_branch: str
+    candidate_oid: str
+    maker_id: str
+    checker_id: str
+    _issuer: object
+
+    def __post_init__(self) -> None:
+        if self._issuer is not _AUTHORIZATION_ISSUER:
+            raise ValueError("merge authorizations must be issued from Worker Pool state")
+
+
+def load_merge_authorization(path: str | Path, node_id: str) -> MergeAuthorization:
+    """Load a completed maker/checker record written by ``WorkerPool``."""
+    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    record = payload.get(node_id)
+    if not isinstance(record, dict):
+        raise ValueError(f"no Worker Pool authorization state for {node_id!r}")
+    maker = record.get("maker_id")
+    checker = record.get("checker_id")
+    if not isinstance(maker, str) or not isinstance(checker, str) or not maker or not checker:
+        raise ValueError(f"Worker Pool authorization for {node_id!r} is incomplete")
+    if maker == checker:
+        raise ValueError("maker and checker must differ")
+    branch = record.get("candidate_branch")
+    oid = record.get("candidate_oid")
+    if not isinstance(branch, str) or not isinstance(oid, str) or not branch or not oid:
+        raise ValueError(f"Worker Pool authorization for {node_id!r} lacks Candidate identity")
+    return MergeAuthorization(node_id, branch, oid, maker, checker, _AUTHORIZATION_ISSUER)
 
 
 def tier_for_phase(phase: str) -> str:
@@ -70,6 +106,8 @@ class DispatchJob:
     phase: str
     worker_id: str
     max_tokens_per_node: int
+    candidate_branch: str | None = None
+    candidate_oid: str | None = None
 
 
 class WorkerPool:
@@ -80,7 +118,9 @@ class WorkerPool:
     maker != checker - that registry is this pool's one piece of run state.
     """
 
-    def __init__(self, runtime: RuntimeCall, concurrency: int):
+    def __init__(
+        self, runtime: RuntimeCall, concurrency: int, authorization_state: str | Path | None = None
+    ):
         if concurrency < 1:
             raise ValueError("concurrency must be at least 1")
         self._runtime = runtime
@@ -88,6 +128,47 @@ class WorkerPool:
         self._semaphore = threading.Semaphore(concurrency)
         self._maker_lock = threading.Lock()
         self._maker_of: dict[str, str] = {}
+        self._checker_of: dict[str, str] = {}
+        self._checked_candidate: dict[str, tuple[str, str]] = {}
+        self._authorization_state = Path(authorization_state) if authorization_state else None
+
+    def _persist_authorizations(self) -> None:
+        if self._authorization_state is None:
+            return
+        payload = {
+            node_id: {"maker_id": maker, "checker_id": self._checker_of.get(node_id)}
+            for node_id, maker in sorted(self._maker_of.items())
+        }
+        self._authorization_state.parent.mkdir(parents=True, exist_ok=True)
+        temporary = self._authorization_state.with_suffix(".tmp")
+        temporary.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+        temporary.replace(self._authorization_state)
+
+    def merge_authorization(self, node_id: str) -> MergeAuthorization:
+        with self._maker_lock:
+            maker = self._maker_of.get(node_id)
+            checker = self._checker_of.get(node_id)
+            candidate = self._checked_candidate.get(node_id)
+        if maker is None or checker is None or candidate is None:
+            raise ValueError(f"node {node_id!r} has no completed maker/checker authorization")
+        candidate_branch, candidate_oid = candidate
+        authorization = MergeAuthorization(
+            node_id,
+            candidate_branch,
+            candidate_oid,
+            maker,
+            checker,
+            _AUTHORIZATION_ISSUER,
+        )
+        if self._authorization_state is not None:
+            payload = json.loads(self._authorization_state.read_text(encoding="utf-8"))
+            payload[node_id].update(
+                candidate_branch=candidate_branch, candidate_oid=candidate_oid
+            )
+            self._authorization_state.write_text(
+                json.dumps(payload, sort_keys=True), encoding="utf-8"
+            )
+        return authorization
 
     def dispatch(
         self,
@@ -96,9 +177,15 @@ class WorkerPool:
         phase: str,
         worker_id: str,
         max_tokens_per_node: int,
+        candidate_branch: str | None = None,
+        candidate_oid: str | None = None,
     ) -> WorkerResult:
         """Run one node turn, or refuse without calling the runtime at all."""
         if phase in CHECK_PHASES:
+            if not candidate_branch or not candidate_oid:
+                return WorkerResult(
+                    outcome="refused", body=None, tokens_in=0, tokens_out=0, ms=0.0
+                )
             with self._maker_lock:
                 maker = self._maker_of.get(node_id)
             if maker == worker_id:
@@ -107,10 +194,6 @@ class WorkerPool:
         tier = tier_for_phase(phase)
         with self._semaphore:
             response = self._runtime(packet, phase, tier)
-
-        if phase in PRODUCE_PHASES:
-            with self._maker_lock:
-                self._maker_of[node_id] = worker_id
 
         spend = response.tokens_in + response.tokens_out
         if spend >= max_tokens_per_node:
@@ -123,6 +206,13 @@ class WorkerPool:
                 tokens_out=response.tokens_out,
                 ms=response.ms,
             )
+        with self._maker_lock:
+            if phase in PRODUCE_PHASES:
+                self._maker_of[node_id] = worker_id
+            if phase in CHECK_PHASES:
+                self._checker_of[node_id] = worker_id
+                self._checked_candidate[node_id] = (candidate_branch, candidate_oid)
+            self._persist_authorizations()
         return WorkerResult(
             outcome="ok",
             body=response.body,
@@ -144,6 +234,8 @@ class WorkerPool:
                     job.phase,
                     job.worker_id,
                     job.max_tokens_per_node,
+                    job.candidate_branch,
+                    job.candidate_oid,
                 )
                 for job in jobs
             ]

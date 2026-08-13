@@ -8,6 +8,7 @@ from recurspec.spec_runner.workers import (
     DispatchJob,
     RuntimeResponse,
     WorkerPool,
+    load_merge_authorization,
     tier_for_phase,
 )
 
@@ -32,6 +33,39 @@ def test_tier_for_phase_routes_mechanical_cheap_and_resolve_capable():
 def test_tier_for_phase_rejects_an_unknown_phase():
     with pytest.raises(ValueError):
         tier_for_phase("not-a-real-phase")
+
+
+def test_completed_independent_check_persists_merge_authorization(tmp_path):
+    state = tmp_path / "worker-authorizations.json"
+    pool = WorkerPool(
+        lambda *_args: RuntimeResponse({}, 1, 1, 1.0),
+        concurrency=1,
+        authorization_state=state,
+    )
+    pool.dispatch("node-1", {}, "frame", "maker", 100)
+    pool.dispatch("node-1", {}, "check", "checker", 100, "candidate/node-1", "abc123")
+
+    issued = pool.merge_authorization("node-1")
+    authorization = load_merge_authorization(state, "node-1")
+
+    assert authorization.maker_id == "maker"
+    assert authorization.checker_id == "checker"
+    assert authorization.candidate_branch == "candidate/node-1"
+    assert authorization.candidate_oid == "abc123"
+    assert authorization == issued
+
+
+def test_budget_rejected_producer_cannot_establish_merge_authorization():
+    pool = WorkerPool(
+        lambda *_args: RuntimeResponse({}, 50, 50, 1.0),
+        concurrency=1,
+    )
+
+    assert pool.dispatch("node-1", {}, "frame", "maker", 100).outcome == "budget_exceeded"
+    pool.dispatch("node-1", {}, "check", "checker", 101, "candidate/node-1", "abc123")
+
+    with pytest.raises(ValueError, match="no completed maker/checker authorization"):
+        pool.merge_authorization("node-1")
 
 
 def test_worker_only_ever_receives_the_packet_never_a_filesystem_path():
@@ -95,10 +129,12 @@ def test_maker_cannot_check_the_node_it_produced():
         "node-a", FakePacket("CARD", "DRAFT"), "resolve", "worker-1", max_tokens_per_node=1000
     )
     same_worker_check = pool.dispatch(
-        "node-a", FakePacket("CARD", "DRAFT"), "check", "worker-1", max_tokens_per_node=1000
+        "node-a", FakePacket("CARD", "DRAFT"), "check", "worker-1", 1000,
+        "candidate/node-a", "abc123"
     )
     different_worker_check = pool.dispatch(
-        "node-a", FakePacket("CARD", "DRAFT"), "check", "worker-2", max_tokens_per_node=1000
+        "node-a", FakePacket("CARD", "DRAFT"), "check", "worker-2", 1000,
+        "candidate/node-a", "abc123"
     )
 
     assert produced.outcome == "ok"

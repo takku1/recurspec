@@ -1,6 +1,6 @@
 # Technology Resolution — the third-party-first gate
 
-Every node in the spec tree passes this gate before it is specified or decomposed
+Every Contract Node passes this gate before it is specified or decomposed
 further. It assigns a **decision class** and, for procured nodes, a concrete product.
 
 Loop context: [contract-design.md](./contract-design.md) §3 ·
@@ -155,12 +155,13 @@ Every terminal node carries this. It is what replaces `- Login and user accounts
   | <name> | <specific reason — cost, fit gap, licence, maturity> |
 - **Fit gap:** <what it does NOT cover — this is where child nodes come from>
 - **Seam:** `<path to the adapter/module that isolates it>`
+- **Adapter namespace:** `<directory whose code growth belongs to this WRAP>`
 - **Exit cost:** LOW | MEDIUM | HIGH — <what swapping would actually require>
 - **Cost model:** <pricing at expected scale; the number that would change the decision>
 - **Liability transferred:** <compliance/security obligations moved to the vendor>
 - **Operational owner:** vendor | us
 - **Failure mode:** <what happens when it is down, and the fallback>
-- **Open questions:** <OW-nn / Wayfinder ticket, or "none">
+- **Open questions:** <R-nnn / Wayfinder ticket, or "none">
 ```
 
 **Fit gap is the field that drives recursion.** What the vendor does not cover is
