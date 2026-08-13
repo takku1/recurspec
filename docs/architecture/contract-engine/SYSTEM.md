@@ -26,18 +26,18 @@ seam and cannot fail independently from a user's perspective.
 
 - **[Ubiquitous]** The Contract Engine SHALL validate normalized Contract Nodes against
   JSON Schema Draft 2020-12.
-  - `EvidenceStage:` Unknown
+  - `EvidenceStage:` Sampled
 - **[Ubiquitous]** The Contract Engine SHALL report diagnostics in byte-stable order.
-  - `EvidenceStage:` Unknown
+  - `EvidenceStage:` Sampled
 - **[Conditional]** IF a Contract Node is an Atomic Leaf THEN THE SYSTEM SHALL require
   Sections 6, 7, and 8.
-  - `EvidenceStage:` Unknown
+  - `EvidenceStage:` Sampled
 - **[Conditional]** IF an invariant lacks a recognized EARS pattern or Evidence Stage
   THEN THE SYSTEM SHALL reject the Contract Node.
-  - `EvidenceStage:` Unknown
+  - `EvidenceStage:` Sampled
 - **[Conditional]** IF a directory is checked THEN THE SYSTEM SHALL validate every
   recursively discovered `SYSTEM.md` file.
-  - `EvidenceStage:` Unknown
+  - `EvidenceStage:` Sampled
 
 ## 5. Architectural Decisions (ADRs)
 

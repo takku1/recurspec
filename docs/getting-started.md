@@ -29,6 +29,17 @@ test seam, measurement seam, and technology resolution.
 
 ## Add an evaluation probe
 
+Before implementation, validate a versioned Contract Node or Contract Tree:
+
+```bash
+recurspec contract check docs/architecture
+recurspec contract check docs/architecture --format json
+```
+
+Add `<!-- recurspec-contract: 1.0 -->` below the title of each opted-in `SYSTEM.md`.
+Validation fails closed on unsupported versions, missing required headings, malformed
+EARS invariants, missing Evidence Stages, or an empty directory.
+
 Copy the templates into a named module:
 
 ```bash

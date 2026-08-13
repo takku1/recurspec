@@ -19,8 +19,8 @@ Statuses: `ready`, `blocked`, `research`, `deferred`, `done`.
 
 | ID | Outcome | Status | Blocked by | Contract |
 |---|---|---|---|---|
-| R-100 | Define a versioned schema for `SYSTEM.md` Contract Nodes | ready | — | [Contract Engine](./docs/architecture/contract-engine/SYSTEM.md) |
-| R-101 | Validate EARS invariants, Evidence Stages, and terminal §6–§8 sections | ready | R-100 | [Contract Engine](./docs/architecture/contract-engine/SYSTEM.md) |
+| R-100 | Define a versioned schema for `SYSTEM.md` Contract Nodes | done | — | [Contract Engine](./docs/architecture/contract-engine/SYSTEM.md) |
+| R-101 | Validate EARS invariants, Evidence Stages, and terminal §6–§8 sections | done | R-100 | [Contract Engine](./docs/architecture/contract-engine/SYSTEM.md) |
 | R-102 | Validate parent/child interface satisfaction | ready | R-100 | [Contract Engine](./docs/architecture/contract-engine/SYSTEM.md) |
 | R-103 | Detect stale dependency pins and incomplete technology resolutions | ready | R-100 | [Stack Resolver](./docs/architecture/stack-resolver/SYSTEM.md) |
 | R-104 | Generate a byte-stable, bounded worker contract card | ready | R-100 | [Context Packer](./docs/architecture/design-runner/context-packer/SYSTEM.md) |

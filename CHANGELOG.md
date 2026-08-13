@@ -4,6 +4,13 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ## [Unreleased]
 
+### Added
+
+- Versioned JSON Schema Draft 2020-12 representation for Contract Nodes.
+- `recurspec contract check PATH` with stable text/JSON diagnostics and distinct invalid
+  contract versus instrument-failure exit codes.
+- Contract Engine checks, fixtures, and a correctly labeled `Sampled` acceptance metric.
+
 ## [0.1.0] - 2026-08-12
 
 ### Added

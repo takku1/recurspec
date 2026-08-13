@@ -7,7 +7,8 @@ measurement gates, and reconciles reality back into the design.
 
 The project ships two public interfaces:
 
-- `recurspec`, a cross-platform Python CLI for candidate evaluation and skill setup.
+- `recurspec`, a cross-platform Python CLI for contract validation, candidate evaluation,
+  and skill setup.
 - `/recurspec`, one self-contained agent skill for design, resolution, implementation,
   evaluation, repair, and reconciliation.
 
@@ -64,6 +65,18 @@ the repository state and loads only the internal phase reference it needs.
 
 ## Evaluate a candidate
 
+Validate one versioned Contract Node or a complete Contract Tree first:
+
+```bash
+recurspec contract check docs/architecture
+recurspec contract check docs/architecture --format json
+```
+
+Contract Nodes opt in with `<!-- recurspec-contract: 1.0 -->`. The validator checks the
+bundled Draft 2020-12 schema, canonical EARS patterns, Evidence Stages, and Atomic Leaf
+Sections 6–8. Exit `0` is valid, `1` is invalid, and `2` means the validation instrument
+failed.
+
 Each measurable module owns two scripts:
 
 ```text
@@ -91,6 +104,7 @@ an unresolved metric direction reverts the candidate instead of manufacturing ev
 src/recurspec/             Python package and bundled agent skill
 tests/                     Behavioral tests at the package interfaces
 modules/evaluation-gate/   Recurspec's own checks and measurement probe
+modules/contract-engine/   Contract validation checks and fixture metric
 examples/module/           Templates for consumer modules
 docs/architecture/         Recursive SYSTEM.md contract tree
 docs/process/              Design and evidence-cycle details

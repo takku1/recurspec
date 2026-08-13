@@ -60,6 +60,6 @@ def test_validate_contract_accepts_wrapped_invariants_from_the_contract_engine_s
             "The Contract Engine SHALL validate normalized Contract Nodes against "
             "JSON Schema Draft 2020-12."
         ),
-        "evidence_stage": "Unknown",
+        "evidence_stage": "Sampled",
     }
     assert len(result.contracts[0]["invariants"]) == 5
