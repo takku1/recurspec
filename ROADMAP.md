@@ -47,6 +47,24 @@ Statuses: `ready`, `blocked`, `research`, `deferred`, `done`.
 | R-302 | Detect adapters that outgrow their procurement seams | done | R-300 | [Stack Resolver](./docs/architecture/stack-resolver/SYSTEM.md) |
 | R-303 | Publish Research Frontiers to local and remote trackers | deferred | R-301 | [Frontier Adapter](./docs/architecture/frontier-adapter/SYSTEM.md) |
 
+## Review remediation (2026-08-13)
+
+Fixes for [docs/REVIEW.md](./docs/REVIEW.md), a security/correctness review of the
+Evaluation Gate, Worker Pool, and Contract Engine. See that document for the original
+reproductions; this table is the sole status record, per hard rule 1.
+
+| ID | Outcome | Status | Evidence |
+|---|---|---|---|
+| R-600 | Pin evaluation probes to the trusted baseline so a Candidate cannot weaken its own `checks.sh`/`measure.sh` and merge itself | done | `test_isolated_candidate_evaluates_against_trusted_probes_not_the_candidates_own` and related tests in `tests/test_evaluation.py` |
+| R-601 | Require a typed CHECK approval, forbid CHECK before any producer, invalidate a stale review on re-produce, and revalidate maker != checker at authorization time | done | `tests/test_worker_pool.py` (check/approval tests), `tests/test_evaluation.py::test_worker_pool_cannot_issue_merge_authorization_to_the_maker` |
+| R-602 | Fail closed on non-finite telemetry values, missing metric names, bad direction/tier, and evidence-log corruption that isn't a recoverable final-line truncation | done | `tests/test_evaluation.py` (NaN/contradiction/`EvidenceInstrumentError` tests) |
+| R-603 | Reject hollow non-leaf nodes and disconnected/multi-parent Contract Trees | done | `tests/test_contract.py` (hollow node, unreachable node, multiple-parents, disconnected-cycle tests) |
+| R-604 | Exclude Recurspec's own runtime state from the baseline cleanliness check so the documented `--worker-state` path cannot block evaluation | done | `test_isolated_candidate_ignores_recurspec_runtime_state_when_checking_cleanliness` in `tests/test_evaluation.py`; `.gitignore` |
+| R-605 | Align the bundled skill's references with the shipped CLI and canonical vocabulary | done | `tests/test_skill_references.py` |
+| R-606 | Add the missing `job-store`/`worker-pool` probe scripts and fix the Contract Engine's multi-object `measure.sh` payload | done | `tests/test_modules.py` |
+| R-607 | Reject floating dependency versions in both the inventory and §8 Pin fields | done | `tests/test_technology_resolver.py` (floating-version tests) |
+| R-608 | Validate the CLI `module` argument as a single safe path segment and reject a structure/stack root that escapes the repository | done | `tests/test_evaluation.py` (unsafe module name tests), `tests/test_structure_gate.py::test_structure_gate_refuses_a_source_root_that_escapes_the_repository` |
+
 ## Research and validation
 
 These items are required before claiming that Recurspec improves engineering outcomes.

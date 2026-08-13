@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import json
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
@@ -151,6 +151,10 @@ class WorkerPool:
             candidate = self._checked_candidate.get(node_id)
         if maker is None or checker is None or candidate is None:
             raise ValueError(f"node {node_id!r} has no completed maker/checker authorization")
+        if maker == checker:
+            # Defense in depth: dispatch() should never let this state occur, but an
+            # authorization must never be issued on a stale invariant read alone.
+            raise ValueError("maker and checker must differ")
         candidate_branch, candidate_oid = candidate
         authorization = MergeAuthorization(
             node_id,
@@ -188,12 +192,19 @@ class WorkerPool:
                 )
             with self._maker_lock:
                 maker = self._maker_of.get(node_id)
-            if maker == worker_id:
+            # No producer yet, or the producer reviewing itself: refuse before ever
+            # calling the runtime (R-601).
+            if maker is None or maker == worker_id:
                 return WorkerResult(outcome="refused", body=None, tokens_in=0, tokens_out=0, ms=0.0)
 
         tier = tier_for_phase(phase)
         with self._semaphore:
-            response = self._runtime(packet, phase, tier)
+            try:
+                response = self._runtime(packet, phase, tier)
+            except Exception:
+                return WorkerResult(
+                    outcome="tool_error", body=None, tokens_in=0, tokens_out=0, ms=0.0
+                )
 
         spend = response.tokens_in + response.tokens_out
         if spend >= max_tokens_per_node:
@@ -209,7 +220,28 @@ class WorkerPool:
         with self._maker_lock:
             if phase in PRODUCE_PHASES:
                 self._maker_of[node_id] = worker_id
+                # A fresh produce supersedes any prior review of this node: an approval
+                # of the old content must not authorize a merge of the new content
+                # (R-601 - "keep the maker immutable for the reviewed Candidate").
+                self._checker_of.pop(node_id, None)
+                self._checked_candidate.pop(node_id, None)
             if phase in CHECK_PHASES:
+                # Revalidate at commit time, not just at the pre-runtime-call guard
+                # above: a concurrent produce could have changed the maker while this
+                # call was in flight.
+                current_maker = self._maker_of.get(node_id)
+                approved = (
+                    isinstance(response.body, Mapping) and response.body.get("approved") is True
+                )
+                if current_maker is None or current_maker == worker_id or not approved:
+                    self._persist_authorizations()
+                    return WorkerResult(
+                        outcome="ok",
+                        body=response.body,
+                        tokens_in=response.tokens_in,
+                        tokens_out=response.tokens_out,
+                        ms=response.ms,
+                    )
                 self._checker_of[node_id] = worker_id
                 self._checked_candidate[node_id] = (candidate_branch, candidate_oid)
             self._persist_authorizations()

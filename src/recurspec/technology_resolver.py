@@ -89,6 +89,27 @@ def _repository_path(root: Path, contract_root: str | Path) -> Path:
     return path.resolve() if path.is_absolute() else (root / path).resolve()
 
 
+_FLOATING_MARKERS = {"latest", "*", "master", "main", "head", "stable", "unstable"}
+_RANGE_OPERATOR_RE = re.compile(r"[<>=~^!,]")
+_EXACT_VERSION_RE = re.compile(r"^[0-9][0-9A-Za-z.+_-]*$")
+
+
+def _looks_exact(version: str) -> bool:
+    """Reject known floating/range specifiers so 'exact-version' inventories and pins
+    cannot both float to the same string and read as a reproducible pin (R-607)."""
+    value = version.strip()
+    if not value:
+        return False
+    lowered = value.lower()
+    if lowered in _FLOATING_MARKERS:
+        return False
+    if _RANGE_OPERATOR_RE.search(value):
+        return False
+    if lowered == "x" or lowered.endswith(".x") or ".x." in lowered:
+        return False
+    return bool(_EXACT_VERSION_RE.match(value))
+
+
 def load_dependency_inventory(path: str | Path) -> dict[str, str]:
     """Load an authoritative JSON ``{normalized-package: exact-version}`` inventory."""
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
@@ -98,6 +119,12 @@ def load_dependency_inventory(path: str | Path) -> dict[str, str]:
     ):
         raise ResolutionInstrumentError(
             "dependency inventory must be a JSON object of non-empty string names and versions"
+        )
+    floating = sorted(name for name, version in payload.items() if not _looks_exact(version))
+    if floating:
+        raise ResolutionInstrumentError(
+            "dependency inventory must record exact versions, not floating constraints: "
+            + ", ".join(f"{name}={payload[name]!r}" for name in floating)
         )
     return {_normalize_dependency(name): version for name, version in payload.items()}
 
@@ -114,6 +141,10 @@ def audit_resolutions(
         raise ValueError("wrap_line_limit must be positive")
     root = Path(repository).resolve()
     tree = _repository_path(root, contract_root)
+    if not tree.is_relative_to(root):
+        raise ResolutionInstrumentError(
+            f"contract_root {contract_root!r} resolves outside the repository root"
+        )
     try:
         index = build_tree_index(tree)
     except ContractInstrumentError as exc:
@@ -158,12 +189,12 @@ def audit_resolutions(
                     )
                 )
             open_questions = fields.get("Open questions", "")
-            if not re.search(r"\bR-\d+\b|\bType B\b", open_questions, re.IGNORECASE):
+            if not re.search(r"\bR-\d+\b", open_questions, re.IGNORECASE):
                 diagnostics.append(
                     ResolutionDiagnostic(
                         "resolution.defer.ticket_missing",
                         display_path,
-                        "DEFER requires a Type B ticket intent or ROADMAP R-nnn reference",
+                        "DEFER requires a Research Frontier reference (ROADMAP R-nnn)",
                     )
                 )
             continue
@@ -183,6 +214,14 @@ def audit_resolutions(
                         "resolution.pin.missing",
                         display_path,
                         f"external {node_class} resolution is missing {missing}",
+                    )
+                )
+            elif not standard_library and not _looks_exact(pin):
+                diagnostics.append(
+                    ResolutionDiagnostic(
+                        "resolution.pin.not_exact",
+                        display_path,
+                        f"§8 Pin {pin!r} is not an exact, reproducible version",
                     )
                 )
             elif not standard_library:

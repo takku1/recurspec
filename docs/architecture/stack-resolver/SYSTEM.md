@@ -29,8 +29,8 @@ StalenessAuditor (review triggers).
   compliance regime, existing stack); survey results from /research; Contract Tree;
   optional authoritative dependency inventory; WRAP line threshold.
 - **Outputs:** Decision class; selected product + pin; alternatives table with reasons;
-  fit gap; seam path; exit cost; cost model; liability transfer; §8 block; DEFER → Type B
-  ticket intent.
+  fit gap; seam path; exit cost; cost model; liability transfer; §8 block; DEFER →
+  Research Frontier intent.
 
 ## 4. Invariants (EARS + Epistemic Stage)
 
@@ -49,8 +49,8 @@ StalenessAuditor (review triggers).
   interface seam)
   - `EvidenceStage:` Unknown
 - **[Conditional]** IF the capability survey cannot be completed from primary sources
-  THEN THE SYSTEM SHALL resolve `DEFER` and emit a Type B ticket, and SHALL NOT guess a
-  vendor. (`test_resolution_audit_reports_incomplete_fields_and_refuses_vendor_on_defer`)
+  THEN THE SYSTEM SHALL resolve `DEFER` and record a Research Frontier, and SHALL NOT
+  guess a vendor. (`test_resolution_audit_reports_incomplete_fields_and_refuses_vendor_on_defer`)
   - `EvidenceStage:` Sampled
 - **[Event-driven]** WHEN a §8 pinned version diverges from the project lockfile THE
   SYSTEM SHALL raise a Structural Feedback drift signal.

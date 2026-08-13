@@ -36,7 +36,7 @@ two real alternatives** with versions or plan tiers, plus what each does *not* c
 | **ADOPT** | OSS library / framework feature you run |
 | **WRAP** | Thin adapter you write over a BUY/ADOPT |
 | **BUILD** | Genuinely custom |
-| **DEFER** | Unresolved → Type B Wayfinder ticket |
+| **DEFER** | Unresolved → Research Frontier |
 
 **BUILD carries the burden of proof.** It is correct only when the node is your
 differentiator, the fit gap is fatal, cost inverts at your scale, the dependency is a
@@ -64,7 +64,7 @@ Terminal when:
 |---------|-----------|
 | **Procured** | Uniformly BUY/ADOPT → spec the *seam*, never the vendor's internals |
 | **Atomic build** | BUILD/WRAP implementable in one TDD session against one test seam |
-| **Deferred** | DEFER → Type B ticket; subtree resumes when it closes |
+| **Deferred** | DEFER → Research Frontier; subtree resumes when it closes |
 
 Must decompose when parts resolve to **different** classes, or when uniformly BUILD but
 too large for one session.
@@ -87,7 +87,8 @@ Terminal nodes get the full template below **including §8**. Non-terminal nodes
 3. **Distinct failure mode:** a child that cannot fail independently of its siblings is a
    step in a procedure, not a module.
 4. **Two-child minimum:** one child is a rename, not a decomposition — collapse it.
-5. **No speculative children:** fog goes to the Wayfinder map, not into invented nodes.
+5. **No speculative children:** fog goes to `ROADMAP.md` as a Research Frontier, not
+   into invented nodes.
 
 Expect **shallow where the world has solved it, deep where you are actually building**. A
 uniformly deep tree means RESEARCH is being skipped.
@@ -129,8 +130,9 @@ unverified claim.
 ## Incomplete-work gate
 
 Maintain **one** checklist: `ROADMAP.md` (`ready` | `blocked` | `deferred` |
-`research` | `done`). Do not create parallel readiness or fog lists. Claimable build
-tickets go to `.scratch/wayfinder-map/MAP.md`; DEFER nodes become Type B tickets there.
+`research` | `done`). Do not create parallel readiness or fog lists. A DEFER node
+becomes a Research Frontier entry there — an uncertainty that must be resolved before
+the node can be completed.
 
 ---
 
@@ -184,7 +186,7 @@ Single-sentence responsibility. Explicit non-goals ("does not own: ...").
 - **Liability transferred:** obligations moved to the vendor
 - **Operational owner:** vendor | us
 - **Failure mode:** behaviour when it is down, and the fallback
-- **Open questions:** OW-nn / Wayfinder ticket, or "none"
+- **Open questions:** ROADMAP R-nnn / Research Frontier, or "none"
 ```
 
 `BUILD` nodes add a **Justification** line in §8 naming which of the five BUILD conditions
@@ -195,7 +197,7 @@ applies. A BUILD with no recorded justification is the failure this gate exists 
 ## Finishing
 
 1. Every terminal node has §6, §7, §8 complete.
-2. Every DEFER has a Type B ticket on the Wayfinder map.
+2. Every DEFER has a Research Frontier entry in `ROADMAP.md`.
 3. `ROADMAP.md` reflects product incompleteness (not one row per leaf).
 4. Report the shape: node count, depth, and the **BUILD ratio** — how much of this you are
    actually writing. A high ratio early is the signal to re-run RESEARCH.

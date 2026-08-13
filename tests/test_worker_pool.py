@@ -38,7 +38,7 @@ def test_tier_for_phase_rejects_an_unknown_phase():
 def test_completed_independent_check_persists_merge_authorization(tmp_path):
     state = tmp_path / "worker-authorizations.json"
     pool = WorkerPool(
-        lambda *_args: RuntimeResponse({}, 1, 1, 1.0),
+        lambda *_args: RuntimeResponse({"approved": True}, 1, 1, 1.0),
         concurrency=1,
         authorization_state=state,
     )
@@ -140,6 +140,76 @@ def test_maker_cannot_check_the_node_it_produced():
     assert produced.outcome == "ok"
     assert same_worker_check.outcome == "refused"
     assert different_worker_check.outcome == "ok"
+
+
+def test_check_before_any_producer_is_refused():
+    pool = WorkerPool(
+        runtime=lambda *_args: RuntimeResponse({"approved": True}, 1, 1, 1.0), concurrency=1
+    )
+
+    result = pool.dispatch("node-a", {}, "check", "checker", 1000, "candidate/node-a", "abc123")
+
+    assert result.outcome == "refused"
+    with pytest.raises(ValueError, match="no completed maker/checker authorization"):
+        pool.merge_authorization("node-a")
+
+
+def test_check_without_a_typed_approval_establishes_no_authorization():
+    def runtime(packet, phase, tier):
+        # A CHECK that ran and came back "not approved" - the exact R-601 bypass: this
+        # must not be recorded as a completed independent review.
+        return RuntimeResponse({"approved": False, "reason": "tests failed"}, 1, 1, 1.0)
+
+    pool = WorkerPool(runtime=runtime, concurrency=1)
+    pool.dispatch("node-a", {}, "frame", "maker", 1000)
+
+    result = pool.dispatch("node-a", {}, "check", "checker", 1000, "candidate/node-a", "abc123")
+
+    assert result.outcome == "ok"
+    assert result.body == {"approved": False, "reason": "tests failed"}
+    with pytest.raises(ValueError, match="no completed maker/checker authorization"):
+        pool.merge_authorization("node-a")
+
+
+def test_a_later_produce_invalidates_a_prior_completed_check():
+    pool = WorkerPool(
+        runtime=lambda *_args: RuntimeResponse({"approved": True}, 1, 1, 1.0), concurrency=1
+    )
+    pool.dispatch("node-a", {}, "frame", "maker-1", 1000)
+    pool.dispatch("node-a", {}, "check", "checker", 1000, "candidate/node-a", "abc123")
+    pool.merge_authorization("node-a")  # sanity: a completed review exists
+
+    # The maker re-produces the node (e.g. after a revert-and-retry). The earlier
+    # approval reviewed the old content, not this one.
+    pool.dispatch("node-a", {}, "frame", "maker-1", 1000)
+
+    with pytest.raises(ValueError, match="no completed maker/checker authorization"):
+        pool.merge_authorization("node-a")
+
+
+def test_merge_authorization_refuses_an_equal_maker_and_checker_even_in_internal_state():
+    pool = WorkerPool(runtime=lambda *_args: RuntimeResponse({}, 1, 1, 1.0), concurrency=1)
+    # Bypass dispatch()'s own guards to prove merge_authorization() revalidates the
+    # invariant itself rather than trusting whatever state it is handed (defense in
+    # depth for R-601's time-of-check/time-of-use concern).
+    pool._maker_of["node-a"] = "same-worker"
+    pool._checker_of["node-a"] = "same-worker"
+    pool._checked_candidate["node-a"] = ("candidate/node-a", "abc123")
+
+    with pytest.raises(ValueError, match="maker and checker must differ"):
+        pool.merge_authorization("node-a")
+
+
+def test_a_runtime_exception_returns_tool_error_instead_of_propagating():
+    def runtime(packet, phase, tier):
+        raise RuntimeError("adapter crashed")
+
+    pool = WorkerPool(runtime=runtime, concurrency=1)
+
+    result = pool.dispatch("node-a", {}, "frame", "worker-1", 1000)
+
+    assert result.outcome == "tool_error"
+    assert result.body is None
 
 
 def test_concurrency_cap_is_never_exceeded():

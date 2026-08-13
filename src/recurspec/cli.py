@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import filecmp
 import json
+import math
 import os
 import shutil
 import sys
@@ -23,6 +24,15 @@ from .technology_resolver import (
     audit_resolutions,
     load_dependency_inventory,
 )
+
+
+def _finite_nonneg(value: str) -> float:
+    parsed = float(value)
+    if not math.isfinite(parsed) or parsed < 0:
+        raise argparse.ArgumentTypeError(
+            f"must be a finite, non-negative number: {value!r}"
+        )
+    return parsed
 
 
 def _skill_source() -> Path:
@@ -123,13 +133,17 @@ def _run_contract_check(args: argparse.Namespace) -> int:
 
 
 def _run_structure_check(args: argparse.Namespace) -> int:
-    result = check_structure(
-        args.repository,
-        source_root=args.source_root,
-        contract_root=args.contract_root,
-        test_root=args.test_root,
-        changed_files=set(args.changed_file) if args.changed_file else None,
-    )
+    try:
+        result = check_structure(
+            args.repository,
+            source_root=args.source_root,
+            contract_root=args.contract_root,
+            test_root=args.test_root,
+            changed_files=set(args.changed_file) if args.changed_file else None,
+        )
+    except (OSError, ValueError) as exc:
+        print(f"[ERROR] structure instrument failed: {exc}", file=sys.stderr)
+        return 2
     if args.format == "json":
         payload = {
             "diagnostics": [diagnostic.as_dict() for diagnostic in result.diagnostics],
@@ -242,7 +256,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     evaluate.add_argument(
         "--tolerance",
-        type=float,
+        type=_finite_nonneg,
         default=20.0,
         help="allowed percent regression on non-hard_gate metrics before reverting",
     )

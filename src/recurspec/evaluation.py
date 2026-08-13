@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import ntpath
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -50,6 +51,22 @@ KEEP, REVERT, ERROR, ESCALATE = 0, 1, 2, 3
 
 class CandidateLifecycleError(RuntimeError):
     """The Candidate could not be isolated, merged, or disposed safely."""
+
+
+_MODULE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
+
+
+def _validate_module_name(module: str) -> None:
+    """Reject anything but a single safe path segment (R-608).
+
+    ``module`` is interpolated straight into probe and evidence paths; a value
+    containing ``/``, ``\\``, ``..``, or an absolute path could point those reads and
+    writes outside ``modules/<module>`` and ``.recurspec/evidence/<module>``.
+    """
+    if not _MODULE_NAME_RE.match(module):
+        raise CandidateLifecycleError(
+            f"module name {module!r} is not a single safe path segment"
+        )
 
 
 def _git(repo: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -153,6 +170,7 @@ def evaluate_change(
     attempt_ceiling: int = 8,
     work_dir: str | os.PathLike[str] | None = None,
 ) -> tuple[int, str]:
+    _validate_module_name(module)
     if record_baseline and candidate_branch != baseline_branch:
         raise ValueError(
             "baseline promotion requires evaluation on the baseline branch after merge"
@@ -365,6 +383,7 @@ def evaluate_isolated_candidate(
     untouched. Evidence is written to the baseline worktree so disposal cannot erase it.
     Explicit baseline promotion is a second evaluation after the merge.
     """
+    _validate_module_name(module)
     maker_id = authorization.maker_id
     checker_id = authorization.checker_id
     if candidate_branch != authorization.candidate_branch:
@@ -383,7 +402,14 @@ def evaluate_isolated_candidate(
         raise CandidateLifecycleError(
             f"baseline branch {baseline_branch!r} must be checked out; found {current_branch!r}"
         )
-    if _git(repo_path, "status", "--porcelain").stdout.strip():
+    # Recurspec's own runtime state (evidence logs, worker authorizations, handoffs)
+    # lives under .recurspec/ in the checked-out worktree. A correctly generated
+    # prerequisite - e.g. the documented --worker-state path - must never itself block
+    # the documented workflow just because a project's .gitignore hasn't caught up
+    # (R-604); exclude it from the cleanliness check regardless of ignore rules.
+    if _git(
+        repo_path, "status", "--porcelain", "--", ".", ":(exclude).recurspec/"
+    ).stdout.strip():
         raise CandidateLifecycleError("baseline worktree must be clean before candidate evaluation")
 
     baseline_ref = f"refs/heads/{baseline_branch}"
@@ -407,6 +433,21 @@ def evaluate_isolated_candidate(
         evidence_path = repo_path / evidence_path
     evidence_path = evidence_path.resolve()
 
+    # Probe definitions decide keep/revert, so a Candidate must never be able to supply
+    # its own checks.sh/measure.sh: the trusted baseline's copies are pinned into the
+    # worktree below (R-600). Refuse rather than fall back to trusting the Candidate.
+    checks_rel = os.path.join("modules", module, "checks.sh")
+    measure_rel = os.path.join("modules", module, "measure.sh")
+    trusted_checks = repo_path / checks_rel
+    trusted_measure = repo_path / measure_rel
+    if not trusted_checks.is_file() or not trusted_measure.is_file():
+        raise CandidateLifecycleError(
+            f"no trusted baseline probe for module {module!r} on {baseline_branch!r}; "
+            "refusing to evaluate against Candidate-controlled evaluation scripts"
+        )
+    trusted_checks_bytes = trusted_checks.read_bytes()
+    trusted_measure_bytes = trusted_measure.read_bytes()
+
     # A previous interrupted process may have deleted its directory before unregistering
     # it. Prune only missing worktrees so the Candidate branch can be isolated again.
     _git(repo_path, "worktree", "prune", "--expire", "now")
@@ -425,17 +466,28 @@ def evaluate_isolated_candidate(
             branch=candidate_branch,
             log_dir=str(evidence_path),
         )
-        code, reason = evaluate_change(
-            module,
-            candidate_branch,
-            tolerance_pct=tolerance_pct,
-            baseline_branch=baseline_branch,
-            log_dir=str(evidence_path),
-            record_baseline=False,
-            stagnation_limit=stagnation_limit,
-            attempt_ceiling=attempt_ceiling,
-            work_dir=worktree,
-        )
+        # Pin the probes actually executed to the trusted baseline's bytes, while they
+        # still run against the Candidate's own worktree (its BASH_SOURCE-derived
+        # REPO_ROOT resolves inside the worktree) - trusted logic, Candidate code under
+        # test. Restored below so the post-eval dirtiness check reflects only what the
+        # Candidate itself committed.
+        (worktree / checks_rel).write_bytes(trusted_checks_bytes)
+        (worktree / measure_rel).write_bytes(trusted_measure_bytes)
+        try:
+            code, reason = evaluate_change(
+                module,
+                candidate_branch,
+                tolerance_pct=tolerance_pct,
+                baseline_branch=baseline_branch,
+                log_dir=str(evidence_path),
+                record_baseline=False,
+                stagnation_limit=stagnation_limit,
+                attempt_ceiling=attempt_ceiling,
+                work_dir=worktree,
+            )
+        finally:
+            if worktree.exists():
+                _git(worktree, "checkout", "--", checks_rel, measure_rel, check=False)
         if code != KEEP:
             return code, reason
         if _git(worktree, "status", "--porcelain").stdout.strip():

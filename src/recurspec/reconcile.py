@@ -71,7 +71,7 @@ until Architect review.
 
 ## 2. Sub-System Decomposition
 
-Atomic leaf draft.
+Atomic leaf (draft).
 
 ## 3. Interface Contracts
 

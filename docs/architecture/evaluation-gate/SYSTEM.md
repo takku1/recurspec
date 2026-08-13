@@ -55,7 +55,7 @@ Empirical Feedback infrastructure: explicit Best Known State (BKS) baselines, `m
 
 - **ADR-001:** Autoresearch-style edit → measure → keep/revert.
 - **ADR-002:** Correctness backpressure mandatory; primary metric alone cannot authorize keep.
-- **ADR-003:** Unknown behavioral boundaries emit Type B Wayfinder tickets (not silent merge).
+- **ADR-003:** Unknown behavioral boundaries become Research Frontiers (not silent merge).
 - **ADR-004:** Multi-metric payloads use fail-closed tiers: untagged means `hard_gate`; only `observation` is non-blocking.
 - **ADR-005:** KEEP authorization and BKS promotion are separate acts; the gate never silently promotes a candidate measurement.
 - **ADR-006:** Retry is bounded and memory-bearing: every revert becomes a Negative Pattern; stagnation or the attempt ceiling escalates to a human.
@@ -64,7 +64,8 @@ Empirical Feedback infrastructure: explicit Best Known State (BKS) baselines, `m
 
 - **Current prototype:** `src/recurspec/metrics.py`, `src/recurspec/evaluation.py`, `src/recurspec/evidence.py`
 - **Current implementation:** `src/recurspec/evaluation.py`
-- **Tests:** `tests/test_evaluation.py`, `tests/test_cli.py`.
+- **Tests:** `tests/test_evaluation.py`, `tests/test_cli.py`, `tests/test_modules.py`
+  (end-to-end coverage of every bundled `measure.sh` against `parse_measurement`).
 - **Lifecycle seam:** `evaluate_isolated_candidate` requires a clean checked-out baseline,
   a completed Worker Pool merge authorization, and an existing local Candidate branch. It
   evaluates the Candidate in a temporary worktree, refuses probe mutations, fast-forwards

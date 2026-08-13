@@ -126,6 +126,24 @@ def check_structure(
     tests_for_implementation: dict[str, set[str]] = {}
     declared_tests: set[str] = set()
 
+    # Reject a root override that escapes the repository before any relative_to(root)
+    # call downstream can raise uncaught (R-608).
+    for label, declared, resolved in (
+        ("source_root", source_root, source),
+        ("contract_root", contract_root, contracts),
+        ("test_root", test_root, tests_root),
+    ):
+        if not resolved.is_relative_to(root):
+            diagnostics.append(
+                StructureDiagnostic(
+                    f"structure.{label}.outside_repository",
+                    Path(declared).as_posix(),
+                    f"{label} resolves outside the repository root",
+                )
+            )
+    if diagnostics:
+        return StructureResult(tuple(sorted(diagnostics)), instrument_error=True)
+
     if not contracts.is_dir():
         diagnostics.append(
             StructureDiagnostic(

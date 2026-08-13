@@ -251,6 +251,15 @@ def _normalize(path: Path) -> tuple[dict[str, Any] | None, list[Diagnostic]]:
         for name, value in INTERFACE_RE.findall(sections.get("3", ""))
     }
     children = [] if atomic_leaf else LINK_RE.findall(sections.get("2", ""))
+    if not atomic_leaf and not children:
+        diagnostics.append(
+            Diagnostic(
+                display_path,
+                "contract.node.hollow",
+                "non-leaf Contract Node declares no children; add a child link in "
+                "section 2 or mark it 'Atomic leaf.'",
+            )
+        )
     contract: dict[str, Any] = {
         "contract_version": "1.0",
         "title": title.group(1),
@@ -306,6 +315,8 @@ def validate_contract(path: str | Path) -> ValidationResult:
         diagnostics.extend(contract_diagnostics)
     if requested.is_dir():
         tree_root = requested.resolve()
+        referenced_by: dict[Path, list[Path]] = {}
+        resolved_children: dict[Path, list[Path]] = {}
         for parent_path, parent in normalized_by_path.items():
             if parent["atomic_leaf"]:
                 continue
@@ -353,6 +364,8 @@ def validate_contract(path: str | Path) -> ValidationResult:
                         )
                     )
                     continue
+                referenced_by.setdefault(child_path, []).append(parent_path)
+                resolved_children.setdefault(parent_path, []).append(child_path)
                 if child["level"] != parent["level"] + 1:
                     diagnostics.append(
                         Diagnostic(
@@ -391,6 +404,60 @@ def validate_contract(path: str | Path) -> ValidationResult:
                             parent_path.as_posix(),
                             "contract.interface.output.unsatisfied",
                             f"parent output {output!r} is unavailable after child composition",
+                        )
+                    )
+
+        def _relative(node_path: Path) -> str:
+            return node_path.relative_to(tree_root).as_posix()
+
+        for child_path, parents in sorted(referenced_by.items()):
+            if len(parents) > 1:
+                diagnostics.append(
+                    Diagnostic(
+                        child_path.as_posix(),
+                        "contract.child.multiple_parents",
+                        "Contract Node is linked from more than one parent: "
+                        + ", ".join(sorted(_relative(p) for p in parents)),
+                    )
+                )
+
+        roots = sorted(
+            (path for path in normalized_by_path if path not in referenced_by),
+            key=lambda item: item.as_posix(),
+        )
+        if len(roots) != 1:
+            root_names = ", ".join(_relative(p) for p in roots) or "none"
+            message = (
+                f"expected exactly one Contract Tree root; found {len(roots)} "
+                f"unreferenced candidate(s): {root_names}"
+            )
+            if roots:
+                for root_candidate in roots:
+                    diagnostics.append(
+                        Diagnostic(root_candidate.as_posix(), "contract.tree.root_count", message)
+                    )
+            else:
+                # Every node has an incoming link - a pure cycle with no true root.
+                diagnostics.append(
+                    Diagnostic(tree_root.as_posix(), "contract.tree.root_count", message)
+                )
+        else:
+            reachable: set[Path] = {roots[0]}
+            frontier = [roots[0]]
+            while frontier:
+                current = frontier.pop()
+                for child_path in resolved_children.get(current, []):
+                    if child_path not in reachable:
+                        reachable.add(child_path)
+                        frontier.append(child_path)
+            for node_path in sorted(normalized_by_path):
+                if node_path not in reachable:
+                    diagnostics.append(
+                        Diagnostic(
+                            node_path.as_posix(),
+                            "contract.node.unreachable",
+                            "Contract Node is not reachable from the tree root through "
+                            "any section 2 child link",
                         )
                     )
     return ValidationResult(tuple(contracts), tuple(sorted(diagnostics)))

@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from recurspec.contract import (
+    ContractInstrumentError,
     build_tree_index,
     decision_class,
     resolve_child_path,
@@ -177,6 +178,10 @@ def test_validate_contract_rejects_a_missing_child_link(tmp_path: Path):
     result = validate_contract(tree)
 
     actual = [(item.rule_code, Path(item.path).name, item.message) for item in result.diagnostics]
+    root_count_message = (
+        "expected exactly one Contract Tree root; found 2 unreferenced candidate(s): "
+        "SYSTEM.md, publish/SYSTEM.md"
+    )
     assert actual == [
         (
             "contract.child.missing",
@@ -188,6 +193,10 @@ def test_validate_contract_rejects_a_missing_child_link(tmp_path: Path):
             "SYSTEM.md",
             "parent output 'artifact' is unavailable after child composition",
         ),
+        # publish/SYSTEM.md was orphaned by redirecting the only link that reached it;
+        # it and the real root both now show zero incoming links (R-603).
+        ("contract.tree.root_count", "SYSTEM.md", root_count_message),
+        ("contract.tree.root_count", "SYSTEM.md", root_count_message),
     ]
 
 
@@ -212,9 +221,12 @@ def test_validate_contract_rejects_duplicate_child_links(tmp_path: Path):
 
     result = validate_contract(tree)
 
+    # publish/SYSTEM.md is orphaned once both link slots point at transform (R-603).
     assert [item.rule_code for item in result.diagnostics] == [
         "contract.child.duplicate",
         "contract.interface.output.unsatisfied",
+        "contract.tree.root_count",
+        "contract.tree.root_count",
     ]
 
 
@@ -282,19 +294,20 @@ def test_validate_contract_file_check_does_not_claim_tree_composition():
 
 
 def test_validate_contract_reports_explicit_stable_migration_diagnostics():
+    # FIXTURES bundles several independent, unrelated fixture subtrees in one directory
+    # (not a single real Contract Tree), so this only checks that each fixture's own
+    # intended defect still fires - not the full diagnostic set, which now also gains
+    # R-603 tree-shape diagnostics (multiple unreferenced roots) from that same
+    # unrelatedness. See test_validate_contract_accepts_an_independently_authored_...
+    # and the R-603 tests below for the tree-shape checks themselves.
     result = validate_contract(FIXTURES)
 
     assert not result.valid
-    assert [diagnostic.rule_code for diagnostic in result.diagnostics] == [
-        "contract.heading.missing",
-        "contract.invariant.ears",
-        "contract.invariant.evidence-stage",
-        "contract.version.missing",
-    ]
-    assert "section 8" in result.diagnostics[0].message
-    assert "EARS" in result.diagnostics[1].message
-    assert "Evidence Stage" in result.diagnostics[2].message
-    assert "recurspec-contract: 1.0" in result.diagnostics[3].message
+    by_code = {diagnostic.rule_code: diagnostic for diagnostic in result.diagnostics}
+    assert "section 8" in by_code["contract.heading.missing"].message
+    assert "EARS" in by_code["contract.invariant.ears"].message
+    assert "Evidence Stage" in by_code["contract.invariant.evidence-stage"].message
+    assert "recurspec-contract: 1.0" in by_code["contract.version.missing"].message
 
 
 def test_contract_schema_is_a_bundled_package_resource():
@@ -335,3 +348,191 @@ def test_recurspecs_own_architecture_tree_passes_its_own_contract_engine():
 
     assert result.valid, result.diagnostics
     assert len(result.contracts) == 11
+
+
+# --- R-603: hollow and disconnected Contract Trees -------------------------
+
+
+_HOLLOW_PLACEHOLDER = """# Placeholder (L1)
+
+<!-- recurspec-contract: 1.0 -->
+
+## 1. System Intent & Responsibility
+
+Placeholder awaiting decomposition.
+
+## 2. Sub-System Decomposition
+
+Decomposition pending.
+
+## 3. Interface Contracts
+
+- **Inputs:** none.
+- **Outputs:** none.
+
+## 4. Invariants (EARS + Epistemic Stage)
+
+- **[Ubiquitous]** THE SYSTEM SHALL exist.
+  - `EvidenceStage:` Unknown
+
+## 5. Architectural Decisions (ADRs)
+
+- **ADR-001:** none yet.
+"""
+
+
+def test_validate_contract_rejects_a_hollow_non_leaf_node(tmp_path: Path):
+    contract_path = tmp_path / "SYSTEM.md"
+    contract_path.write_text(_HOLLOW_PLACEHOLDER, encoding="utf-8")
+
+    result = validate_contract(contract_path)
+
+    assert not result.valid
+    assert any(item.rule_code == "contract.node.hollow" for item in result.diagnostics)
+
+
+def test_build_tree_index_refuses_a_hollow_non_leaf_node(tmp_path: Path):
+    (tmp_path / "SYSTEM.md").write_text(_HOLLOW_PLACEHOLDER, encoding="utf-8")
+
+    with pytest.raises(ContractInstrumentError):
+        build_tree_index(tmp_path)
+
+
+def test_validate_contract_rejects_a_valid_but_unlinked_node_in_the_tree(tmp_path: Path):
+    tree = tmp_path / "tree"
+    shutil.copytree(FIXTURES / "valid-tree", tree)
+    orphan = tree / "orphan"
+    orphan.mkdir()
+    (orphan / "SYSTEM.md").write_text(
+        (FIXTURES / "valid" / "SYSTEM.md")
+        .read_text(encoding="utf-8")
+        .replace("(L2)", "(L1)"),
+        encoding="utf-8",
+    )
+
+    result = validate_contract(tree)
+
+    # An unlinked node is indistinguishable from a second root candidate without more
+    # context, so it is flagged via contract.tree.root_count rather than a separate
+    # "unreachable" code - either way the tree must no longer validate (R-603).
+    assert not result.valid
+    assert any(
+        item.rule_code == "contract.tree.root_count" and Path(item.path).parent.name == "orphan"
+        for item in result.diagnostics
+    )
+
+    with pytest.raises(ContractInstrumentError):
+        build_tree_index(tree)
+
+
+def test_validate_contract_rejects_a_disconnected_cycle_even_with_a_single_root(
+    tmp_path: Path,
+):
+    # A mutually-referencing island (each side has in-degree 1) has no extra root
+    # candidate by in-degree alone, so this exercises the separate BFS-reachability
+    # check rather than contract.tree.root_count.
+    tree = tmp_path / "tree"
+    tree.mkdir()
+
+    def write(relative: str, level: int, children: str = "", atomic: bool = False) -> None:
+        path = tree / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        decomposition = "Atomic leaf." if atomic else children
+        path.write_text(
+            f"""# Node {relative} (L{level})
+
+<!-- recurspec-contract: 1.0 -->
+
+## 1. System Intent & Responsibility
+
+Fixture node.
+
+## 2. Sub-System Decomposition
+
+{decomposition}
+
+## 3. Interface Contracts
+
+- **Inputs:** none.
+- **Outputs:** none.
+
+## 4. Invariants (EARS + Epistemic Stage)
+
+- **[Ubiquitous]** THE SYSTEM SHALL exist.
+  - `EvidenceStage:` Unknown
+
+## 5. Architectural Decisions (ADRs)
+
+- **ADR-001:** none yet.
+""",
+            encoding="utf-8",
+        )
+
+    write("SYSTEM.md", 0, children="- [Leaf](./leaf/SYSTEM.md)")
+    write("leaf/SYSTEM.md", 1, atomic=True)
+    write("island-a/SYSTEM.md", 1, children="- [B](../island-b/SYSTEM.md)")
+    write("island-b/SYSTEM.md", 1, children="- [A](../island-a/SYSTEM.md)")
+
+    result = validate_contract(tree)
+
+    unreachable = {Path(item.path).parent.name for item in result.diagnostics
+                   if item.rule_code == "contract.node.unreachable"}
+    assert unreachable == {"island-a", "island-b"}
+
+    with pytest.raises(ContractInstrumentError):
+        build_tree_index(tree)
+
+
+def test_validate_contract_rejects_a_node_linked_from_two_parents(tmp_path: Path):
+    tree = tmp_path / "tree"
+    tree.mkdir()
+
+    def write(relative: str, level: int, children: str = "", atomic: bool = False) -> None:
+        path = tree / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        decomposition = "Atomic leaf." if atomic else children
+        path.write_text(
+            f"""# Node {relative} (L{level})
+
+<!-- recurspec-contract: 1.0 -->
+
+## 1. System Intent & Responsibility
+
+Fixture node.
+
+## 2. Sub-System Decomposition
+
+{decomposition}
+
+## 3. Interface Contracts
+
+- **Inputs:** none.
+- **Outputs:** none.
+
+## 4. Invariants (EARS + Epistemic Stage)
+
+- **[Ubiquitous]** THE SYSTEM SHALL exist.
+  - `EvidenceStage:` Unknown
+
+## 5. Architectural Decisions (ADRs)
+
+- **ADR-001:** none yet.
+""",
+            encoding="utf-8",
+        )
+
+    write("SYSTEM.md", 0, children="- [A](./branch-a/SYSTEM.md)\n- [B](./branch-b/SYSTEM.md)")
+    write("branch-a/SYSTEM.md", 1, children="- [Shared](../shared/SYSTEM.md)")
+    write("branch-b/SYSTEM.md", 1, children="- [Shared](../shared/SYSTEM.md)")
+    write("shared/SYSTEM.md", 2, atomic=True)
+
+    result = validate_contract(tree)
+
+    multi_parent = [
+        item for item in result.diagnostics if item.rule_code == "contract.child.multiple_parents"
+    ]
+    assert len(multi_parent) == 1
+    assert Path(multi_parent[0].path).parent.name == "shared"
+
+    with pytest.raises(ContractInstrumentError):
+        build_tree_index(tree)

@@ -22,6 +22,7 @@ from recurspec.metrics import (
     REGRESSED,
     TARGET,
     UNKNOWN,
+    EvidenceInstrumentError,
     compare,
     count_consecutive_reverts,
     count_total_reverts,
@@ -38,7 +39,7 @@ from recurspec.spec_runner.workers import RuntimeResponse, WorkerPool
 
 
 def _independent_review(repo: Path):
-    pool = WorkerPool(lambda *_args: RuntimeResponse({}, 1, 1, 1.0), concurrency=1)
+    pool = WorkerPool(lambda *_args: RuntimeResponse({"approved": True}, 1, 1, 1.0), concurrency=1)
     pool.dispatch("R-200", {}, "frame", "worker-1", 100)
     branch = "candidate/R-200"
     oid = _git(repo, "rev-parse", branch)
@@ -58,6 +59,22 @@ def _git(repo: Path, *args: str) -> str:
     return result.stdout.strip()
 
 
+_TRUSTED_CHECKS_SH = """#!/usr/bin/env bash
+set -euo pipefail
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if grep -q "broken" "${DIR}/state.txt" 2>/dev/null; then
+  echo "state is broken" >&2
+  exit 1
+fi
+exit 0
+"""
+
+_TRUSTED_MEASURE_SH = """#!/usr/bin/env bash
+set -euo pipefail
+printf '{"metric":"m","value":1,"direction":"higher","status":"success"}\\n'
+"""
+
+
 def _repo_with_candidate(tmp_path: Path) -> Path:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -65,7 +82,11 @@ def _repo_with_candidate(tmp_path: Path) -> Path:
     _git(repo, "config", "user.email", "tests@example.invalid")
     _git(repo, "config", "user.name", "Recurspec Tests")
     (repo / "state.txt").write_text("baseline\n", encoding="utf-8")
-    _git(repo, "add", "state.txt")
+    modules = repo / "modules" / "checkout"
+    modules.mkdir(parents=True)
+    (modules / "checks.sh").write_text(_TRUSTED_CHECKS_SH, encoding="utf-8")
+    (modules / "measure.sh").write_text(_TRUSTED_MEASURE_SH, encoding="utf-8")
+    _git(repo, "add", "state.txt", "modules")
     _git(repo, "commit", "-m", "baseline")
     _git(repo, "switch", "-c", "candidate/R-200")
     (repo / "state.txt").write_text("candidate\n", encoding="utf-8")
@@ -215,6 +236,95 @@ def test_overclaimed_evidence_stage_is_a_contradiction():
     assert (
         telemetry_contradiction({"metric": "x", "value": 1, "evidence_stage": "Proved"}) is not None
     )
+
+
+def test_nan_value_is_a_contradiction_not_a_manufactured_measurement():
+    # Reproduces the review's exact repro: a NaN reading must never compare as a
+    # tolerated regression - it must never reach compare() at all.
+    assert telemetry_contradiction({"metric": "latency_ms", "value": float("nan")}) is not None
+    assert telemetry_contradiction({"metric": "latency_ms", "value": float("inf")}) is not None
+
+
+def test_missing_metric_name_is_a_contradiction():
+    assert telemetry_contradiction({"value": 1, "status": "success"}) is not None
+
+
+def test_bad_declared_direction_is_a_contradiction_not_an_uncaught_exception():
+    assert telemetry_contradiction({"metric": "x", "value": 1, "direction": "sideways"}) is not None
+
+
+def test_bad_declared_tier_is_a_contradiction_not_an_uncaught_exception():
+    bad = {"metric": "x", "value": 1, "tier": "vibes"}
+    assert telemetry_contradiction(bad) is not None
+    bad_multi = {"status": "success", "metrics": [{"metric": "x", "value": 1, "tier": "vibes"}]}
+    assert telemetry_contradiction(bad_multi) is not None
+
+
+def test_evaluation_gate_reverts_a_nan_measurement_instead_of_keeping(tmp_path, monkeypatch):
+    payload = {"metric": "latency_ms", "value": float("nan"), "status": "success"}
+    script_results = iter([(0, "", ""), (0, json.dumps(payload, allow_nan=True), "")])
+    monkeypatch.setattr(gate, "run_script", lambda *_args, **_kwargs: next(script_results))
+
+    code, reason = gate.evaluate_change("checkout", "candidate/R-102", log_dir=str(tmp_path))
+
+    assert code == gate.REVERT
+    assert "telemetry contradiction" in reason
+
+
+def test_compare_rejects_non_finite_or_negative_tolerance():
+    with pytest.raises(ValueError):
+        compare("latency_ms", 100.0, 100.0, tolerance_pct=float("nan"))
+    with pytest.raises(ValueError):
+        compare("latency_ms", 100.0, 100.0, tolerance_pct=float("inf"))
+    with pytest.raises(ValueError):
+        compare("latency_ms", 100.0, 100.0, tolerance_pct=-1.0)
+    with pytest.raises(ValueError):
+        compare("latency_ms", 100.0, 100.0, noise_pct=float("nan"))
+
+
+def test_read_events_survives_only_a_torn_final_line(tmp_path):
+    from recurspec.metrics import read_events
+
+    log_dir = str(tmp_path)
+    log_event("comp", "baseline", {"metric": "m", "value": 1.0}, branch="main", log_dir=log_dir)
+    log_path = os.path.join(log_dir, "comp", "log.jsonl")
+    with open(log_path, "a", encoding="utf-8") as f:
+        f.write('{"ts": "trunc\n')
+
+    assert len(read_events("comp", log_dir)) == 1
+
+
+def test_read_events_raises_on_corruption_that_is_not_the_final_line(tmp_path):
+    from recurspec.metrics import read_events
+
+    log_dir = str(tmp_path)
+    comp_dir = tmp_path / "comp"
+    comp_dir.mkdir()
+    log_path = comp_dir / "log.jsonl"
+    log_path.write_text(
+        '{"broken\n{"event_type": "baseline", "branch": "main"}\n', encoding="utf-8"
+    )
+
+    with pytest.raises(EvidenceInstrumentError):
+        read_events("comp", log_dir)
+
+
+def test_find_baseline_raises_rather_than_silently_dropping_a_corrupt_prior_baseline(tmp_path):
+    # Reproduces the review's exact scenario: the only baseline event is corrupt, and a
+    # later measurement follows it - this must not read back as "no baseline yet".
+    log_dir = str(tmp_path)
+    comp_dir = tmp_path / "comp"
+    comp_dir.mkdir()
+    log_path = comp_dir / "log.jsonl"
+    log_path.write_text(
+        '{"event_type": "baseline", "branch": "main", "not valid json\n'
+        + json.dumps({"event_type": "measurement", "branch": "main", "metrics": {}})
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(EvidenceInstrumentError):
+        find_baseline("comp", "latency_p99_ms", log_dir)
 
 
 # --- evidence log round-trip ------------------------------------------------
@@ -505,6 +615,27 @@ def test_count_total_reverts_does_not_reset_after_keep_or_count_diagnostic_signa
     assert count_total_reverts("comp", log_dir, branch=branch) == 2
 
 
+@pytest.mark.parametrize(
+    "bad_module", ["../escape", "a/b", "a\\b", "..", "/etc/passwd", ""]
+)
+def test_evaluate_change_rejects_an_unsafe_module_name(tmp_path, bad_module):
+    with pytest.raises(gate.CandidateLifecycleError, match="not a single safe path segment"):
+        gate.evaluate_change(bad_module, "candidate/x", log_dir=str(tmp_path))
+
+
+def test_isolated_candidate_rejects_an_unsafe_module_name_before_any_worktree_work(
+    tmp_path,
+):
+    repo = _repo_with_candidate(tmp_path)
+
+    with pytest.raises(gate.CandidateLifecycleError, match="not a single safe path segment"):
+        gate.evaluate_isolated_candidate(
+            repo, "../escape", "candidate/R-200", authorization=_independent_review(repo)
+        )
+
+    assert _git(repo, "worktree", "list", "--porcelain").count("worktree ") == 1
+
+
 def test_evaluation_gate_logs_negative_patterns_and_enforces_total_attempt_ceiling(
     tmp_path, monkeypatch, capsys
 ):
@@ -696,6 +827,39 @@ def test_isolated_candidate_refuses_probe_mutations_instead_of_merging_an_uneval
     assert _git(repo, "worktree", "list", "--porcelain").count("worktree ") == 1
 
 
+def test_isolated_candidate_evaluates_against_trusted_probes_not_the_candidates_own(
+    tmp_path: Path,
+):
+    if gate._bash() is None:
+        pytest.skip("no POSIX shell available to run real probes")
+    repo = _repo_with_candidate(tmp_path)
+    _git(repo, "switch", "candidate/R-200")
+    (repo / "state.txt").write_text("broken\n", encoding="utf-8")
+    (repo / "modules" / "checkout" / "checks.sh").write_text(
+        "#!/usr/bin/env bash\nexit 0\n", encoding="utf-8"
+    )
+    _git(repo, "add", "state.txt", "modules")
+    _git(repo, "commit", "-m", "weaken checks.sh and break state")
+    _git(repo, "switch", "main")
+
+    code, reason = gate.evaluate_isolated_candidate(
+        repo, "checkout", "candidate/R-200", authorization=_independent_review(repo)
+    )
+
+    assert code == gate.REVERT
+    assert "checks.sh failed" in reason
+    assert (repo / "state.txt").read_text(encoding="utf-8") == "baseline\n"
+
+
+def test_isolated_candidate_refuses_a_module_without_trusted_baseline_probes(tmp_path: Path):
+    repo = _repo_with_candidate(tmp_path)
+
+    with pytest.raises(gate.CandidateLifecycleError, match="no trusted baseline probe"):
+        gate.evaluate_isolated_candidate(
+            repo, "does-not-exist", "candidate/R-200", authorization=_independent_review(repo)
+        )
+
+
 def test_isolated_candidate_promotes_baseline_only_after_merge(tmp_path, monkeypatch):
     repo = _repo_with_candidate(tmp_path)
     calls = []
@@ -779,6 +943,28 @@ def test_isolated_candidate_prunes_metadata_when_worktree_directory_disappears(
     assert _git(repo, "worktree", "list", "--porcelain").count("worktree ") == 1
 
 
+def test_isolated_candidate_ignores_recurspec_runtime_state_when_checking_cleanliness(
+    tmp_path, monkeypatch
+):
+    repo = _repo_with_candidate(tmp_path)
+    # An untracked worker-authorizations.json and evidence log at the documented paths
+    # must not themselves block evaluation, even if .gitignore hasn't caught up (R-604).
+    (repo / ".recurspec" / "evidence" / "checkout").mkdir(parents=True)
+    (repo / ".recurspec" / "evidence" / "checkout" / "log.jsonl").write_text(
+        "{}\n", encoding="utf-8"
+    )
+    (repo / ".recurspec" / "worker-authorizations.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(
+        gate, "evaluate_change", lambda *_args, **_kwargs: (gate.KEEP, "passed")
+    )
+
+    code, _ = gate.evaluate_isolated_candidate(
+        repo, "checkout", "candidate/R-200", authorization=_independent_review(repo)
+    )
+
+    assert code == gate.KEEP
+
+
 def test_isolated_candidate_refuses_a_dirty_or_wrong_baseline(tmp_path, monkeypatch):
     repo = _repo_with_candidate(tmp_path)
     (repo / "state.txt").write_text("do not merge over me\n", encoding="utf-8")
@@ -816,7 +1002,7 @@ def test_worker_pool_cannot_issue_merge_authorization_to_the_maker():
 
 def test_isolated_candidate_refuses_worker_authorization_for_another_candidate(tmp_path):
     repo = _repo_with_candidate(tmp_path)
-    pool = WorkerPool(lambda *_args: RuntimeResponse({}, 1, 1, 1.0), concurrency=1)
+    pool = WorkerPool(lambda *_args: RuntimeResponse({"approved": True}, 1, 1, 1.0), concurrency=1)
     pool.dispatch("R-999", {}, "frame", "worker-1", 100)
     pool.dispatch("R-999", {}, "check", "worker-2", 100, "candidate/R-999", "abc123")
 

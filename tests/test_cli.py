@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from recurspec import cli
 from recurspec.cli import build_parser, main, sync_skill
 
@@ -37,6 +39,27 @@ def test_parser_exposes_the_public_commands():
     assert reconcile.action == "plan"
     assert stack.action == "check"
     assert contract.path == Path("docs")
+
+
+@pytest.mark.parametrize("bad_tolerance", ["nan", "inf", "-1"])
+def test_evaluate_cli_rejects_non_finite_or_negative_tolerance(bad_tolerance, capsys):
+    parser = build_parser()
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(
+            [
+                "evaluate",
+                "checkout",
+                "candidate/42",
+                "--worker-state",
+                "worker-state.json",
+                "--authorization-id",
+                "node-42",
+                "--tolerance",
+                bad_tolerance,
+            ]
+        )
+    assert "must be a finite, non-negative number" in capsys.readouterr().err
 
 
 def test_every_cli_argument_documents_itself():

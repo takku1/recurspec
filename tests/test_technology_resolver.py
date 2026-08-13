@@ -1,6 +1,12 @@
 from pathlib import Path
 
-from recurspec.technology_resolver import audit_resolutions, load_dependency_inventory
+import pytest
+
+from recurspec.technology_resolver import (
+    ResolutionInstrumentError,
+    audit_resolutions,
+    load_dependency_inventory,
+)
 
 
 def _leaf(section_eight: str, implementation: str = "src/adapter.py") -> str:
@@ -132,6 +138,26 @@ def test_dependency_inventory_normalizes_package_keys_without_altering_versions(
     inventory.write_text('{"Example_SDK":"1.0.0"}', encoding="utf-8")
 
     assert load_dependency_inventory(inventory) == {"example-sdk": "1.0.0"}
+
+
+@pytest.mark.parametrize("floating", ["latest", ">=1.0", "*", "1.x", "^1.0.0"])
+def test_dependency_inventory_rejects_a_floating_version(tmp_path: Path, floating):
+    inventory = tmp_path / "inventory.json"
+    inventory.write_text(f'{{"example-sdk":"{floating}"}}', encoding="utf-8")
+
+    with pytest.raises(ResolutionInstrumentError, match="floating"):
+        load_dependency_inventory(inventory)
+
+
+def test_resolution_audit_flags_a_floating_pin_even_when_the_inventory_agrees(tmp_path: Path):
+    # Reproduces the review's exact scenario: an inventory and §8 Pin that both say
+    # "latest" pass plain string equality, but neither is an exact, reproducible pin.
+    tree = _write_tree(tmp_path, _complete_resolution(pin="latest"))
+
+    result = audit_resolutions(tmp_path, contract_root=tree, inventory={"example-sdk": "latest"})
+
+    assert "resolution.pin.not_exact" in {item.code for item in result.diagnostics}
+    assert "resolution.pin.stale" not in {item.code for item in result.diagnostics}
 
 
 def test_resolution_audit_refuses_a_missing_wrap_namespace(tmp_path: Path):

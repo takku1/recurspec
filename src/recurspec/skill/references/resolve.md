@@ -43,7 +43,7 @@ not cover**.
 > **Verify against live documentation.** Use `/research` or fetch current docs — do not
 > rely on recall for versions, pricing, or feature coverage. Never invent a vendor, a
 > version number, or a price. If the survey cannot be completed, resolve **DEFER** and
-> emit a Type B ticket rather than guessing.
+> record it as a Research Frontier in `ROADMAP.md` rather than guessing.
 
 ## 3. Score, if it is not obvious
 
@@ -71,7 +71,7 @@ storage overrides a high total.
 | **ADOPT** | Commodity you can run cheaply; no meaningful liability to transfer |
 | **WRAP** | Almost always alongside BUY/ADOPT — the adapter fitting it to your domain |
 | **BUILD** | Differentiator · fatal fit gap · cost inverts · dependency is a liability · genuinely trivial and stable |
-| **DEFER** | Survey incomplete → Type B ticket |
+| **DEFER** | Survey incomplete → Research Frontier |
 
 **BUILD requires a recorded justification** naming which condition applies. The other
 classes need no defence beyond the block itself.

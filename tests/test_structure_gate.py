@@ -87,6 +87,17 @@ def test_structure_gate_refuses_missing_input_roots(tmp_path: Path):
     ]
 
 
+def test_structure_gate_refuses_a_source_root_that_escapes_the_repository(tmp_path: Path):
+    (tmp_path / "docs" / "architecture").mkdir(parents=True)
+
+    result = check_structure(tmp_path, source_root="../../outside")
+
+    assert result.instrument_error
+    assert any(
+        item.code == "structure.source_root.outside_repository" for item in result.diagnostics
+    )
+
+
 def test_structure_gate_changed_files_narrows_source_drift_but_not_contract_drift(
     tmp_path: Path,
 ):

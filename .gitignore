@@ -11,6 +11,7 @@ dist/
 # Recurspec local state
 .recurspec/evidence/**/log.jsonl
 .recurspec/handoffs/
+.recurspec/worker-authorizations.json
 .scratch/handoffs/
 .measure/
 graphify-out/

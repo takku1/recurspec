@@ -20,10 +20,16 @@ Measured-grade evidence out of nothing.
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 from dataclasses import dataclass
 from typing import Any
+
+
+class EvidenceInstrumentError(RuntimeError):
+    """The evidence log is corrupt in a way that cannot be safely skipped."""
+
 
 # --- Metric direction -------------------------------------------------------
 # Explicit `direction` in the measure.sh payload always wins. These patterns are
@@ -73,21 +79,34 @@ def resolve_direction(metric: str, declared: str | None = None) -> str | None:
 
 
 def read_events(module: str, log_dir: str = ".recurspec/evidence") -> list[dict[str, Any]]:
-    """Read the append-only evidence log. Malformed lines are skipped, not fatal:
-    the log is append-only and a torn write must not block the gate."""
+    """Read the append-only evidence log.
+
+    Only the file's last line may be silently dropped, as a recoverable truncated
+    append (e.g. a crash mid-write). A malformed line anywhere else is real corruption
+    of prior history - erasing it could turn a real baseline regression into a false
+    "no baseline" first measurement, so it raises ``EvidenceInstrumentError`` instead of
+    being skipped.
+    """
     path = os.path.join(log_dir, module, "log.jsonl")
     if not os.path.exists(path):
         return []
-    events: list[dict[str, Any]] = []
     with open(path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
+        raw_lines = f.readlines()
+    last_index = len(raw_lines) - 1
+    events: list[dict[str, Any]] = []
+    for index, raw_line in enumerate(raw_lines):
+        line = raw_line.strip()
+        if not line:
+            continue
+        try:
+            events.append(json.loads(line))
+        except json.JSONDecodeError as exc:
+            if index == last_index:
                 continue
-            try:
-                events.append(json.loads(line))
-            except json.JSONDecodeError:
-                continue
+            raise EvidenceInstrumentError(
+                f"{path}:{index + 1}: corrupt evidence event blocks a safe baseline "
+                f"lookup: {exc}"
+            ) from exc
     return events
 
 
@@ -119,7 +138,8 @@ def _numeric(v: Any) -> float | None:
     if isinstance(v, bool):
         return None
     if isinstance(v, (int, float)):
-        return float(v)
+        f = float(v)
+        return f if math.isfinite(f) else None
     return None
 
 
@@ -155,7 +175,16 @@ def compare(
                    Within it, the run is NEUTRAL - acceptable for changes that
                    are not performance work.
     noise_pct:     movement smaller than this in either direction is NEUTRAL.
+
+    ``tolerance_pct``/``noise_pct`` are operator-supplied gate configuration, not
+    untrusted Candidate evidence, so an invalid value raises rather than failing closed
+    via a comparison verdict.
     """
+    if not math.isfinite(tolerance_pct) or tolerance_pct < 0:
+        raise ValueError(f"tolerance_pct must be a finite, non-negative number: {tolerance_pct!r}")
+    if not math.isfinite(noise_pct) or noise_pct < 0:
+        raise ValueError(f"noise_pct must be a finite, non-negative number: {noise_pct!r}")
+
     cur = _numeric(current)
     if cur is None:
         return Comparison(
@@ -459,14 +488,29 @@ def count_total_reverts(
 
 
 def _entry_contradiction(entry: dict[str, Any], label: str) -> str | None:
+    metric = entry.get("metric")
+    if not isinstance(metric, str) or not metric.strip():
+        return f"{label} is missing a metric name"
     if _numeric(entry.get("value")) is None:
-        return f"{label} emitted no numeric value"
+        return f"{label} emitted no numeric or non-finite value"
     stage = entry.get("evidence_stage")
     if stage is not None and stage not in ("Measured", "Sampled", "Observed"):
         return (
             f"{label} claimed evidence_stage={stage!r}; a evaluation gate run can only "
             "produce Observed, Sampled, or Measured"
         )
+    direction = entry.get("direction")
+    if direction is not None:
+        try:
+            resolve_direction(metric, direction)
+        except ValueError as exc:
+            return f"{label}: {exc}"
+    tier = entry.get("tier")
+    if tier is not None:
+        try:
+            resolve_tier(tier)
+        except ValueError as exc:
+            return f"{label}: {exc}"
     return None
 
 

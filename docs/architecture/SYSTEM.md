@@ -78,7 +78,7 @@ Research: [research/foundations.md](../research/foundations.md).
 
 - **Package implementation glue:** `src/recurspec/__init__.py`,
   `src/recurspec/__main__.py`.
-- **Test Surface Seam:** `tests/test_repository.py`.
+- **Test Surface Seam:** `tests/test_repository.py`, `tests/test_skill_references.py`.
 
 Resolve before decomposing. Decompose a node **only when** either its parts would resolve to *different* decision classes (split at that fault line), or it is uniformly BUILD and too large for one TDD session (split by independent interface seam — inputs/outputs that can change without rewriting siblings). Stop at procurement boundaries and at one-session build units. Full rule with depth guards: [contract-design.md](../process/contract-design.md).
 
