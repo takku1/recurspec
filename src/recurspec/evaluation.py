@@ -20,6 +20,7 @@ retry an invalidated approach. Bounded retry counts escalate to human judgment.
 
 from __future__ import annotations
 
+import ntpath
 import os
 import shutil
 import subprocess
@@ -44,20 +45,20 @@ from .metrics import (
 KEEP, REVERT, ERROR, ESCALATE = 0, 1, 2, 3
 
 
-def _bash() -> str | None:
+def _bash(platform: str | None = None) -> str | None:
     override = os.environ.get("RECURSPEC_BASH")
     if override:
         return override if os.path.isfile(override) else shutil.which(override)
 
     # On Windows, PATH commonly resolves `bash` to the WSL launcher even when
     # no distro is installed. Prefer the Bash shipped beside Git for Windows.
-    if os.name == "nt":
+    if (platform or os.name) == "nt":
         git = shutil.which("git")
         if git:
-            git_root = os.path.dirname(os.path.dirname(git))
+            git_root = ntpath.dirname(ntpath.dirname(git))
             for candidate in (
-                os.path.join(git_root, "bin", "bash.exe"),
-                os.path.join(git_root, "usr", "bin", "bash.exe"),
+                ntpath.join(git_root, "bin", "bash.exe"),
+                ntpath.join(git_root, "usr", "bin", "bash.exe"),
             ):
                 if os.path.isfile(candidate):
                     return candidate

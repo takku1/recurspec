@@ -506,7 +506,6 @@ def test_bash_prefers_git_installation_over_windows_wsl_shim(monkeypatch):
     git_bash = r"C:\Program Files\Git\bin\bash.exe"
 
     monkeypatch.delenv("RECURSPEC_BASH", raising=False)
-    monkeypatch.setattr(gate.os, "name", "nt")
     monkeypatch.setattr(
         gate.shutil,
         "which",
@@ -514,7 +513,7 @@ def test_bash_prefers_git_installation_over_windows_wsl_shim(monkeypatch):
     )
     monkeypatch.setattr(gate.os.path, "isfile", lambda path: path == git_bash)
 
-    assert gate._bash() == git_bash
+    assert gate._bash(platform="nt") == git_bash
 
 
 def test_comparison_exposes_merge_blocking_verdicts():
