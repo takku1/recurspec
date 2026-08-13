@@ -32,22 +32,28 @@ node's *contract surface*. Editing §5 prose does not dirty anything downstream.
 
 ## 4. Invariants (EARS + Epistemic Stage)
 
-- **[Ubiquitous]** The Store SHALL be reconstructible in full from the markdown tree plus
-  git history; losing it SHALL cost time, never information. (OW-40)
-  - `EvidenceStage:` Unknown
+- **[Ubiquitous]** The Store SHALL be reconstructible in full from the markdown tree
+  (the current checkout of that git history); losing it SHALL cost time, never
+  information. (`test_full_rebuild_from_markdown_reproduces_the_store`)
+  - `EvidenceStage:` Sampled
 - **[State-driven]** WHILE multiple workers are active THE SYSTEM SHALL hand a given node
   to at most one worker (atomic claim).
-  - `EvidenceStage:` Unknown
+  (`test_atomic_claim_hands_each_ready_node_to_exactly_one_worker`, threaded, run
+  repeatedly to rule out flakiness)
+  - `EvidenceStage:` Sampled
 - **[Event-driven]** WHEN a node's contract hash changes THE SYSTEM SHALL mark that node
   and its parent dirty, and SHALL NOT mark its siblings dirty. (sibling isolation is what
-  makes re-walks cheap; a sibling only dirties if it names the changed node in its own §3)
-  - `EvidenceStage:` Unknown
+  makes re-walks cheap; a sibling only dirties if it names the changed node in its own §3;
+  `test_contract_hash_change_dirties_the_node_and_its_parent_but_not_siblings`)
+  - `EvidenceStage:` Sampled
 - **[Conditional]** IF a survey row's `fetched_at` is older than `survey_ttl_days` THEN
-  THE SYSTEM SHALL report `stale` and SHALL NOT return it as a hit. (recency rule)
-  - `EvidenceStage:` Unknown
+  THE SYSTEM SHALL report `stale` and SHALL NOT return it as a hit. (recency rule;
+  `test_survey_ttl_expiry_reports_stale_not_a_hit`)
+  - `EvidenceStage:` Sampled
 - **[Conditional]** IF the store disagrees with the markdown tree THEN THE SYSTEM SHALL
-  discard the store's row and re-derive it. (markdown is sovereign)
-  - `EvidenceStage:` Unknown
+  discard the store's row and re-derive it. (markdown is sovereign;
+  `test_rebuild_discards_a_stored_row_that_disagrees_with_markdown`)
+  - `EvidenceStage:` Sampled
 
 ## 5. Architectural Decisions (ADRs)
 
@@ -63,13 +69,15 @@ node's *contract surface*. Editing §5 prose does not dirty anything downstream.
 
 ## 6. Leaf Execution & Test Seam
 
-- **Implementation:** not yet built; planned seam `src/recurspec/spec_runner/store.py`
-  (seam over the embedded engine) — same `spec_runner` subpackage as context-packer and
-  worker-pool.
-- **Tests:** `tests/test_job_store.py` — must cover: atomic claim under concurrency;
-  sibling non-invalidation; TTL expiry returns `stale` not a hit; full rebuild from
-  markdown reproduces the store; markdown wins on disagreement
-- **Open work:** OW-40, OW-41
+- **Implementation:** `src/recurspec/spec_runner/store.py` — same `spec_runner`
+  subpackage as context-packer and worker-pool.
+- **Tests:** `tests/test_job_store.py` (11 tests) — covers atomic claim under
+  concurrency (threaded, run repeatedly to rule out flakiness); sibling
+  non-invalidation; TTL expiry returns `stale` not a hit; full rebuild from markdown
+  reproduces the store; markdown wins on disagreement; removal of nodes no longer
+  present in the tree.
+- **Open work:** none for this leaf. The Runner's own scheduling loop (R-200) still
+  needs to call this store; that orchestration lives above this node.
 
 ## 7. Measurement Seams
 
@@ -90,9 +98,9 @@ node's *contract surface*. Editing §5 prose does not dirty anything downstream.
 - **Selected:** SQLite via the Python standard library's `sqlite3` module, with content
   hashing delegated to git's object hashing. Both are already dependencies of this repo
   (the evaluation gate is Python; the tree is versioned in git).
-  - **Pin:** not recorded — `sqlite3` ships with the interpreter, so the pin is the Python
-    version declared at implementation. Verify against live docs before writing §8's final
-    form (OW-40); this spec does not assert a version it has not checked.
+  - **Pin:** none — `sqlite3` ships with the interpreter; the effective pin is the
+    project's own `requires-python = ">=3.10"` in `pyproject.toml`. Verified by
+    running against the interpreter's bundled SQLite 3.53.1 during implementation.
 - **Standard / protocol:** SQL; git object format
 - **Alternatives considered:**
   | Option | Why not |
@@ -105,12 +113,14 @@ node's *contract surface*. Editing §5 prose does not dirty anything downstream.
 - **Fit gap:** SQLite gives durability and transactions but no queue semantics, no TTL, and
   no dirty-propagation — those are the thin layer `store.py` adds. **This gap is why the
   parent node has a BUILD child at all**, and it is deliberately kept this small.
-- **Seam:** `src/recurspec/spec_runner/store.py` (planned) — no SQL escapes this module
-- **Exit cost:** LOW — the schema is five tables and the store is regenerable from
-  markdown, so a migration is a rebuild, not a data export
+- **Seam:** `src/recurspec/spec_runner/store.py` — no SQL escapes this module
+- **Exit cost:** LOW — the schema is five tables (`nodes`, `claims`, `survey_cache`,
+  `dirty_log`, `schema_meta`) and the store is regenerable from markdown, so a
+  migration is a rebuild, not a data export
 - **Cost model:** zero licence, zero hosting; disk only
 - **Liability transferred:** none (embedded, local, no PII)
 - **Operational owner:** us
 - **Failure mode:** a corrupt store halts the run. Recovery is `rm` plus a full re-derive
   from markdown — which is exactly why invariant 1 forbids it holding unique information.
-- **Open questions:** OW-40 (pin + schema), OW-41 (dirty-propagation rules)
+- **Open questions:** none. OW-40 (pin + schema) and OW-41 (dirty-propagation rules) are
+  resolved by this implementation and its tests.

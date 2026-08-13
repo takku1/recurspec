@@ -2,7 +2,7 @@ import shutil
 from importlib.resources import files
 from pathlib import Path
 
-from recurspec.contract import validate_contract
+from recurspec.contract import decision_class, resolve_child_path, validate_contract
 
 FIXTURES = Path(__file__).parent / "fixtures" / "contracts"
 
@@ -16,6 +16,27 @@ def _tree_variant(tmp_path: Path, replacements: dict[str, tuple[str, str]]) -> P
             contract_path.read_text(encoding="utf-8").replace(old, new), encoding="utf-8"
         )
     return tree
+
+
+def test_decision_class_extracts_the_section_eight_decision():
+    result = validate_contract(FIXTURES / "valid" / "SYSTEM.md")
+
+    assert decision_class(result.contracts[0]["sections"]) == "BUILD"
+
+
+def test_decision_class_is_none_without_a_section_eight():
+    result = validate_contract(FIXTURES / "valid-tree" / "SYSTEM.md")
+
+    assert decision_class(result.contracts[0]["sections"]) is None
+
+
+def test_resolve_child_path_expands_a_directory_link_to_its_system_md(tmp_path: Path):
+    parent = tmp_path / "root" / "SYSTEM.md"
+    (tmp_path / "root" / "child").mkdir(parents=True)
+
+    resolved = resolve_child_path(parent, "./child")
+
+    assert resolved == (tmp_path / "root" / "child" / "SYSTEM.md").resolve()
 
 
 def test_validate_contract_recognizes_a_bold_annotated_atomic_leaf_declaration(

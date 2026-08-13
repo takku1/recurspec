@@ -4,6 +4,21 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ## [Unreleased]
 
+### Added
+
+- Implemented Job Store (ROADMAP R-202): `src/recurspec/spec_runner/store.py`, a
+  SQLite-backed store for the Runner's durable state (node status, contract hashes,
+  atomic claims, TTL'd capability-survey cache, a `tree.json` projection), matching
+  `docs/architecture/spec-runner/job-store/SYSTEM.md` exactly. Every write opens its own
+  short-lived connection under `BEGIN IMMEDIATE`, so atomic claims are safe across real
+  threads/processes without shared connection state. Dirty-propagation reaches a changed
+  node and its parent only, never siblings. `rebuild_from_tree` refuses an invalid
+  Contract Tree rather than guess, and markdown always wins over a stale stored row.
+  11 tests, including a threaded concurrency test run repeatedly to rule out flakiness.
+  Two small, genuinely reusable helpers were added to `contract.py` to support this:
+  `decision_class()` (parses §8's Decision class) and `resolve_child_path()` (extracted
+  from `validate_contract`'s own child-link resolution, now shared instead of duplicated).
+
 ### Fixed
 
 - Recurspec's own `docs/architecture/**/SYSTEM.md` tree now carries `<!-- recurspec-contract:

@@ -105,6 +105,34 @@ def _is_atomic_leaf(section_two: str) -> bool:
     return bool(ATOMIC_LEAF_RE.match(section_two.strip()))
 
 
+DECISION_CLASS_RE = re.compile(
+    r"^\s*-\s*\*\*Decision class:\*\*\s*(BUY|ADOPT|WRAP|BUILD|DEFER)\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def decision_class(sections: dict[str, str]) -> str | None:
+    """Extract a terminal node's §8 Decision class (BUY/ADOPT/WRAP/BUILD/DEFER).
+
+    Returns ``None`` for a non-terminal node or a §8 block this instrument
+    cannot parse - callers must not guess a class from absence.
+    """
+    match = DECISION_CLASS_RE.search(sections.get("8", ""))
+    return match.group(1).upper() if match else None
+
+
+def resolve_child_path(parent_path: Path, child_link: str) -> Path:
+    """Resolve a child link relative to its parent's directory, expanding a
+    directory link to the ``SYSTEM.md`` it implies. Pure path resolution -
+    does not check the result is in-tree or exists; ``validate_contract``
+    owns those diagnostics.
+    """
+    child_path = (parent_path.parent / Path(child_link)).resolve()
+    if child_path.is_dir():
+        child_path = child_path / "SYSTEM.md"
+    return child_path
+
+
 def _sections(text: str) -> dict[str, str]:
     matches = list(SECTION_RE.finditer(text))
     return {
@@ -295,7 +323,7 @@ def validate_contract(path: str | Path) -> ValidationResult:
                         )
                     )
                     continue
-                child_path = (parent_path.parent / linked_path).resolve()
+                child_path = resolve_child_path(parent_path, child_link)
                 if not child_path.is_relative_to(tree_root):
                     diagnostics.append(
                         Diagnostic(
@@ -305,8 +333,6 @@ def validate_contract(path: str | Path) -> ValidationResult:
                         )
                     )
                     continue
-                if child_path.is_dir():
-                    child_path = child_path / "SYSTEM.md"
                 if child_path in seen_children:
                     diagnostics.append(
                         Diagnostic(
