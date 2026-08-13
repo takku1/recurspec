@@ -1,47 +1,91 @@
 # Contract Engine (L1)
 
-> Reference archive: `docs/archive/2026-08-02-pre-redesign/architecture/architecture/SPEC_ENGINE/SYSTEM.md`
+<!-- recurspec-contract: 1.0 -->
 
 ## 1. System Intent & Responsibility
 
-Create, validate, and format fractal `SYSTEM.md` contracts using **EARS** patterns and Epistemic Stage tags. Owns structural validity of the spec tree, not runtime code of consumer products.
+Transform a versioned Markdown Contract Node into a normalized, interoperable contract
+and deterministic diagnostics. It does not own implementation execution, dependency
+resolution, or authoring prose on a user's behalf.
 
 ## 2. Sub-System Decomposition
 
-**Atomic leaf (Phase 0).** Further split only if generator vs validator vs template-linter gain independent seams.
+Atomic leaf. The Markdown adapter and JSON Schema validator share one public validation
+seam and cannot fail independently from a user's perspective.
 
 ## 3. Interface Contracts
 
-| | |
-|--|--|
-| **Inputs** | Module title, intent prose, candidate invariants, optional parent path, child index |
-| **Outputs** | Validated Markdown `SYSTEM.md`; validation diagnostics (missing EARS keywords, missing §6/§7 on leaves) |
+- **Inputs:** A `SYSTEM.md` file or directory containing Contract Nodes marked with
+  `<!-- recurspec-contract: 1.0 -->`.
+- **Outputs:** A normalized Contract Node conforming to the bundled JSON Schema and
+  stable diagnostics containing path, rule code, and message.
+- **CLI:** `recurspec contract check PATH [--format text|json]`.
+- **Exit status:** `0` valid, `1` contract invalid, `2` validation instrument failed.
 
 ## 4. Invariants (EARS + Epistemic Stage)
 
-- **[Ubiquitous]** The Contract Engine SHALL format invariants using EARS keywords: Ubiquitous, Event-driven, State-driven, Conditional.
-  - `EvidenceStage:` Asserted (process rule); automation Sampled pending OW-01
-  - *Research:* Mavin et al., RE'09 — see [research/foundations.md](../../research/foundations.md) §1
-- **[Conditional]** IF a node is an Atomic Leaf THEN THE SYSTEM SHALL require Section 6 (Test Seam) and Section 7 (Measurement Seams).
-  - `EvidenceStage:` Asserted
-- **[Conditional]** IF an invariant lacks an Epistemic Stage tag THEN THE SYSTEM SHALL treat it as `Unknown` and flag for Architect review.
-  - `EvidenceStage:` Asserted
+- **[Ubiquitous]** The Contract Engine SHALL validate normalized Contract Nodes against
+  JSON Schema Draft 2020-12.
+  - `EvidenceStage:` Unknown
+- **[Ubiquitous]** The Contract Engine SHALL report diagnostics in byte-stable order.
+  - `EvidenceStage:` Unknown
+- **[Conditional]** IF a Contract Node is an Atomic Leaf THEN THE SYSTEM SHALL require
+  Sections 6, 7, and 8.
+  - `EvidenceStage:` Unknown
+- **[Conditional]** IF an invariant lacks a recognized EARS pattern or Evidence Stage
+  THEN THE SYSTEM SHALL reject the Contract Node.
+  - `EvidenceStage:` Unknown
+- **[Conditional]** IF a directory is checked THEN THE SYSTEM SHALL validate every
+  recursively discovered `SYSTEM.md` file.
+  - `EvidenceStage:` Unknown
 
 ## 5. Architectural Decisions (ADRs)
 
-- **ADR-001:** Strict EARS keywords only (no free-form “shall” without pattern class).
-- **ADR-002:** Epistemic Stages are mandatory metadata; Sampled ≠ Proved ([research foundation](../../research/foundations.md) §5).
+- **ADR-001:** JSON Schema Draft 2020-12 is the portable source of structural truth;
+  Python types are adapters, not the public specification.
+- **ADR-002:** Version metadata remains an unobtrusive HTML comment so Contract Nodes
+  stay readable Markdown and render cleanly on GitHub.
+- **ADR-003:** Version 1.0 requires explicit metadata and fails closed; unversioned
+  documents are migration candidates, not implicitly valid legacy contracts.
 
 ## 6. Leaf Execution & Test Seam
 
-- **Implementation:** `src/spec_engine/generator.py`
-- **Tests / checks:** `tests/test_spec_engine.py` · module `checks.sh` when scaffolded
-- **Open work:** OW-01
+- **Implementation Files:** `src/recurspec/contract.py`,
+  `src/recurspec/schemas/contract-node-1.0.schema.json`, `src/recurspec/cli.py`.
+- **Test Surface Seam:** `tests/test_contract.py` through `validate_contract()` and the
+  public CLI parser/handler.
 
 ## 7. Measurement Seams
 
-- **Primary metric:** `ears_validation_pass_rate` (target: 1.0 on generated nodes)
-- **Secondary:** `specs_generated_per_sec` (informational)
-- **Evaluation Gate:** `modules/contract-engine/measure.sh` (scaffold with OW-05)
-- **Backpressure:** `modules/contract-engine/checks.sh` must pass before keep
-- **Branching:** isolated worktree; Outer Loop keep/revert only
+- **Primary Metric:** `valid_fixture_acceptance_rate` (target `1.0`, direction: higher).
+- **Harness Path:** `modules/contract-engine/measure.sh`.
+- **Correctness Backpressure:** `modules/contract-engine/checks.sh`.
+- **Telemetry Surface:** stable JSON diagnostic list written to stdout on request.
+- **Branching Policy:** isolated Candidate; KEEP only when checks pass, the valid-fixture
+  rate is `1.0`, invalid fixtures are rejected, and telemetry is non-contradictory.
+
+## 8. Technology Resolution
+
+- **Decision class:** WRAP
+- **Selected:** `jsonschema>=4.26,<5` over JSON Schema Draft 2020-12, wrapped by the
+  Recurspec Markdown adapter.
+- **Standard / protocol:** JSON Schema Draft 2020-12.
+- **Alternatives considered:**
+
+  | Option | Why not |
+  |---|---|
+  | Pydantic 2.13.x | Excellent Python validation, but makes Python models the primary contract and adds domain coupling at the interoperability seam. |
+  | Pure standard-library validation | Avoids a dependency but would reimplement a mature standard and error traversal. |
+  | Python-Markdown 3.10.x | Produces HTML and intentionally does not implement CommonMark; more machinery than the bounded structural adapter needs. |
+
+- **Fit gap:** JSON Schema cannot parse Markdown or enforce EARS sentence forms; the
+  adapter owns extraction and semantic checks.
+- **Seam:** `src/recurspec/contract.py`.
+- **Exit cost:** LOW — replace the validator behind one normalized mapping.
+- **Cost model:** No service spend; reconsider only if dependency weight or startup time
+  materially dominates the CLI.
+- **Liability transferred:** JSON Schema conformance and generic error traversal.
+- **Operational owner:** us.
+- **Failure mode:** Fail closed with exit `2` when the schema or adapter cannot run; never
+  reinterpret an instrument failure as an invalid user contract.
+- **Open questions:** none.
