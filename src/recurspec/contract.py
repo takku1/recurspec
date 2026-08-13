@@ -84,12 +84,23 @@ def _invariants(section: str) -> tuple[list[dict[str, str]], list[tuple[str, str
     normalized: list[dict[str, str]] = []
     problems: list[tuple[str, str]] = []
     lines = section.splitlines()
-    for index, line in enumerate(lines):
-        match = INVARIANT_RE.match(line)
-        if not match:
-            continue
-        pattern, statement = match.groups()
-        evidence = EVIDENCE_RE.match(lines[index + 1]) if index + 1 < len(lines) else None
+    starts = [
+        (index, match)
+        for index, line in enumerate(lines)
+        if (match := INVARIANT_RE.match(line))
+    ]
+    for position, (index, match) in enumerate(starts):
+        pattern, first_statement_line = match.groups()
+        next_index = starts[position + 1][0] if position + 1 < len(starts) else len(lines)
+        evidence = None
+        statement_lines = [first_statement_line]
+        for continuation in lines[index + 1 : next_index]:
+            if evidence_match := EVIDENCE_RE.match(continuation):
+                evidence = evidence_match
+                break
+            if continuation.strip():
+                statement_lines.append(continuation.strip())
+        statement = " ".join(statement_lines)
         if pattern not in EARS_PATTERNS or not EARS_PATTERNS.get(pattern, re.compile(r"a^")).search(
             statement
         ):

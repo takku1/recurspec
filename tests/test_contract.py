@@ -47,3 +47,19 @@ def test_validate_contract_rejects_a_directory_without_contract_nodes(tmp_path: 
     assert [(diagnostic.rule_code, diagnostic.message) for diagnostic in result.diagnostics] == [
         ("contract.discovery.empty", "directory contains no recursively discovered SYSTEM.md files")
     ]
+
+
+def test_validate_contract_accepts_wrapped_invariants_from_the_contract_engine_spec():
+    result = validate_contract(Path("docs/architecture/contract-engine/SYSTEM.md"))
+
+    assert result.valid
+    assert result.diagnostics == ()
+    assert result.contracts[0]["invariants"][0] == {
+        "ears_pattern": "Ubiquitous",
+        "statement": (
+            "The Contract Engine SHALL validate normalized Contract Nodes against "
+            "JSON Schema Draft 2020-12."
+        ),
+        "evidence_stage": "Unknown",
+    }
+    assert len(result.contracts[0]["invariants"]) == 5
