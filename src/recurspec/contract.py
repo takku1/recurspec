@@ -29,10 +29,8 @@ EVIDENCE_STAGES = {
 EARS_PATTERNS = {
     "Ubiquitous": re.compile(r"\bSHALL\b", re.IGNORECASE),
     "Conditional": re.compile(r"^IF\b.+\bTHEN\b.+\bSHALL\b", re.IGNORECASE),
-    "Event-Driven": re.compile(r"^WHEN\b.+\bSHALL\b", re.IGNORECASE),
-    "State-Driven": re.compile(r"^WHILE\b.+\bSHALL\b", re.IGNORECASE),
-    "Optional": re.compile(r"^WHERE\b.+\bSHALL\b", re.IGNORECASE),
-    "Unwanted": re.compile(r"^IF\b.+\bTHEN\b.+\bSHALL\b", re.IGNORECASE),
+    "Event-driven": re.compile(r"^WHEN\b.+\bSHALL\b", re.IGNORECASE),
+    "State-driven": re.compile(r"^WHILE\b.+\bSHALL\b", re.IGNORECASE),
 }
 
 
@@ -200,6 +198,17 @@ def validate_contract(path: str | Path) -> ValidationResult:
     requested = Path(path)
     if requested.is_dir():
         paths = sorted(requested.rglob("SYSTEM.md"), key=lambda item: item.as_posix())
+        if not paths:
+            return ValidationResult(
+                (),
+                (
+                    Diagnostic(
+                        requested.as_posix(),
+                        "contract.discovery.empty",
+                        "directory contains no recursively discovered SYSTEM.md files",
+                    ),
+                ),
+            )
     elif requested.is_file():
         paths = [requested]
     else:

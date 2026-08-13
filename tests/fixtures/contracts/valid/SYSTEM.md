@@ -19,6 +19,10 @@ Atomic leaf.
 
 - **[Ubiquitous]** THE SYSTEM SHALL emit deterministic diagnostics.
   - `EvidenceStage:` Sampled
+- **[Event-driven]** WHEN validation begins THE SYSTEM SHALL load the bundled schema.
+  - `EvidenceStage:` Sampled
+- **[State-driven]** WHILE a directory is checked THE SYSTEM SHALL inspect every Contract Node.
+  - `EvidenceStage:` Sampled
 
 ## 5. Architectural Decisions (ADRs)
 

@@ -37,3 +37,13 @@ def test_contract_schema_is_a_bundled_package_resource():
 
     assert schema.is_file()
     assert '"https://json-schema.org/draft/2020-12/schema"' in schema.read_text(encoding="utf-8")
+
+
+def test_validate_contract_rejects_a_directory_without_contract_nodes(tmp_path: Path):
+    result = validate_contract(tmp_path)
+
+    assert not result.valid
+    assert result.contracts == ()
+    assert [(diagnostic.rule_code, diagnostic.message) for diagnostic in result.diagnostics] == [
+        ("contract.discovery.empty", "directory contains no recursively discovered SYSTEM.md files")
+    ]

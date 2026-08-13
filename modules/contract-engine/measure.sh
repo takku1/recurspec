@@ -18,7 +18,7 @@ rate = accepted / len(valid_contracts) if valid_contracts else None
 
 payload = {
     "direction": "higher",
-    "evidence_stage": "Measured",
+    "evidence_stage": "Sampled",
     "metric": "valid_fixture_acceptance_rate",
     "status": "success" if rate == 1.0 else "failure",
     "tier": "hard_gate",

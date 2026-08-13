@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://recurspec.dev/schemas/contract-node-1.0.schema.json",
+  "$id": "urn:recurspec:schema:contract-node:1.0",
   "title": "Recurspec Contract Node 1.0",
   "type": "object",
   "additionalProperties": false,
@@ -34,7 +34,7 @@
         "required": ["ears_pattern", "statement", "evidence_stage"],
         "properties": {
           "ears_pattern": {
-            "enum": ["Ubiquitous", "Conditional", "Event-Driven", "State-Driven", "Optional", "Unwanted"]
+            "enum": ["Ubiquitous", "Event-driven", "State-driven", "Conditional"]
           },
           "statement": {"type": "string", "minLength": 1},
           "evidence_stage": {

@@ -46,3 +46,8 @@ def test_contract_check_cli_uses_distinct_valid_invalid_and_instrument_exit_code
 
     assert main(["contract", "check", str(fixtures / "does-not-exist")]) == 2
     assert "contract validation instrument failed" in capsys.readouterr().err
+
+
+def test_contract_check_cli_rejects_an_empty_directory(tmp_path: Path, capsys):
+    assert main(["contract", "check", str(tmp_path)]) == 1
+    assert "contract.discovery.empty" in capsys.readouterr().out
