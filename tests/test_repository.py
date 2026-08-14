@@ -1,4 +1,5 @@
 import re
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -42,6 +43,24 @@ def test_legacy_public_names_do_not_return():
                 offenders.append(f"{document.relative_to(ROOT)}: {term}")
 
     assert offenders == []
+
+
+def test_local_scratch_state_is_never_committed():
+    """.scratch/ is this repository's own scratchpad (ROADMAP.md is the sole
+    incomplete-work surface, per AGENTS.md rule 1) - a file committed under it is
+    exactly the kind of parallel, driftable readiness list that rule forbids. This
+    reproduces the real regression: .scratch/wayfinder-map/ was committed pre-redesign
+    and never removed, silently outliving the rename to recurspec's current
+    architecture and vocabulary."""
+    result = subprocess.run(
+        ["git", "-C", str(ROOT), "ls-files", ".scratch"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    tracked = [line for line in result.stdout.splitlines() if line.strip()]
+
+    assert tracked == []
 
 
 def test_bundled_skill_has_one_public_identity():

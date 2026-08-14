@@ -124,6 +124,38 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
   the moment real ports were added. `_is_atomic_leaf` now uses one regex tolerant of both
   the bold marker and the parenthetical annotation, replacing two duplicated string-prefix
   checks. Covered by `test_validate_contract_recognizes_a_bold_annotated_atomic_leaf_declaration`.
+- Fixed R-600 through R-608, a security/correctness review of the Evaluation Gate, Worker
+  Pool, and Contract Engine: a Candidate could no longer replace its own gate probes and
+  merge itself; Worker Pool state now proves independent maker/checker approval instead of
+  treating any within-budget CHECK response as authorization; invalid or non-finite
+  telemetry and evidence-log corruption now fail closed instead of manufacturing evidence;
+  hollow and disconnected Contract Trees are rejected; the documented Worker Pool state path
+  can no longer make evaluation refuse to start; the bundled skill's references were aligned
+  with the shipped CLI and canonical vocabulary; the missing `job-store`/`worker-pool` probe
+  scripts were added and the Contract Engine's multi-object `measure.sh` payload was fixed;
+  floating dependency versions are rejected in both the inventory and §8 Pin fields; and CLI
+  path arguments are now validated against escaping their declared seams. See ROADMAP.md's
+  "Review remediation" table for the full ID-by-ID evidence.
+- Fixed R-609 through R-616, a follow-up adversarial pass over the R-600–R-608 fixes:
+  `checks.sh`/`measure.sh` pinning now also covers the `tests/` tree they shell out to, so a
+  Candidate can no longer pass its own checks by weakening the assertions those checks run;
+  a produce racing an in-flight CHECK call can no longer authorize content the checker never
+  reviewed; evidence-log corruption on a complete (newline-terminated) line, or a non-object
+  JSON scalar, now raises instead of being silently forgiven or crashing later with
+  `AttributeError`; every bundled probe resolves `python3`/`python` instead of assuming a
+  bare `python` alias; the baseline cleanliness check no longer excludes the whole
+  `.recurspec/` directory (a tracked dirty file there still blocks evaluation); exact-version
+  detection now accepts `v`-prefixed tags, hex revisions, and `algo:hex` digests while
+  rejecting malformed pins; a Contract Node §6 declaration can no longer point outside the
+  repository; and the bundled skill's one repository-only relative link was removed. See
+  ROADMAP.md's "Follow-up hardening" table for the full ID-by-ID evidence.
+- Removed `.scratch/wayfinder-map/` (`01-spec-engine.md`, `02-reconciler.md`, `MAP.md`),
+  pre-redesign scratch content that stayed committed after the redesign and had drifted
+  into a second, contradictory readiness list — banned skill names, a non-existent archive
+  reference, and component paths (`src/spec_engine/`, `docs/architecture/spec-engine/`)
+  that were never part of the current architecture. `.scratch/` is now gitignored in full
+  (previously only `.scratch/handoffs/`), and `test_local_scratch_state_is_never_committed`
+  guards against this recurring.
 
 ### Added
 

@@ -12,7 +12,7 @@ dist/
 .recurspec/evidence/**/log.jsonl
 .recurspec/handoffs/
 .recurspec/worker-authorizations.json
-.scratch/handoffs/
+.scratch/
 .measure/
 graphify-out/
 .graphgraph/
