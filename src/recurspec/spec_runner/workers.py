@@ -2,15 +2,10 @@
 
 Implements docs/architecture/spec-runner/worker-pool/SYSTEM.md. This module owns the
 policy - budget enforcement, phase-to-tier routing, maker != checker, and the
-concurrency cap - not a concrete agent-runtime integration. The node's own §8 names the
-Claude Agent SDK as the selected runtime (ADOPT), but its package name and version must
-be read from live documentation before pinning it, which this implementation cannot do
-from here; asserting an unverified pin would violate the project's own evidence policy
-(see docs/research/foundations.md). Callers inject a ``RuntimeCall`` instead - in
-production, an SDK-backed callable; here, the pool's own policy is fully implemented and
-tested against a fake runtime, matching how workers.py's fit gap is described in §8:
-"the SDK does not know Recurspec's phases, tiering policy, or budget rule" - that gap,
-and only that gap, is this module.
+concurrency cap - not a concrete agent-runtime integration. The production adapter is
+``messages_runtime`` in ``runtime.py`` (R-204): a WRAP over an official Messages API
+client. Claude Agent SDK was surveyed and rejected because it exposes Read/Write/Bash
+by default. Callers still inject a ``RuntimeCall``; tests use a fake one.
 """
 
 from __future__ import annotations

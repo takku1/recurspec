@@ -26,6 +26,13 @@ def test_parser_exposes_the_public_commands():
     structure = parser.parse_args(["structure", "check", ".", "--format", "json"])
     reconcile = parser.parse_args(["reconcile", "plan", ".", "--format", "json"])
     stack = parser.parse_args(["stack", "check", ".", "--format", "json"])
+    modules = parser.parse_args(
+        ["modules", "check", ".", "--changed-file", "src/recurspec/contract.py"]
+    )
+    frontier = parser.parse_args(["frontier", "check", ".", "--format", "json"])
+    corpus = parser.parse_args(
+        ["corpus", "export", "--output", "corpus.jsonl", "--i-opt-in"]
+    )
 
     assert evaluate.module == "checkout"
     assert evaluate.candidate_branch == "candidate/42"
@@ -38,6 +45,11 @@ def test_parser_exposes_the_public_commands():
     assert structure.format == "json"
     assert reconcile.action == "plan"
     assert stack.action == "check"
+    assert modules.action == "check"
+    assert modules.changed_file == ["src/recurspec/contract.py"]
+    assert frontier.action == "check"
+    assert corpus.action == "export"
+    assert corpus.i_opt_in is True
     assert contract.path == Path("docs")
 
 
@@ -72,10 +84,29 @@ def test_every_cli_argument_documents_itself():
     skills = parser._subparsers._group_actions[0].choices["skills"]
     contract = parser._subparsers._group_actions[0].choices["contract"]
     check = contract._subparsers._group_actions[0].choices["check"]
+    modules_check = (
+        parser._subparsers._group_actions[0]
+        .choices["modules"]
+        ._subparsers._group_actions[0]
+        .choices["check"]
+    )
+    corpus_export = (
+        parser._subparsers._group_actions[0]
+        .choices["corpus"]
+        ._subparsers._group_actions[0]
+        .choices["export"]
+    )
 
-    for subparser in (evaluate, skills, check):
+    for subparser in (evaluate, skills, check, modules_check, corpus_export):
         for action in actions(subparser):
             assert action.help, f"{subparser.prog} {action.dest} is missing help text"
+
+
+def test_corpus_export_cli_refuses_without_opt_in(tmp_path: Path, capsys):
+    code = main(["corpus", "export", "--output", str(tmp_path / "corpus.jsonl")])
+
+    assert code == 2
+    assert "opt-in" in capsys.readouterr().err
 
 
 def test_skill_targets_include_grok_under_grok_home(

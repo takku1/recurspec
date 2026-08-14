@@ -7,7 +7,7 @@ export PYTHONPATH="${REPO_ROOT}/src${PYTHONPATH:+:${PYTHONPATH}}"
 
 # Some systems only ship python3, not a bare "python" alias; a bundled probe must
 # not silently assume the maintainer's own dev environment shape (R-606).
-PYTHON="$(command -v python3 2>/dev/null || command -v python 2>/dev/null || true)"
+PYTHON="${RECURSPEC_PYTHON:-$(command -v python3 2>/dev/null || command -v python 2>/dev/null || true)}"
 if [ -z "${PYTHON}" ]; then
   echo "no python3 or python interpreter found on PATH" >&2
   exit 127
@@ -16,4 +16,4 @@ fi
 "${PYTHON}" -m pytest tests/test_technology_resolver.py tests/test_cli.py -q
 "${PYTHON}" -m recurspec stack check . --format json
 "${PYTHON}" -m recurspec structure check . --format json
-ruff check src tests
+"${PYTHON}" -m ruff check src tests

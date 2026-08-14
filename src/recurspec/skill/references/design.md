@@ -98,11 +98,11 @@ uniformly deep tree means RESEARCH is being skipped.
 ## Invariants — EARS + Epistemic Stage
 
 Every invariant uses an EARS pattern and carries an evidence tag. These are the five
-patterns from Mavin et al.'s EARS notation (see the repository's
-`docs/research/foundations.md` for the full citation — not bundled with this
-standalone skill); `Conditional` is Recurspec's label for what the paper calls
-*unwanted behaviour* — the IF/THEN form is used here for any conditional response, not
-only error paths.
+patterns from Mavin, A., Wilkinson, P., Harwood, A., and Novak, M. (2009),
+*Easy Approach to Requirements Syntax (EARS)*, 17th IEEE International Requirements
+Engineering Conference, pp. 317-322, https://doi.org/10.1109/RE.2009.9.
+`Conditional` is Recurspec's label for what that paper calls *unwanted behaviour* —
+the IF/THEN form is used here for any conditional response, not only error paths.
 
 - **[Ubiquitous]** `The [System] SHALL [behavior]`
 - **[Event-driven]** `WHEN [trigger] THE SYSTEM SHALL [behavior]`

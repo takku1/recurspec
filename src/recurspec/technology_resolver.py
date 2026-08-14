@@ -106,7 +106,8 @@ _FLOATING_MARKERS = {
 }
 _RANGE_OPERATOR_RE = re.compile(r"[<>=~^!,\s]")
 # Semver-shaped (optionally v-prefixed) exact version: "1.2.3", "v1.2.3", "1.2.3-rc.1".
-_SEMVER_RE = re.compile(r"^v?[0-9][0-9A-Za-z]*(?:[.+_-][0-9A-Za-z]+)*$")
+# The first component is digits only so "1latest" cannot pass as a version (R-622).
+_SEMVER_RE = re.compile(r"^v?[0-9]+(?:[.+_-][0-9A-Za-z]+)*$")
 # An immutable git/VCS revision - short or full hex SHA. Must contain a letter so a
 # plain numeric version (e.g. a build number) is never mistaken for one.
 _HEX_REVISION_RE = re.compile(r"^[0-9a-fA-F]{7,64}$")

@@ -18,7 +18,7 @@ Inspect the request and repository, then take the first matching route:
 | Raw goal or missing contract tree | Read and follow `references/design.md` |
 | Leaf lacks a verified technology resolution | Read and follow `references/resolve.md` |
 | BUY or ADOPT leaf | Verify its seam; stop at the procurement boundary |
-| DEFER leaf | Create or update its research ticket; stop until the uncertainty resolves |
+| DEFER leaf | Publish a Research Frontier with `recurspec frontier publish`; stop until it resolves |
 | Ready BUILD or WRAP leaf | Run the candidate cycle below |
 | Prior REVERT | Repair from the latest Negative Patterns |
 | Implemented or merged change | Read and follow `references/reconcile.md` |
@@ -75,6 +75,27 @@ default to `hard_gate`.
 | `observation` | Record only; never blocks |
 
 KEEP authorization and baseline promotion are separate acts.
+
+## CLI surface
+
+These commands exist on the installed `recurspec` package. Use them; do not invent
+parallel scripts.
+
+| Command | When |
+|---|---|
+| `recurspec contract check PATH` | Validate one node or a Contract Tree |
+| `recurspec structure check REPO` | Detect uncontracted symbols and §6 drift |
+| `recurspec stack check REPO` | Audit §8 fields and pins |
+| `recurspec reconcile plan REPO` | Draft-only Structural Feedback actions |
+| `recurspec evaluate MODULE BRANCH ...` | Isolated Candidate keep/revert/escalate |
+| `recurspec modules check REPO --changed-file PATH` | Run `checks.sh`/`measure.sh` for touched modules |
+| `recurspec frontier publish TREE` | Write Research Frontier tickets (optional `--remote github`) |
+| `recurspec frontier check REPO` | Verify every ticket still points at a Contract Node |
+| `recurspec corpus export --output FILE --i-opt-in` | Redacted decision corpus; refuses without `--i-opt-in` |
+| `recurspec skills install --target grok` | Install this skill to `$GROK_HOME/skills` |
+
+Optional extra `recurspec[runtime]` pins the packet-only Messages adapter. The Worker
+Pool still requires an injected `RuntimeCall`; do not give a worker a filesystem path.
 
 ## Close-out
 

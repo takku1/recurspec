@@ -75,11 +75,11 @@ packet, and anything it learned is in its result.
 
 ## 6. Leaf Execution & Test Seam
 
-- **Implementation:** `src/recurspec/spec_runner/workers.py` — same `spec_runner`
-  subpackage as context-packer and job-store. Implements the pool's own policy (budget,
-  tier routing, maker ≠ checker, concurrency cap) against an injected `RuntimeCall`; does
-  not ship a concrete agent-runtime integration (see §8 - the SDK pin is still
-  unverified, deliberately not asserted).
+- **Implementation:** `src/recurspec/spec_runner/workers.py` and
+  `src/recurspec/spec_runner/runtime.py` — same `spec_runner` subpackage as
+  context-packer and job-store. Implements the pool's own policy (budget, tier routing,
+  maker ≠ checker, concurrency cap) against an injected `RuntimeCall`. The packet-only
+  Messages adapter is `messages_runtime()`.
 - **Tests:** `tests/test_worker_pool.py` (17 tests) — worker cannot reach the filesystem
   outside its packet; budget abort yields `budget_exceeded` not a partial node; maker ≠
   checker enforced on the atomicity call; concurrency cap respected (timing-based, run
@@ -87,8 +87,9 @@ packet, and anything it learned is in its result.
   authorization persistence is single-writer so a later unrelated `dispatch()` cannot
   drop a prior Candidate identity
   (`test_persisted_candidate_identity_survives_a_later_unrelated_dispatch`).
-- **Runtime adapter:** the module's policy is complete and tested against a fake adapter;
-  the primary-source-verified production adapter is tracked only as ROADMAP R-204.
+- **Runtime adapter:** `messages_runtime()` (R-204) wraps a Messages-shaped client;
+  optional extra `recurspec[runtime]` pins `anthropic==0.122.0`. Tests cover the adapter
+  without a network (`tests/test_runtime.py`).
 - **Authorization seam:** `WorkerPool` persists maker/checker state only after successful
   within-budget produce and independent CHECK turns, then binds authorization to one
   Candidate branch and commit; `load_merge_authorization()` refuses incomplete records.
@@ -110,28 +111,32 @@ packet, and anything it learned is in its result.
 
 - **Decision class:** BUILD
 - **Justification:** The implemented value is Recurspec-specific dispatch policy: bounded
-  concurrency, phase routing, budget refusal, and maker/checker state. A concrete runtime
-  is intentionally outside this leaf until R-204 resolves it from primary sources.
-- **Selected:** Python `WorkerPool` over an injected `RuntimeCall` protocol.
-- **Standard / protocol:** internal immutable dataclasses; MCP may be selected by the
-  future runtime adapter but is not asserted here.
+  concurrency, phase routing, budget refusal, and maker/checker state. Inference itself
+  is a commodity; that part is ADOPT+WRAP in `runtime.py`, not this policy.
+- **Selected:** Python `WorkerPool` over an injected `RuntimeCall`. Production WRAP:
+  `messages_runtime()` over optional extra `anthropic==0.122.0` (PyPI, 2026-08-13).
+- **Standard / protocol:** Anthropic Messages API (`POST /v1/messages`); internal
+  immutable dataclasses at the pool seam.
 - **Alternatives considered:**
   | Option | Why not |
   |--------|---------|
-  | LangGraph | Owns graph state and control flow — precisely what job-store and the Runner own here. Adopting it would mean two schedulers disagreeing about which node is ready |
-  | CrewAI / AutoGen | Role and conversation abstractions add a layer we do not need; a worker here is a stateless function from packet to result |
-  | Raw HTTP against the model API | Cheapest to start, then rebuilds tool-use, retry, and session isolation by hand — the classic BUILD that fails the commodity test |
-  | Bare threads calling a completion endpoint | No tool use, so RESEARCH cannot run inside a worker |
-- **Fit gap:** no concrete production agent-runtime adapter is shipped; R-204 owns that
-  separately resolved integration.
-- **Seam:** `src/recurspec/spec_runner/workers.py`; the Runner sees
-  `WorkerPool.dispatch(node_id, packet, phase, worker_id, max_tokens_per_node) -> WorkerResult`
-- **Exit cost:** LOW — runtime integrations implement one injected call protocol; pool
-  policy, packets, and stored state remain unchanged.
-- **Cost model:** local policy has no service spend; runtime inference cost remains
-  unresolved under R-204.
-- **Liability transferred:** none until a runtime is selected.
-- **Operational owner:** us.
-- **Failure mode:** an injected runtime error returns `tool_error`; absence of a production
-  adapter prevents production dispatch rather than guessing an integration.
-- **Open questions:** none outside ROADMAP R-204.
+  | Claude Agent SDK `claude-agent-sdk==0.2.138` | Default toolset is Read/Write/Edit/Bash; `allowed_tools` does not remove tools. Violates the packet-only invariant. [PyPI](https://pypi.org/project/claude-agent-sdk/) |
+  | OpenAI Agents SDK `openai-agents==0.20.0` | Owns sessions, handoffs, and optional sandbox file inspection — a second scheduler. [PyPI](https://pypi.org/project/openai-agents/) |
+  | LangGraph | Owns graph state and control flow — precisely what job-store and the Runner own here |
+  | CrewAI / AutoGen | Role and conversation abstractions; a worker here is a stateless function from packet to result |
+  | MCP | A tool protocol, not a turn runtime |
+- **Fit gap:** the Messages API does not know Recurspec phases, JSON-object refusal, or
+  cheap/capable routing — that is the WRAP. It also does not sandbox a Candidate worktree;
+  that remains Evaluation Gate.
+- **Seam:** `src/recurspec/spec_runner/workers.py` and
+  `src/recurspec/spec_runner/runtime.py`
+- **Exit cost:** LOW — swap the Messages client; pool policy, packets, and stored state
+  remain unchanged.
+- **Cost model:** local policy has no service spend. Inference is billed by the provider;
+  list prices are not asserted here.
+- **Liability transferred:** hosted inference availability. Isolation of the Candidate
+  worktree is not transferred.
+- **Operational owner:** us for the WRAP; vendor for the model endpoint.
+- **Failure mode:** an injected runtime error or a non-JSON body returns `tool_error`.
+  Missing `recurspec[runtime]` raises before dispatch rather than guessing a client.
+- **Open questions:** none. Survey: [r-204-runtime-survey.md](../../../research/r-204-runtime-survey.md).

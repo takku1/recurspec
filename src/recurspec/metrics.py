@@ -26,6 +26,8 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from .evidence import EVIDENCE_STAGES
+
 
 class EvidenceInstrumentError(RuntimeError):
     """The evidence log is corrupt in a way that cannot be safely skipped."""
@@ -123,8 +125,35 @@ def read_events(module: str, log_dir: str = ".recurspec/evidence") -> list[dict[
                 f"{path}:{index + 1}: evidence event is not a JSON object "
                 f"(got {type(obj).__name__})"
             )
+        problem = _event_schema_problem(obj)
+        if problem is not None:
+            if is_recoverable_truncation:
+                continue
+            raise EvidenceInstrumentError(f"{path}:{index + 1}: {problem}")
         events.append(obj)
     return events
+
+
+def _event_schema_problem(event: dict[str, Any]) -> str | None:
+    """Return a reason the decoded object is not a usable evidence event (R-624)."""
+    required = {
+        "ts": str,
+        "event_type": str,
+        "module": str,
+        "branch": str,
+        "evidence_stage": str,
+        "metrics": dict,
+    }
+    for field, expected in required.items():
+        if field not in event:
+            return f"evidence event is missing {field!r}"
+        if not isinstance(event[field], expected):
+            return f"evidence event field {field!r} has the wrong type"
+        if expected is str and not event[field]:
+            return f"evidence event field {field!r} is empty"
+    if event["evidence_stage"] not in EVIDENCE_STAGES:
+        return "evidence event has an unrecognized Evidence Stage"
+    return None
 
 
 def find_baseline(

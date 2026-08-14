@@ -10,8 +10,8 @@ Use when:
 - A §8 has gone stale (version drift, pricing change, vendor unmaintained).
 - You want a second opinion on a build-vs-buy call already made.
 
-For a whole tree, use `/recurspec` — it runs this gate at every node.
-Criteria: `docs/process/stack-resolution.md`.
+For a whole tree, use `/recurspec` — it runs this gate at every node. After resolving,
+run `recurspec stack check` on the repository.
 
 ---
 

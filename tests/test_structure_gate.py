@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from recurspec.structure_gate import check_structure
+from recurspec.structure_gate import check_structure, declared_paths
 
 
 def _contract(implementation: str, tests: str) -> str:
@@ -120,6 +120,57 @@ def test_structure_gate_rejects_a_declared_path_that_escapes_the_repository(tmp_
     assert unsafe[0].path == "../outside.py"
     # The escaping declaration must not be treated as a satisfied implementation.
     assert not any(item.code == "structure.implementation.missing" for item in result.diagnostics)
+
+
+def test_declared_paths_rejects_a_resolved_target_outside_the_repository(
+    tmp_path: Path, monkeypatch
+):
+    repo = tmp_path / "repo"
+    (repo / "src").mkdir(parents=True)
+    (repo / "src" / "linked.py").write_text("def public():\n    pass\n", encoding="utf-8")
+    contract = repo / "docs" / "architecture" / "feature" / "SYSTEM.md"
+    contract.parent.mkdir(parents=True)
+    contract.write_text(_contract("src/linked.py", "tests/test_missing.py"), encoding="utf-8")
+    outside = (tmp_path / "outside.py").resolve()
+    original = Path.resolve
+
+    def fake_resolve(self, *args, **kwargs):
+        if Path(self).as_posix().endswith("src/linked.py"):
+            return outside
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "resolve", fake_resolve)
+    implementations, _tests, unsafe = declared_paths(contract, repository=repo)
+
+    assert "src/linked.py" in unsafe
+    assert "src/linked.py" not in implementations
+
+
+def test_structure_gate_rejects_a_symlink_whose_target_escapes_the_repository(
+    tmp_path: Path,
+):
+    outside = tmp_path / "outside.py"
+    outside.write_text("def public():\n    pass\n", encoding="utf-8")
+    repo = tmp_path / "repo"
+    source = repo / "src"
+    source.mkdir(parents=True)
+    linked = source / "linked.py"
+    try:
+        linked.symlink_to(outside)
+    except OSError:
+        import pytest
+
+        pytest.skip("symlinks are not available on this platform")
+    contract = repo / "docs" / "architecture" / "feature" / "SYSTEM.md"
+    contract.parent.mkdir(parents=True)
+    contract.write_text(_contract("src/linked.py", "tests/test_missing.py"), encoding="utf-8")
+
+    result = check_structure(repo, source_root="src", contract_root="docs/architecture")
+
+    assert any(
+        item.code == "structure.declaration.unsafe_path" and item.path == "src/linked.py"
+        for item in result.diagnostics
+    )
 
 
 def test_structure_gate_rejects_an_absolute_declared_path(tmp_path: Path):

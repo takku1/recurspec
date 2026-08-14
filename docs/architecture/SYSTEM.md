@@ -27,7 +27,7 @@ Research: [research/foundations.md](../research/foundations.md).
 ## 3. Interface Contracts
 
 - **Inputs:** `contract_path`; `max_tokens_per_node`; `concurrency`; product vision / NL scope; git diffs; existing code ASTs; measure baselines.
-- **Outputs:** Fractal docs/architecture/**/SYSTEM.md tree; Wayfinder tickets; pass/fail gate reports; baseline logs under .recurspec/evidence/.
+- **Outputs:** Fractal docs/architecture/**/SYSTEM.md tree; Research Frontier tickets; pass/fail gate reports; baseline logs under .recurspec/evidence/.
 - **Interface syntax:** these three ports are declared this level down because a real child already consumes each by that exact name: `contract_path` by Contract Engine (see [contract-engine/SYSTEM.md](./contract-engine/SYSTEM.md) §3), `max_tokens_per_node` and `concurrency` by Spec Runner and its own children (see [spec-runner/SYSTEM.md](./spec-runner/SYSTEM.md) §3). The other L1 modules (Stack Resolver, Contract Reconciler, Frontier Adapter, Structure Gate, Evaluation Gate) are independently-invoked CLI gates with no cross-sibling data flow to formalize as ports — see R-105 in [ROADMAP.md](../../ROADMAP.md) for that finding.
 
 ## 4. Invariants (EARS + Epistemic Stage)

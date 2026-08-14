@@ -178,7 +178,31 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
   via `PRAGMA index_info`, not just by index name. Job Store and Worker Pool §6 test
   counts were brought in line with the files (14 and 17).
 
+### Fixed
+
+- REVIEW3 remediations R-621–R-626: pin the full `modules/` probe environment into
+  Candidate worktrees; reject `1latest` as an exact pin; resolve §6 paths so escaping
+  symlinks are unsafe; schema-validate evidence events; bind probes to
+  `RECURSPEC_PYTHON`; include the EARS citation inside the installed skill.
+
 ### Added
+
+- R-203: `recurspec modules check` maps changed files to measurable modules via §6
+  paths and runs those modules' `checks.sh` / `measure.sh`. CI evaluates the diff
+  against the pull-request base (or `HEAD^` on push).
+- R-303: `recurspec frontier publish|check` writes Research Frontier tickets under
+  `.recurspec/frontiers/` and can create a GitHub issue via `gh`. Type B / Wayfinder
+  vocabulary is not used.
+- R-500: `recurspec corpus export --i-opt-in` writes a redacted decision corpus and
+  refuses without the flag.
+
+- R-204: a packet-only Messages-API adapter (`messages_runtime`) behind the Worker Pool
+  seam, optional extra `recurspec[runtime]` pinning `anthropic==0.122.0`. Claude Agent
+  SDK and OpenAI Agents SDK were surveyed from PyPI and rejected (filesystem tools /
+  second scheduler). Survey: `docs/research/r-204-runtime-survey.md`.
+- R-404: published non-web Contract Tree at `docs/examples/log-archive` (local log
+  rotate + verify).
+- Empty R-400–R-403 case-study log template. No outcome data collected.
 
 - `recurspec skills install` now also writes the bundled skill to Grok
   (`$GROK_HOME/skills`, default `~/.grok/skills`). `--target` accepts `grok`; `all`

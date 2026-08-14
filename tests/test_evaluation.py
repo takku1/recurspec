@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -323,7 +324,17 @@ def test_read_events_raises_on_a_complete_but_corrupt_final_line(tmp_path):
     comp_dir.mkdir()
     log_path = comp_dir / "log.jsonl"
     log_path.write_text(
-        json.dumps({"event_type": "baseline", "branch": "main", "metrics": {}}) + "\n"
+        json.dumps(
+            {
+                "ts": "2026-01-01T00:00:00+00:00",
+                "event_type": "baseline",
+                "module": "comp",
+                "branch": "main",
+                "evidence_stage": "Measured",
+                "metrics": {},
+            }
+        )
+        + "\n"
         '{"not valid json\n',
         encoding="utf-8",
     )
@@ -343,11 +354,34 @@ def test_read_events_raises_on_a_non_object_json_scalar(tmp_path):
     comp_dir.mkdir()
     log_path = comp_dir / "log.jsonl"
     log_path.write_text(
-        json.dumps({"event_type": "baseline", "branch": "main", "metrics": {}}) + "\n" "42\n",
+        json.dumps(
+            {
+                "ts": "2026-01-01T00:00:00+00:00",
+                "event_type": "baseline",
+                "module": "comp",
+                "branch": "main",
+                "evidence_stage": "Measured",
+                "metrics": {},
+            }
+        )
+        + "\n"
+        "42\n",
         encoding="utf-8",
     )
 
     with pytest.raises(EvidenceInstrumentError):
+        read_events("comp", log_dir)
+
+
+def test_read_events_raises_on_an_empty_object(tmp_path):
+    from recurspec.metrics import read_events
+
+    log_dir = str(tmp_path)
+    comp_dir = tmp_path / "comp"
+    comp_dir.mkdir()
+    (comp_dir / "log.jsonl").write_text("{}\n", encoding="utf-8")
+
+    with pytest.raises(EvidenceInstrumentError, match="missing"):
         read_events("comp", log_dir)
 
 
@@ -738,6 +772,30 @@ def test_comparison_exposes_merge_blocking_verdicts():
     assert compare("latency_ms", 101, 100, tolerance_pct=20).blocks_merge is False
 
 
+def test_run_script_exports_the_running_interpreter(tmp_path, monkeypatch):
+    captured: dict[str, str] = {}
+
+    def fake_run(args, capture_output=True, text=True, timeout=300, cwd=None, env=None):
+        captured.update(env or {})
+
+        class Result:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+
+        return Result()
+
+    script = tmp_path / "probe.sh"
+    script.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    monkeypatch.setattr(gate.subprocess, "run", fake_run)
+    monkeypatch.setattr(gate, "_bash", lambda: "bash")
+
+    code, _out, _err = gate.run_script(str(script), "checkout", cwd=tmp_path)
+
+    assert code == 0
+    assert captured["RECURSPEC_PYTHON"] == sys.executable
+
+
 def test_run_script_reports_a_missing_probe(tmp_path):
     code, stdout, stderr = gate.run_script(str(tmp_path / "missing.sh"), "checkout")
 
@@ -944,6 +1002,54 @@ def test_isolated_candidate_evaluates_against_trusted_tests_dependency_not_the_c
     assert code == gate.REVERT
     assert "checks.sh failed" in reason
     assert (repo / "state.txt").read_text(encoding="utf-8") == "baseline\n"
+
+
+def test_isolated_candidate_evaluates_against_trusted_module_helpers_not_the_candidates_own(
+    tmp_path: Path,
+):
+    """Pinning checks.sh is not enough if it sources a sibling helper under modules/
+    that a Candidate can weaken (R-621)."""
+    if gate._bash() is None:
+        pytest.skip("no POSIX shell available to run real probes")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-b", "main", str(repo)], check=True, capture_output=True)
+    _git(repo, "config", "user.email", "tests@example.invalid")
+    _git(repo, "config", "user.name", "Recurspec Tests")
+    (repo / "state.txt").write_text("baseline\n", encoding="utf-8")
+    modules = repo / "modules" / "checkout"
+    modules.mkdir(parents=True)
+    (modules / "lib.sh").write_text(
+        "if grep -q broken \"${DIR}/state.txt\" 2>/dev/null; then\n"
+        '  echo "state is broken" >&2\n'
+        "  exit 1\n"
+        "fi\n"
+        "exit 0\n",
+        encoding="utf-8",
+    )
+    (modules / "checks.sh").write_text(
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        'DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"\n'
+        'source "${DIR}/modules/checkout/lib.sh"\n',
+        encoding="utf-8",
+    )
+    (modules / "measure.sh").write_text(_TRUSTED_MEASURE_SH, encoding="utf-8")
+    _git(repo, "add", "state.txt", "modules")
+    _git(repo, "commit", "-m", "baseline")
+    _git(repo, "switch", "-c", "candidate/R-200")
+    (repo / "state.txt").write_text("broken\n", encoding="utf-8")
+    (modules / "lib.sh").write_text("exit 0\n", encoding="utf-8")
+    _git(repo, "add", "state.txt", "modules")
+    _git(repo, "commit", "-m", "break state and weaken the modules helper")
+    _git(repo, "switch", "main")
+
+    code, reason = gate.evaluate_isolated_candidate(
+        repo, "checkout", "candidate/R-200", authorization=_independent_review(repo)
+    )
+
+    assert code == gate.REVERT
+    assert "checks.sh failed" in reason
 
 
 def test_isolated_candidate_refuses_a_module_without_trusted_baseline_probes(tmp_path: Path):

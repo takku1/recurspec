@@ -42,6 +42,8 @@ tracker for it.
 3. For `test_seam_review`, `contract_repair_review`, and `split_review`, make the
    corresponding `SYSTEM.md` edit by hand; there is no generated content to review.
 4. Re-run `recurspec structure check` to confirm the drift is resolved.
+5. If implementation files changed, run `recurspec modules check <repository>` with
+   those paths as `--changed-file` so the touched modules' probes run.
 
 ## Verification Gate
 

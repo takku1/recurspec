@@ -23,5 +23,27 @@ jobs:
       - run: python -m pip install -e ".[dev]"
       - run: python -m pytest
       - run: ruff check src tests
+      - run: recurspec contract check docs/architecture
+      - run: recurspec contract check docs/examples/log-archive
+      - name: Evaluate changed measurable modules
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            git fetch --no-tags --prune --depth=1 origin "${GITHUB_BASE_REF}"
+            mapfile -t files < <(git diff --name-only "origin/${GITHUB_BASE_REF}...HEAD")
+          elif git rev-parse --verify --quiet HEAD^ >/dev/null; then
+            mapfile -t files < <(git diff --name-only HEAD^ HEAD)
+          else
+            files=()
+          fi
+          if [ "${#files[@]}" -eq 0 ]; then
+            python -m recurspec modules check .
+          else
+            args=()
+            for file in "${files[@]}"; do
+              args+=(--changed-file "${file}")
+            done
+            python -m recurspec modules check . "${args[@]}"
+          fi
       - if: matrix.python-version == '3.13'
         run: python -m build

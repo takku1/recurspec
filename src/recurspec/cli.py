@@ -16,6 +16,14 @@ from pathlib import Path
 from . import __version__
 from .contract import ContractInstrumentError, validate_contract
 from .evaluation import ERROR, evaluate_isolated_candidate
+from .evidence import export_decision_corpus
+from .frontier import (
+    FrontierInstrumentError,
+    check_frontiers,
+    github_issue_publisher,
+    publish_frontiers,
+)
+from .modules_gate import evaluate_changed_modules
 from .reconcile import ReconciliationInstrumentError, plan_reconciliation
 from .spec_runner.workers import load_merge_authorization
 from .structure_gate import check_structure
@@ -221,6 +229,80 @@ def _run_stack_check(args: argparse.Namespace) -> int:
     return 2 if result.indeterminate else int(not result.valid)
 
 
+def _run_modules_check(args: argparse.Namespace) -> int:
+    code, reports = evaluate_changed_modules(
+        args.repository,
+        args.changed_file,
+        all_modules=args.all,
+        contract_root=args.contract_root,
+    )
+    if args.format == "json":
+        payload = {
+            "modules": [
+                {
+                    "module": report.module,
+                    "checks_code": report.checks_code,
+                    "measure_code": report.measure_code,
+                }
+                for report in reports
+            ],
+            "valid": code == 0,
+        }
+        print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
+    elif not reports:
+        print("PASS: no measurable modules touched")
+    elif code == 0:
+        print(f"PASS: {len(reports)} module(s) checked")
+    else:
+        for report in reports:
+            if report.checks_code != 0 or report.measure_code != 0:
+                print(
+                    f"{report.module}: checks={report.checks_code} "
+                    f"measure={report.measure_code} {report.detail}".rstrip()
+                )
+    return code
+
+
+def _run_frontier(args: argparse.Namespace) -> int:
+    try:
+        if args.action == "publish":
+            remote = github_issue_publisher() if args.remote == "github" else None
+            report = publish_frontiers(args.contract_root, args.output, remote=remote)
+            print(f"published {len(report.written)} Research Frontier ticket(s)")
+            return 0
+        check = check_frontiers(args.output, args.repository)
+        if args.format == "json":
+            print(
+                json.dumps(
+                    {
+                        "integrity": check.integrity,
+                        "ticket_count": check.ticket_count,
+                        "broken": list(check.broken),
+                    },
+                    separators=(",", ":"),
+                    sort_keys=True,
+                )
+            )
+        elif check.broken:
+            print(f"FAIL: {len(check.broken)} ticket(s) missing a Contract Node")
+        else:
+            print(f"PASS: ticket_to_leaf_link_integrity {check.integrity:.3f}")
+        return int(bool(check.broken))
+    except FrontierInstrumentError as exc:
+        print(f"[ERROR] frontier instrument failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _run_corpus_export(args: argparse.Namespace) -> int:
+    try:
+        count = export_decision_corpus(args.log_dir, args.output, opt_in=args.i_opt_in)
+    except ValueError as exc:
+        print(f"[ERROR] {exc}", file=sys.stderr)
+        return 2
+    print(f"exported {count} redacted event(s)")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="recurspec", description="Evidence-gated system design")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -419,6 +501,112 @@ def build_parser() -> argparse.ArgumentParser:
     stack_check.add_argument("--wrap-line-limit", type=int, default=150)
     stack_check.add_argument("--format", choices=("text", "json"), default="text")
     stack_check.set_defaults(handler=_run_stack_check)
+
+    modules = commands.add_parser(
+        "modules",
+        help="run checks and measurements for changed measurable modules",
+        formatter_class=defaults_formatter,
+    )
+    modules_actions = modules.add_subparsers(dest="action", required=True)
+    modules_check = modules_actions.add_parser(
+        "check",
+        help="run modules/*/checks.sh and measure.sh for touched modules",
+        formatter_class=defaults_formatter,
+    )
+    modules_check.add_argument("repository", type=Path, help="repository root")
+    modules_check.add_argument(
+        "--contract-root",
+        default="docs/architecture",
+        help="repository-relative Contract Tree used to map §6 paths to modules",
+    )
+    modules_check.add_argument(
+        "--changed-file",
+        action="append",
+        default=[],
+        help="repository-relative path that changed; repeat as needed",
+    )
+    modules_check.add_argument(
+        "--all",
+        action="store_true",
+        help="evaluate every module that has probes, ignoring --changed-file",
+    )
+    modules_check.add_argument(
+        "--format", choices=("text", "json"), default="text", help="output format"
+    )
+    modules_check.set_defaults(handler=_run_modules_check)
+
+    frontier = commands.add_parser(
+        "frontier",
+        help="publish or verify Research Frontier tickets",
+        formatter_class=defaults_formatter,
+    )
+    frontier_actions = frontier.add_subparsers(dest="action", required=True)
+    frontier_publish = frontier_actions.add_parser(
+        "publish",
+        help="write local Research Frontier tickets for DEFER leaves and R-nnn citations",
+        formatter_class=defaults_formatter,
+    )
+    frontier_publish.add_argument(
+        "contract_root", type=Path, help="Contract Tree to scan"
+    )
+    frontier_publish.add_argument(
+        "--output",
+        type=Path,
+        default=Path(".recurspec/frontiers"),
+        help="directory for local ticket markdown",
+    )
+    frontier_publish.add_argument(
+        "--remote",
+        choices=("github",),
+        help="also create a remote issue; requires gh on PATH",
+    )
+    frontier_publish.set_defaults(handler=_run_frontier)
+    frontier_check = frontier_actions.add_parser(
+        "check",
+        help="verify every ticket still points at an existing Contract Node",
+        formatter_class=defaults_formatter,
+    )
+    frontier_check.add_argument("repository", type=Path, help="repository root")
+    frontier_check.add_argument(
+        "--output",
+        type=Path,
+        default=Path(".recurspec/frontiers"),
+        help="directory that holds published tickets",
+    )
+    frontier_check.add_argument(
+        "--format", choices=("text", "json"), default="text", help="output format"
+    )
+    frontier_check.set_defaults(handler=_run_frontier)
+
+    corpus = commands.add_parser(
+        "corpus",
+        help="export a privacy-preserving decision corpus",
+        formatter_class=defaults_formatter,
+    )
+    corpus_actions = corpus.add_subparsers(dest="action", required=True)
+    corpus_export = corpus_actions.add_parser(
+        "export",
+        help="write redacted evidence events; refuses without --i-opt-in",
+        formatter_class=defaults_formatter,
+    )
+    corpus_export.add_argument(
+        "--log-dir",
+        type=Path,
+        default=Path(".recurspec/evidence"),
+        help="evidence log directory",
+    )
+    corpus_export.add_argument(
+        "--output",
+        type=Path,
+        required=True,
+        help="destination JSONL path",
+    )
+    corpus_export.add_argument(
+        "--i-opt-in",
+        action="store_true",
+        help="required explicit project-level opt-in (R-500)",
+    )
+    corpus_export.set_defaults(handler=_run_corpus_export)
     return parser
 
 

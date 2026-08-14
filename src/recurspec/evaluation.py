@@ -25,6 +25,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -57,7 +58,7 @@ _MODULE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 
 # Recurspec's own generated runtime state - never anything a project chose to track.
 _RUNTIME_STATE_RE = re.compile(
-    r"^\.recurspec/(?:evidence/[^/]+/log\.jsonl|handoffs/.*|worker-authorizations\.json)$"
+    r"^\.recurspec/(?:evidence/[^/]+/log\.jsonl|handoffs/.*|worker-authorizations\.json|frontiers/.*)$"
 )
 
 
@@ -126,6 +127,30 @@ def _materialize_tree(root: Path, snapshot: dict[str, bytes]) -> None:
         target.write_bytes(content)
 
 
+_TRUSTED_TREES = ("tests", "modules")
+_TRUSTED_FILES = ("conftest.py", "pytest.ini", "pyproject.toml", "ruff.toml", ".ruff.toml")
+
+
+def _pin_trusted_probe_inputs(baseline: Path, worktree: Path) -> None:
+    """Copy the trusted probe environment from baseline into the Candidate worktree.
+
+    checks.sh/measure.sh are not the full judge: they source helpers under modules/,
+    run tests/, and honor root pytest/ruff config. A Candidate must not control any
+    of those (R-600, R-621).
+    """
+    for name in _TRUSTED_TREES:
+        source = baseline / name
+        if source.is_dir():
+            _materialize_tree(worktree / name, _snapshot_tree(source))
+    for name in _TRUSTED_FILES:
+        source = baseline / name
+        destination = worktree / name
+        if source.is_file():
+            destination.write_bytes(source.read_bytes())
+        elif destination.exists() or destination.is_symlink():
+            destination.unlink()
+
+
 def _bash(platform: str | None = None) -> str | None:
     override = os.environ.get("RECURSPEC_BASH")
     if override:
@@ -165,12 +190,15 @@ def run_script(
     if bash is None:
         return 127, "", "No `bash` on PATH; evaluation scripts require a POSIX shell."
     try:
+        env = os.environ.copy()
+        env["RECURSPEC_PYTHON"] = sys.executable
         res = subprocess.run(
             [bash, script_path, module],
             capture_output=True,
             text=True,
             timeout=timeout,
             cwd=cwd,
+            env=env,
         )
         return res.returncode, res.stdout, res.stderr
     except subprocess.TimeoutExpired:
@@ -500,18 +528,6 @@ def evaluate_isolated_candidate(
             f"no trusted baseline probe for module {module!r} on {baseline_branch!r}; "
             "refusing to evaluate against Candidate-controlled evaluation scripts"
         )
-    trusted_checks_bytes = trusted_checks.read_bytes()
-    trusted_measure_bytes = trusted_measure.read_bytes()
-    # checks.sh/measure.sh are not the only thing a Candidate could weaken to defeat
-    # correctness backpressure: every bundled checks.sh in this repository shells out to
-    # test files under tests/ (AGENTS.md names tests/ as the fixed interface-level test
-    # surface, a sibling of modules/), and those assertions are as much part of the
-    # trusted judge as checks.sh/measure.sh itself. Pin the whole tests/ tree from the
-    # baseline the same way, so a Candidate cannot pass its own checks by weakening the
-    # assertions those checks run (R-600).
-    tests_rel = "tests"
-    trusted_tests_snapshot = _snapshot_tree(repo_path / tests_rel)
-
     # A previous interrupted process may have deleted its directory before unregistering
     # it. Prune only missing worktrees so the Candidate branch can be isolated again.
     _git(repo_path, "worktree", "prune", "--expire", "now")
@@ -530,15 +546,9 @@ def evaluate_isolated_candidate(
             branch=candidate_branch,
             log_dir=str(evidence_path),
         )
-        # Pin the probes actually executed to the trusted baseline's bytes, while they
-        # still run against the Candidate's own worktree (its BASH_SOURCE-derived
-        # REPO_ROOT resolves inside the worktree) - trusted logic, Candidate code under
-        # test. Restored below so the post-eval dirtiness check reflects only what the
-        # Candidate itself committed.
-        (worktree / checks_rel).write_bytes(trusted_checks_bytes)
-        (worktree / measure_rel).write_bytes(trusted_measure_bytes)
-        if trusted_tests_snapshot:
-            _materialize_tree(worktree / tests_rel, trusted_tests_snapshot)
+        # Trusted logic, Candidate source under test. Restored below so the post-eval
+        # dirtiness check reflects only what the Candidate itself committed.
+        _pin_trusted_probe_inputs(repo_path, worktree)
         try:
             code, reason = evaluate_change(
                 module,
@@ -553,11 +563,15 @@ def evaluate_isolated_candidate(
             )
         finally:
             if worktree.exists():
-                if trusted_tests_snapshot and (worktree / tests_rel).exists():
-                    shutil.rmtree(worktree / tests_rel)
-                _git(worktree, "checkout", "--", checks_rel, measure_rel, check=False)
-                if trusted_tests_snapshot:
-                    _git(worktree, "checkout", "--", tests_rel, check=False)
+                restore = (*_TRUSTED_TREES, *_TRUSTED_FILES, checks_rel, measure_rel)
+                _git(worktree, "checkout", "--force", "--", *restore, check=False)
+                _git(worktree, "clean", "-fd", "--", *_TRUSTED_TREES, check=False)
+                for name in _TRUSTED_FILES:
+                    tracked = _git(worktree, "ls-files", "--", name, check=False)
+                    if not tracked.stdout.strip():
+                        leftover = worktree / name
+                        if leftover.is_file() or leftover.is_symlink():
+                            leftover.unlink()
         if code != KEEP:
             return code, reason
         if _git(worktree, "status", "--porcelain").stdout.strip():

@@ -63,7 +63,9 @@ Empirical Feedback infrastructure: explicit Best Known State (BKS) baselines, `m
 ## 6. Leaf Execution & Test Seam
 
 - **Current prototype:** `src/recurspec/metrics.py`, `src/recurspec/evaluation.py`, `src/recurspec/evidence.py`
-- **Current implementation:** `src/recurspec/evaluation.py`
+- **Current implementation:** `src/recurspec/evaluation.py`,
+  `src/recurspec/modules_gate.py` (R-203 changed-module probes),
+  `src/recurspec/evidence.py` (including R-500 corpus export).
 - **Tests:** `tests/test_evaluation.py`, `tests/test_cli.py`, `tests/test_modules.py`
   (end-to-end coverage of every bundled `measure.sh` against `parse_measurement`).
 - **Lifecycle seam:** `evaluate_isolated_candidate` requires a clean checked-out baseline,

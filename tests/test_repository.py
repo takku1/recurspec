@@ -3,11 +3,30 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PUBLISHED_MARKDOWN = [
-    *ROOT.glob("*.md"),
-    *ROOT.joinpath("docs").rglob("*.md"),
-    *ROOT.joinpath("src", "recurspec", "skill").rglob("*.md"),
-]
+
+
+def _tracked_published_markdown() -> list[Path]:
+    result = subprocess.run(
+        ["git", "-C", str(ROOT), "ls-files", "-z"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    published: list[Path] = []
+    for relative in result.stdout.split("\0"):
+        if not relative.endswith(".md"):
+            continue
+        path = ROOT / relative
+        if (
+            path.parent == ROOT
+            or ROOT.joinpath("docs") in path.parents
+            or ROOT.joinpath("src", "recurspec", "skill") in path.parents
+        ):
+            published.append(path)
+    return published
+
+
+PUBLISHED_MARKDOWN = _tracked_published_markdown()
 
 
 def test_relative_markdown_links_resolve():

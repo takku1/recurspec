@@ -146,6 +146,7 @@ def test_dependency_inventory_normalizes_package_keys_without_altering_versions(
         "latest", ">=1.0", "*", "1.x", "^1.0.0", "~1.2.3", "1.*", "1.2.x",
         "snapshot", "nightly", "edge", "canary", "trunk", "dev",
         "1.", ".1.2", "1..2", "1.2-", "-1.2",
+        "1latest",
     ],
 )
 def test_dependency_inventory_rejects_a_floating_version(tmp_path: Path, floating):

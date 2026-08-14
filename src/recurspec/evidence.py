@@ -45,3 +45,48 @@ def log_event(
         f.write(json.dumps(entry) + "\n")
 
     return log_file
+
+
+_CORPUS_KEEP = ("event_type", "verdict", "evidence_stage", "ts")
+
+
+def export_decision_corpus(
+    log_dir: str | os.PathLike[str],
+    destination: str | os.PathLike[str],
+    *,
+    opt_in: bool,
+) -> int:
+    """Write a redacted decision corpus. Refuses unless ``opt_in`` is true.
+
+    Drops source, prompts, secrets, branch names, reasons, and metric values
+    (ROADMAP R-500). Does not invent rows when a log is missing.
+    """
+    if not opt_in:
+        raise ValueError("decision-corpus export requires explicit project-level opt-in")
+    root = os.fspath(log_dir)
+    dest = os.fspath(destination)
+    os.makedirs(os.path.dirname(os.path.abspath(dest)) or ".", exist_ok=True)
+    written = 0
+    with open(dest, "w", encoding="utf-8") as out:
+        if not os.path.isdir(root):
+            return 0
+        for dirpath, _dirs, files in os.walk(root):
+            if "log.jsonl" not in files:
+                continue
+            log_path = os.path.join(dirpath, "log.jsonl")
+            with open(log_path, encoding="utf-8") as handle:
+                for line in handle:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        event = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if not isinstance(event, dict):
+                        continue
+                    redacted = {key: event[key] for key in _CORPUS_KEEP if key in event}
+                    redacted["metrics_present"] = bool(event.get("metrics"))
+                    out.write(json.dumps(redacted, sort_keys=True) + "\n")
+                    written += 1
+    return written

@@ -4,6 +4,7 @@
 
 ```bash
 python -m pip install git+https://github.com/takku1/recurspec.git
+python -m pip install "recurspec[runtime]"  # optional: Anthropic Messages adapter
 recurspec skills install
 recurspec skills check
 ```

@@ -367,6 +367,13 @@ def test_recurspecs_own_architecture_tree_passes_its_own_contract_engine():
     assert len(result.contracts) == 11
 
 
+def test_log_archive_example_tree_is_a_valid_contract_tree():
+    result = validate_contract(Path("docs/examples/log-archive"))
+
+    assert result.valid, result.diagnostics
+    assert len(result.contracts) == 3
+
+
 # --- R-603: hollow and disconnected Contract Trees -------------------------
 
 

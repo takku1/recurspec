@@ -35,8 +35,8 @@ Statuses: `ready`, `blocked`, `research`, `deferred`, `done`.
 | R-200 | Create, evaluate, merge, and dispose Candidate worktrees | done | — | [Evaluation Gate](./docs/architecture/evaluation-gate/SYSTEM.md) |
 | R-201 | Enforce maker/checker identity separation in state, not prompts alone | done | — | [Worker Pool](./docs/architecture/spec-runner/worker-pool/SYSTEM.md) |
 | R-202 | Persist atomic claims and re-derive state from Markdown | done | R-100 | [Job Store](./docs/architecture/spec-runner/job-store/SYSTEM.md) |
-| R-203 | Add CI that runs checks and evaluates changed measurable modules | deferred | R-200 | [Evaluation Gate](./docs/architecture/evaluation-gate/SYSTEM.md) |
-| R-204 | Ship a concrete, primary-source-verified agent-runtime adapter behind the Worker Pool seam | research | — | [Worker Pool](./docs/architecture/spec-runner/worker-pool/SYSTEM.md) |
+| R-203 | Add CI that runs checks and evaluates changed measurable modules | done | R-200 | [Evaluation Gate](./docs/architecture/evaluation-gate/SYSTEM.md) |
+| R-204 | Ship a concrete, primary-source-verified agent-runtime adapter behind the Worker Pool seam. Evidence: [survey](./docs/research/r-204-runtime-survey.md), `src/recurspec/spec_runner/runtime.py`, `tests/test_runtime.py` | done | — | [Worker Pool](./docs/architecture/spec-runner/worker-pool/SYSTEM.md) |
 
 ## 3.0: closed-loop reconciliation
 
@@ -45,7 +45,7 @@ Statuses: `ready`, `blocked`, `research`, `deferred`, `done`.
 | R-300 | Detect uncontracted public symbols and structural drift | done | R-101 | [Structure Gate](./docs/architecture/structure-gate/SYSTEM.md) |
 | R-301 | Turn Structural Feedback into draft contract changes while deferring Empirical Feedback to the Evaluation Gate | done | R-300 | [Contract Reconciler](./docs/architecture/contract-reconciler/SYSTEM.md) |
 | R-302 | Detect adapters that outgrow their procurement seams | done | R-300 | [Stack Resolver](./docs/architecture/stack-resolver/SYSTEM.md) |
-| R-303 | Publish Research Frontiers to local and remote trackers | deferred | R-301 | [Frontier Adapter](./docs/architecture/frontier-adapter/SYSTEM.md) |
+| R-303 | Publish Research Frontiers to local and remote trackers | done | R-301 | [Frontier Adapter](./docs/architecture/frontier-adapter/SYSTEM.md) |
 
 ## Review remediation (2026-08-13)
 
@@ -97,6 +97,20 @@ above, looking for correctness and performance defects rather than security bypa
 | R-619 | Make `JobStore.rebuild_from_tree()` commit as one transaction instead of one per node, so a tree rebuild is atomic (a crash mid-rebuild can no longer leave a mix of old and new state) and does not scale connection/lock overhead with tree size | done | `test_rebuild_from_tree_commits_as_a_single_transaction` and `test_rebuild_from_tree_rolls_back_when_a_node_upsert_fails` in `tests/test_job_store.py` |
 | R-620 | Add an index on `nodes.status` so `claim_next_ready()`'s `WHERE status = 'ready'` is no longer a full table scan under concurrent workers | done | `test_nodes_table_is_indexed_by_status_for_claim_next_ready` in `tests/test_job_store.py` (`PRAGMA index_info` asserts the index is on `nodes.status`) |
 
+## REVIEW3 remediations (2026-08-14)
+
+Findings from `REVIEW3-tobedeleted when done.md`. That note reused R-617–R-622, which
+already named the optimization pass above, so these tickets continue from R-621.
+
+| ID | Outcome | Status | Evidence |
+|---|---|---|---|
+| R-621 | Pin the whole `modules/` tree and root pytest/ruff config into the Candidate worktree so a helper outside `tests/` cannot weaken the judge | done | `test_isolated_candidate_evaluates_against_trusted_module_helpers_not_the_candidates_own` |
+| R-622 | Reject malformed pins such as `1latest` that the previous exact-version heuristic accepted | done | expanded `test_dependency_inventory_rejects_a_floating_version` |
+| R-623 | Resolve declared §6 paths and reject repository-relative symlinks whose target leaves the tree | done | `test_structure_gate_rejects_a_symlink_whose_target_escapes_the_repository` |
+| R-624 | Validate every decoded evidence object against the required event schema; `{}` fails closed | done | `test_read_events_raises_on_an_empty_object` |
+| R-625 | Pass `sys.executable` to probes as `RECURSPEC_PYTHON` and invoke Ruff as `python -m ruff` | done | `test_run_script_exports_the_running_interpreter`; bundled `modules/*/*.sh` |
+| R-626 | Put the complete EARS bibliographic citation in the installed skill instead of pointing at a repository-only file | done | `test_skill_design_reference_carries_a_self_contained_ears_citation` |
+
 ## Research and validation
 
 These items are required before claiming that Recurspec improves engineering outcomes.
@@ -105,18 +119,18 @@ whole.
 
 | ID | Study | Status | Acceptance criterion |
 |---|---|---|---|
-| R-400 | Two real-project case studies | research | Reproducible before/after repositories and decision logs |
-| R-401 | Procurement-seam effectiveness | research | Measure avoided custom code and later replacement cost |
-| R-402 | Negative Pattern effectiveness | research | Compare repeated-failure rate with and without repair memory |
-| R-403 | Contract drift effectiveness | research | Compare detected and escaped code/contract mismatches |
-| R-404 | Domain-general example outside web software | ready | Published CLI, systems, or data-pipeline Contract Tree |
+| R-400 | Two real-project case studies | research | Reproducible before/after repositories and decision logs. Log template: [case-study-log.md](./docs/research/case-study-log.md). No outcome data yet. |
+| R-401 | Procurement-seam effectiveness | research | Measure avoided custom code and later replacement cost. Same log template. No outcome data yet. |
+| R-402 | Negative Pattern effectiveness | research | Compare repeated-failure rate with and without repair memory. Same log template. No outcome data yet. |
+| R-403 | Contract drift effectiveness | research | Compare detected and escaped code/contract mismatches. Same log template. No outcome data yet. |
+| R-404 | Domain-general example outside web software | done | [docs/examples/log-archive](./docs/examples/log-archive/SYSTEM.md); `test_log_archive_example_tree_is_a_valid_contract_tree` |
 | R-405 | Pre-register evaluation metrics and analysis | done | [Evaluation protocol](./docs/research/evaluation-protocol.md), published before any R-400–R-403 outcome data is collected |
 
 ## Long horizon: compounding intelligence
 
 | ID | Outcome | Status | Constraint |
 |---|---|---|---|
-| R-500 | Export a privacy-preserving decision corpus | research | Explicit opt-in; no source, prompts, secrets, or proprietary metrics |
+| R-500 | Export a privacy-preserving decision corpus | done | Explicit opt-in (`recurspec corpus export --i-opt-in`); redacts reason, branch, metric values, source, and prompts. `tests/test_corpus.py` |
 | R-501 | Learn reusable failure predictors from Negative Patterns | blocked | R-400, R-402, R-500 |
 | R-502 | Recommend Decision Classes from comparable outcomes | blocked | R-401, R-500; recommendations remain reviewable evidence, never authority |
 

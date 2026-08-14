@@ -54,6 +54,9 @@ The skill installer targets Claude Code, Codex, and Grok by default. Verify inst
 without writing with `recurspec skills check`. Use `--target grok` to install only to
 `$GROK_HOME/skills` (default `~/.grok/skills`).
 
+Optional extra `recurspec[runtime]` pins `anthropic==0.122.0` for the packet-only
+Messages adapter behind the Worker Pool. The core package does not require it.
+
 ## Use the agent skill
 
 Start with the single public skill:

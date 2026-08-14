@@ -6,36 +6,43 @@
 
 ## 1. System Intent & Responsibility
 
-Publish frontier tickets for atomic leaves and Type B research/prototype gaps. Default tracker: local markdown under `.scratch/wayfinder-map/`. Keeps domain vocabulary in titles; links each ticket to a `SYSTEM.md` URI.
+Publish Research Frontier tickets for DEFER leaves and leaves that cite a ROADMAP
+id. Default tracker: local markdown under `.recurspec/frontiers/` (generated runtime
+state). Titles use CONTEXT.md vocabulary and each ticket links to a `SYSTEM.md` path.
 
 ## 2. Sub-System Decomposition
 
-**Atomic leaf (Phase 0).** Local publication comes first; remote tracker adapters remain deferred under ROADMAP R-303.
+**Atomic leaf.** Local publication is the default; GitHub Issues is an optional
+remote behind the same publish seam.
 
 ## 3. Interface Contracts
 
-- **Inputs:** Leaf paths, ticket type (A implement / B research|prototype), blockers, domain terms from glossary.
-- **Outputs:** MAP index entries, per-ticket files, optional remote issue IDs.
+- **Inputs:** Contract Tree root; optional remote publisher.
+- **Outputs:** MAP index, per-ticket markdown, optional remote issue URLs.
 
 ## 4. Invariants (EARS + Epistemic Stage)
 
-- **[Ubiquitous]** The Connector SHALL use project domain vocabulary in issue titles (see [CONTEXT.md](../../../CONTEXT.md)).
-  - `EvidenceStage:` Unknown
-- **[Event-driven]** WHEN a new atomic leaf is created THE SYSTEM SHALL publish a corresponding frontier ticket. (tracked by ROADMAP R-303)
-  - `EvidenceStage:` Unknown
-- **[Conditional]** IF the architectural boundary is unknown THEN THE SYSTEM SHALL emit a Type B ticket, not a false Type A implement ticket. (Wayfinder skill policy)
-  - `EvidenceStage:` Unknown
+- **[Ubiquitous]** The Adapter SHALL use project domain vocabulary in ticket titles (see [CONTEXT.md](../../../CONTEXT.md)).
+  (`test_publish_writes_a_research_frontier_linked_to_the_contract`)
+  - `EvidenceStage:` Sampled
+- **[Event-driven]** WHEN a DEFER leaf or a leaf that cites a ROADMAP id is published THE SYSTEM SHALL write a Research Frontier ticket linked to that Contract Node.
+  (`test_publish_writes_a_research_frontier_linked_to_the_contract`)
+  - `EvidenceStage:` Sampled
+- **[Conditional]** IF a ticket's Contract path no longer exists THEN THE SYSTEM SHALL report broken integrity rather than invent a replacement leaf.
+  (`test_check_reports_a_ticket_whose_contract_is_gone`)
+  - `EvidenceStage:` Sampled
 
 ## 5. Architectural Decisions (ADRs)
 
-- **ADR-001:** Default tracker is `.scratch/wayfinder-map/` (markdown-first).
-- **ADR-002:** Incomplete product items stay in `ROADMAP.md`; trackers hold claimable build tickets only.
+- **ADR-001:** Default tracker is `.recurspec/frontiers/` (generated, gitignored).
+- **ADR-002:** Incomplete product items stay in `ROADMAP.md`; this adapter holds
+  Research Frontier tickets only.
 
 ## 6. Leaf Execution & Test Seam
 
-- **Implementation:** not yet built; planned seam `src/recurspec/frontier.py`.
-- **Tests:** none yet; planned `tests/test_frontier.py`.
-- **Roadmap:** R-303 (deferred).
+- **Implementation:** `src/recurspec/frontier.py`; CLI `recurspec frontier publish|check`.
+- **Tests:** `tests/test_frontier.py`.
+- **Roadmap:** R-303.
 
 ## 7. Measurement Seams
 
@@ -49,10 +56,10 @@ Publish frontier tickets for atomic leaves and Type B research/prototype gaps. D
   `SYSTEM.md` URI) is trivial, but no existing tracker natively understands a Contract
   Tree; a thin adapter is unavoidable regardless of backend.
 - **Selected:** Python standard library file I/O writing markdown under
-  `.scratch/wayfinder-map/`, with the remote tracker (GitHub/Linear) as an optional adapter
-  behind the same publish seam.
-- **Standard / protocol:** none for the default local tracker; REST for optional remote
-  adapters (GitHub Issues API, Linear API) — deferred under ROADMAP R-303.
+  `.recurspec/frontiers/`, with GitHub Issues as an optional adapter behind the same
+  publish seam (`gh issue create`).
+- **Standard / protocol:** none for the default local tracker; GitHub Issues via `gh`
+  when `--remote github` is set.
 - **Alternatives considered:**
 
   | Option | Why not |
@@ -62,7 +69,7 @@ Publish frontier tickets for atomic leaves and Type B research/prototype gaps. D
 
 - **Fit gap:** trackers do not know what a `SYSTEM.md` URI or a Type A/B ticket
   distinction is; the adapter owns that mapping.
-- **Seam:** `src/recurspec/frontier.py` (planned).
+- **Seam:** `src/recurspec/frontier.py`.
 - **Exit cost:** LOW — the local markdown format is the source of truth; a remote adapter
   is additive, not a migration.
 - **Cost model:** no service spend for the default local tracker; optional remote adapters
@@ -71,4 +78,4 @@ Publish frontier tickets for atomic leaves and Type B research/prototype gaps. D
 - **Operational owner:** us.
 - **Failure mode:** a broken publish leaves a leaf without a ticket; caught by
   `ticket_to_leaf_link_integrity` in §7.
-- **Open questions:** none outside ROADMAP R-303.
+- **Open questions:** none.

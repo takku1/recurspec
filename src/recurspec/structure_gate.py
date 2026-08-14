@@ -59,25 +59,34 @@ def _relative_path(value: str) -> str:
     return PurePosixPath(value.replace("\\", "/")).as_posix()
 
 
-def _is_contained(declared: str) -> bool:
-    """True iff a §6-declared path is a genuine repository-relative path (R-608).
+def _is_contained(declared: str, repository: Path | None = None) -> bool:
+    """True iff a §6-declared path stays inside the repository (R-608, R-623).
 
     A declaration is untrusted contract-author text, not code: a leading ``/``, a
     Windows drive letter, or a ``..`` segment must never be joined onto the repository
-    root and used for I/O, because ``Path(root) / "/etc/passwd.py"`` (or a drive-letter
-    path on Windows) discards ``root`` entirely rather than raising, and a ``..`` prefix
-    resolves outside it - either way a Contract Node could claim ownership of, or point
-    a "missing" check at, a file that was never part of the checked repository.
+    root and used for I/O. Lexical containment is not enough: a repository-relative
+    symlink whose resolved target leaves the tree is also unsafe.
     """
     if not declared or declared.startswith("/") or _DRIVE_LETTER_RE.match(declared):
         return False
     parts = PurePosixPath(declared).parts
-    return ".." not in parts
+    if ".." in parts:
+        return False
+    if repository is None:
+        return True
+    root = Path(repository).resolve()
+    try:
+        resolved = (root / declared).resolve()
+    except OSError:
+        return False
+    return resolved.is_relative_to(root)
 
 
-def declared_paths(contract: str | Path) -> tuple[set[str], set[str], set[str]]:
+def declared_paths(
+    contract: str | Path, repository: str | Path | None = None
+) -> tuple[set[str], set[str], set[str]]:
     """Return repository-relative implementation and test paths declared in §6, plus
-    any declared path that fails repository containment (R-608)."""
+    any declared path that fails repository containment (R-608, R-623)."""
     contract = Path(contract)
     text = contract.read_text(encoding="utf-8")
     section = _SECTION_SIX.search(text)
@@ -86,6 +95,7 @@ def declared_paths(contract: str | Path) -> tuple[set[str], set[str], set[str]]:
     implementation: set[str] = set()
     tests: set[str] = set()
     unsafe: set[str] = set()
+    repo = Path(repository) if repository is not None else None
     for item in _DECLARATION.finditer(section.group("body")):
         label = item.group("label")
         body = item.group("body")
@@ -94,7 +104,7 @@ def declared_paths(contract: str | Path) -> tuple[set[str], set[str], set[str]]:
         if label not in _IMPLEMENTATION_LABELS and label not in _TEST_LABELS:
             continue
         raw_paths = {_relative_path(path) for path in _PATH.findall(body)}
-        safe_paths = {path for path in raw_paths if _is_contained(path)}
+        safe_paths = {path for path in raw_paths if _is_contained(path, repo)}
         unsafe.update(raw_paths - safe_paths)
         if label in _IMPLEMENTATION_LABELS:
             implementation.update(safe_paths)
@@ -190,7 +200,7 @@ def check_structure(
 
     for contract in sorted(contracts.rglob("SYSTEM.md")):
         contract_name = contract.relative_to(root).as_posix()
-        implementations, tests, unsafe = declared_paths(contract)
+        implementations, tests, unsafe = declared_paths(contract, repository=root)
         declared_tests.update(tests)
         for declared in sorted(unsafe):
             diagnostics.append(

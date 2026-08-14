@@ -41,3 +41,12 @@ def test_skill_references_never_link_outside_the_installed_skill(tmp_path):
                 offenders.append(f"{document.relative_to(skill_root)} -> {raw_target}")
 
     assert offenders == []
+
+
+def test_skill_design_reference_carries_a_self_contained_ears_citation():
+    design = Path(str(files("recurspec").joinpath("skill/references/design.md")))
+    text = design.read_text(encoding="utf-8")
+
+    assert "docs/research/foundations.md" not in text
+    assert "10.1109/RE.2009.9" in text
+    assert "Mavin" in text
