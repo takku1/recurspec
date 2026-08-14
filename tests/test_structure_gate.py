@@ -98,6 +98,45 @@ def test_structure_gate_refuses_a_source_root_that_escapes_the_repository(tmp_pa
     )
 
 
+def test_structure_gate_rejects_a_declared_path_that_escapes_the_repository(tmp_path: Path):
+    # A file that genuinely exists just outside the repository - if the contract's
+    # escaping declaration were joined onto the root and checked as-is, this would read
+    # as a *satisfied* implementation instead of an unsafe declaration (R-608).
+    (tmp_path.parent / "outside.py").write_text("def public():\n    pass\n", encoding="utf-8")
+    contract = tmp_path / "docs" / "architecture" / "feature" / "SYSTEM.md"
+    (tmp_path / "src").mkdir()
+    contract.parent.mkdir(parents=True)
+    contract.write_text(
+        _contract("../outside.py", "tests/test_missing.py"), encoding="utf-8"
+    )
+
+    result = check_structure(tmp_path, source_root="src", contract_root="docs/architecture")
+
+    assert not result.valid
+    unsafe = [
+        item for item in result.diagnostics if item.code == "structure.declaration.unsafe_path"
+    ]
+    assert len(unsafe) == 1
+    assert unsafe[0].path == "../outside.py"
+    # The escaping declaration must not be treated as a satisfied implementation.
+    assert not any(item.code == "structure.implementation.missing" for item in result.diagnostics)
+
+
+def test_structure_gate_rejects_an_absolute_declared_path(tmp_path: Path):
+    contract = tmp_path / "docs" / "architecture" / "feature" / "SYSTEM.md"
+    (tmp_path / "src").mkdir()
+    contract.parent.mkdir(parents=True)
+    contract.write_text(_contract("/etc/passwd.py", "tests/test_missing.py"), encoding="utf-8")
+
+    result = check_structure(tmp_path, source_root="src", contract_root="docs/architecture")
+
+    assert not result.valid
+    assert any(
+        item.code == "structure.declaration.unsafe_path" and item.path == "/etc/passwd.py"
+        for item in result.diagnostics
+    )
+
+
 def test_structure_gate_changed_files_narrows_source_drift_but_not_contract_drift(
     tmp_path: Path,
 ):

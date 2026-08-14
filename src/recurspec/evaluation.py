@@ -55,6 +55,30 @@ class CandidateLifecycleError(RuntimeError):
 
 _MODULE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 
+# Recurspec's own generated runtime state - never anything a project chose to track.
+_RUNTIME_STATE_RE = re.compile(
+    r"^\.recurspec/(?:evidence/[^/]+/log\.jsonl|handoffs/.*|worker-authorizations\.json)$"
+)
+
+
+def _is_ignorable_runtime_state(status_line: str) -> bool:
+    """True iff a ``git status --porcelain`` line is Recurspec's own untracked,
+    generated runtime state - never a tracked file, no matter where it lives (R-604).
+
+    A blanket ``:(exclude).recurspec/`` pathspec would also hide a *tracked* dirty
+    file a project deliberately committed under ``.recurspec/`` (e.g. a checked-in
+    config); only an untracked path matching Recurspec's own known-generated shapes is
+    safe to ignore here.
+    """
+    if len(status_line) < 4 or status_line[:2] != "??":
+        return False
+    path = status_line[3:]
+    if path.startswith('"'):
+        # A quoted (unusually-charactered) path cannot be safely pattern-matched;
+        # fail closed rather than risk ignoring something unexpected.
+        return False
+    return bool(_RUNTIME_STATE_RE.match(path))
+
 
 def _validate_module_name(module: str) -> None:
     """Reject anything but a single safe path segment (R-608).
@@ -79,6 +103,27 @@ def _git(repo: Path, *args: str, check: bool = True) -> subprocess.CompletedProc
         detail = result.stderr.strip() or result.stdout.strip() or f"exit {result.returncode}"
         raise CandidateLifecycleError(f"git {' '.join(args)} failed: {detail}")
     return result
+
+
+def _snapshot_tree(root: Path) -> dict[str, bytes]:
+    """Read every regular file under ``root`` into {posix-relative-path: bytes}."""
+    snapshot: dict[str, bytes] = {}
+    if not root.is_dir():
+        return snapshot
+    for path in root.rglob("*"):
+        if path.is_file():
+            snapshot[path.relative_to(root).as_posix()] = path.read_bytes()
+    return snapshot
+
+
+def _materialize_tree(root: Path, snapshot: dict[str, bytes]) -> None:
+    """Replace everything under ``root`` with exactly the given snapshot."""
+    if root.exists():
+        shutil.rmtree(root)
+    for relative, content in snapshot.items():
+        target = root / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content)
 
 
 def _bash(platform: str | None = None) -> str | None:
@@ -406,10 +451,20 @@ def evaluate_isolated_candidate(
     # lives under .recurspec/ in the checked-out worktree. A correctly generated
     # prerequisite - e.g. the documented --worker-state path - must never itself block
     # the documented workflow just because a project's .gitignore hasn't caught up
-    # (R-604); exclude it from the cleanliness check regardless of ignore rules.
-    if _git(
-        repo_path, "status", "--porcelain", "--", ".", ":(exclude).recurspec/"
-    ).stdout.strip():
+    # (R-604). Filter it out line by line rather than pathspec-excluding the whole
+    # .recurspec/ directory: a blanket exclude would also hide a *tracked* dirty file a
+    # project deliberately committed there, which must still block evaluation.
+    # --untracked-files=all: without it, git collapses a wholly-untracked directory into
+    # one "?? .recurspec/" line instead of listing the files inside, which would defeat
+    # per-path matching against _RUNTIME_STATE_RE below.
+    dirty_lines = [
+        line
+        for line in _git(
+            repo_path, "status", "--porcelain", "--untracked-files=all"
+        ).stdout.splitlines()
+        if line.strip() and not _is_ignorable_runtime_state(line)
+    ]
+    if dirty_lines:
         raise CandidateLifecycleError("baseline worktree must be clean before candidate evaluation")
 
     baseline_ref = f"refs/heads/{baseline_branch}"
@@ -447,6 +502,15 @@ def evaluate_isolated_candidate(
         )
     trusted_checks_bytes = trusted_checks.read_bytes()
     trusted_measure_bytes = trusted_measure.read_bytes()
+    # checks.sh/measure.sh are not the only thing a Candidate could weaken to defeat
+    # correctness backpressure: every bundled checks.sh in this repository shells out to
+    # test files under tests/ (AGENTS.md names tests/ as the fixed interface-level test
+    # surface, a sibling of modules/), and those assertions are as much part of the
+    # trusted judge as checks.sh/measure.sh itself. Pin the whole tests/ tree from the
+    # baseline the same way, so a Candidate cannot pass its own checks by weakening the
+    # assertions those checks run (R-600).
+    tests_rel = "tests"
+    trusted_tests_snapshot = _snapshot_tree(repo_path / tests_rel)
 
     # A previous interrupted process may have deleted its directory before unregistering
     # it. Prune only missing worktrees so the Candidate branch can be isolated again.
@@ -473,6 +537,8 @@ def evaluate_isolated_candidate(
         # Candidate itself committed.
         (worktree / checks_rel).write_bytes(trusted_checks_bytes)
         (worktree / measure_rel).write_bytes(trusted_measure_bytes)
+        if trusted_tests_snapshot:
+            _materialize_tree(worktree / tests_rel, trusted_tests_snapshot)
         try:
             code, reason = evaluate_change(
                 module,
@@ -487,7 +553,11 @@ def evaluate_isolated_candidate(
             )
         finally:
             if worktree.exists():
+                if trusted_tests_snapshot and (worktree / tests_rel).exists():
+                    shutil.rmtree(worktree / tests_rel)
                 _git(worktree, "checkout", "--", checks_rel, measure_rel, check=False)
+                if trusted_tests_snapshot:
+                    _git(worktree, "checkout", "--", tests_rel, check=False)
         if code != KEEP:
             return code, reason
         if _git(worktree, "status", "--porcelain").stdout.strip():

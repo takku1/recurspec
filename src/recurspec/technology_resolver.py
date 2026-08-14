@@ -89,14 +89,37 @@ def _repository_path(root: Path, contract_root: str | Path) -> Path:
     return path.resolve() if path.is_absolute() else (root / path).resolve()
 
 
-_FLOATING_MARKERS = {"latest", "*", "master", "main", "head", "stable", "unstable"}
-_RANGE_OPERATOR_RE = re.compile(r"[<>=~^!,]")
-_EXACT_VERSION_RE = re.compile(r"^[0-9][0-9A-Za-z.+_-]*$")
+_FLOATING_MARKERS = {
+    "latest",
+    "*",
+    "master",
+    "main",
+    "head",
+    "stable",
+    "unstable",
+    "snapshot",
+    "nightly",
+    "edge",
+    "canary",
+    "trunk",
+    "dev",
+}
+_RANGE_OPERATOR_RE = re.compile(r"[<>=~^!,\s]")
+# Semver-shaped (optionally v-prefixed) exact version: "1.2.3", "v1.2.3", "1.2.3-rc.1".
+_SEMVER_RE = re.compile(r"^v?[0-9][0-9A-Za-z]*(?:[.+_-][0-9A-Za-z]+)*$")
+# An immutable git/VCS revision - short or full hex SHA. Must contain a letter so a
+# plain numeric version (e.g. a build number) is never mistaken for one.
+_HEX_REVISION_RE = re.compile(r"^[0-9a-fA-F]{7,64}$")
+# An immutable content digest, e.g. an OCI/Docker pin: "sha256:<hex>".
+_DIGEST_RE = re.compile(r"^[A-Za-z][A-Za-z0-9]*:[0-9a-fA-F]{32,}$")
 
 
 def _looks_exact(version: str) -> bool:
-    """Reject known floating/range specifiers so 'exact-version' inventories and pins
-    cannot both float to the same string and read as a reproducible pin (R-607)."""
+    """Reject known floating/range specifiers and malformed strings, while accepting
+    ecosystem-valid immutable versions, v-prefixed tags, digests, and revisions, so
+    'exact-version' inventories and pins cannot both float to the same string and read
+    as a reproducible pin - nor be rejected merely for using a real exact form the
+    original digit-only pattern did not recognize (R-607)."""
     value = version.strip()
     if not value:
         return False
@@ -107,7 +130,13 @@ def _looks_exact(version: str) -> bool:
         return False
     if lowered == "x" or lowered.endswith(".x") or ".x." in lowered:
         return False
-    return bool(_EXACT_VERSION_RE.match(value))
+    if ".." in value or value[0] in ".-_" or value[-1] in ".-_":
+        return False
+    if _DIGEST_RE.match(value):
+        return True
+    if _HEX_REVISION_RE.match(value) and any(c in "abcdefABCDEF" for c in value):
+        return True
+    return bool(_SEMVER_RE.match(value))
 
 
 def load_dependency_inventory(path: str | Path) -> dict[str, str]:
@@ -258,7 +287,7 @@ def audit_resolutions(
                 PurePosixPath(path.replace("\\", "/")).as_posix()
                 for path in _PATH.findall(fields.get("Seam", ""))
             }
-            implementations, _ = declared_paths(contract_path)
+            implementations, _, _ = declared_paths(contract_path)
             namespaces = {
                 PurePosixPath(path.replace("\\", "/")).as_posix().rstrip("/")
                 for path in _QUOTED_PATH.findall(fields.get("Adapter namespace", ""))

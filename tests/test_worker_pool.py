@@ -187,6 +187,50 @@ def test_a_later_produce_invalidates_a_prior_completed_check():
         pool.merge_authorization("node-a")
 
 
+def test_a_concurrent_re_produce_invalidates_an_in_flight_check():
+    """A produce that lands *while* a CHECK's runtime call is still running must
+    invalidate that CHECK, not just a produce that lands after it commits (R-601).
+    Without generation tracking, dispatch() only re-reads current_maker at commit
+    time; if the racing produce reused the same worker_id as the original maker,
+    current_maker == worker_id would even look like the checker's own work and the
+    approval would still be discarded for the wrong reason on some paths - but the
+    real bug is that the checker's approval reviewed content that no longer exists,
+    regardless of who produced the replacement."""
+    check_started = threading.Event()
+    allow_check_to_return = threading.Event()
+
+    def runtime(packet, phase, tier):
+        if phase == "check":
+            check_started.set()
+            assert allow_check_to_return.wait(timeout=5), "test deadlocked"
+            return RuntimeResponse({"approved": True}, 1, 1, 1.0)
+        return RuntimeResponse(body="produced", tokens_in=1, tokens_out=1, ms=1.0)
+
+    pool = WorkerPool(runtime=runtime, concurrency=2)
+    pool.dispatch("node-a", {}, "frame", "maker-1", 1000)
+
+    check_result: list = []
+    check_thread = threading.Thread(
+        target=lambda: check_result.append(
+            pool.dispatch("node-a", {}, "check", "checker", 1000, "candidate/node-a", "abc123")
+        )
+    )
+    check_thread.start()
+    assert check_started.wait(timeout=5), "check never reached the runtime call"
+
+    # The maker re-produces node-a while the checker's runtime call is still in
+    # flight: the approval that comes back reviewed content this pool no longer
+    # stands behind.
+    pool.dispatch("node-a", {}, "frame", "maker-1", 1000)
+
+    allow_check_to_return.set()
+    check_thread.join(timeout=5)
+
+    assert check_result[0].outcome == "ok"
+    with pytest.raises(ValueError, match="no completed maker/checker authorization"):
+        pool.merge_authorization("node-a")
+
+
 def test_merge_authorization_refuses_an_equal_maker_and_checker_even_in_internal_state():
     pool = WorkerPool(runtime=lambda *_args: RuntimeResponse({}, 1, 1, 1.0), concurrency=1)
     # Bypass dispatch()'s own guards to prove merge_authorization() revalidates the

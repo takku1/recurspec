@@ -288,8 +288,11 @@ def test_read_events_survives_only_a_torn_final_line(tmp_path):
     log_dir = str(tmp_path)
     log_event("comp", "baseline", {"metric": "m", "value": 1.0}, branch="main", log_dir=log_dir)
     log_path = os.path.join(log_dir, "comp", "log.jsonl")
+    # log_event() always terminates a completed append with "\n"; a write interrupted
+    # mid-flush leaves the file *without* one. That absence is what makes this line
+    # distinguishable from real corruption (R-602) - it must not end in a newline.
     with open(log_path, "a", encoding="utf-8") as f:
-        f.write('{"ts": "trunc\n')
+        f.write('{"ts": "trunc')
 
     assert len(read_events("comp", log_dir)) == 1
 
@@ -303,6 +306,45 @@ def test_read_events_raises_on_corruption_that_is_not_the_final_line(tmp_path):
     log_path = comp_dir / "log.jsonl"
     log_path.write_text(
         '{"broken\n{"event_type": "baseline", "branch": "main"}\n', encoding="utf-8"
+    )
+
+    with pytest.raises(EvidenceInstrumentError):
+        read_events("comp", log_dir)
+
+
+def test_read_events_raises_on_a_complete_but_corrupt_final_line(tmp_path):
+    """A newline-terminated final line is a completed append, not a torn one - even
+    when it is the very last line in the file, its corruption is real and must not be
+    forgiven the way a torn write is (R-602)."""
+    from recurspec.metrics import read_events
+
+    log_dir = str(tmp_path)
+    comp_dir = tmp_path / "comp"
+    comp_dir.mkdir()
+    log_path = comp_dir / "log.jsonl"
+    log_path.write_text(
+        json.dumps({"event_type": "baseline", "branch": "main", "metrics": {}}) + "\n"
+        '{"not valid json\n',
+        encoding="utf-8",
+    )
+
+    with pytest.raises(EvidenceInstrumentError):
+        read_events("comp", log_dir)
+
+
+def test_read_events_raises_on_a_non_object_json_scalar(tmp_path):
+    """A line that parses as valid JSON but isn't an object (e.g. a bare number) must
+    not silently enter the event stream, where a later ``.get()`` call would crash with
+    AttributeError instead of failing closed (R-602)."""
+    from recurspec.metrics import read_events
+
+    log_dir = str(tmp_path)
+    comp_dir = tmp_path / "comp"
+    comp_dir.mkdir()
+    log_path = comp_dir / "log.jsonl"
+    log_path.write_text(
+        json.dumps({"event_type": "baseline", "branch": "main", "metrics": {}}) + "\n" "42\n",
+        encoding="utf-8",
     )
 
     with pytest.raises(EvidenceInstrumentError):
@@ -378,8 +420,10 @@ def test_find_baseline_takes_most_recent_and_matches_metric(tmp_path):
 def test_find_baseline_survives_torn_line(tmp_path):
     log_dir = str(tmp_path)
     log_event("comp", "baseline", {"metric": "m", "value": 5.0}, branch="main", log_dir=log_dir)
+    # No trailing newline: a completed append always has one (R-602), so this models a
+    # genuine mid-write crash rather than a merely malformed but complete event.
     with open(os.path.join(log_dir, "comp", "log.jsonl"), "a", encoding="utf-8") as f:
-        f.write('{"ts": "trunc\n')
+        f.write('{"ts": "trunc')
     assert find_baseline("comp", "m", log_dir)["metrics"]["value"] == 5.0
 
 
@@ -851,6 +895,57 @@ def test_isolated_candidate_evaluates_against_trusted_probes_not_the_candidates_
     assert (repo / "state.txt").read_text(encoding="utf-8") == "baseline\n"
 
 
+def test_isolated_candidate_evaluates_against_trusted_tests_dependency_not_the_candidates_own(
+    tmp_path: Path,
+):
+    """checks.sh is pinned to the trusted baseline, but every bundled checks.sh in this
+    repository also shells out to files under tests/ - a Candidate that weakens what
+    checks.sh itself calls into must not bypass correctness backpressure either (R-600)."""
+    if gate._bash() is None:
+        pytest.skip("no POSIX shell available to run real probes")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-b", "main", str(repo)], check=True, capture_output=True)
+    _git(repo, "config", "user.email", "tests@example.invalid")
+    _git(repo, "config", "user.name", "Recurspec Tests")
+    (repo / "state.txt").write_text("baseline\n", encoding="utf-8")
+    (repo / "tests").mkdir()
+    (repo / "tests" / "assertions.sh").write_text(
+        "if grep -q broken \"${DIR}/state.txt\" 2>/dev/null; then\n"
+        '  echo "state is broken" >&2\n'
+        "  exit 1\n"
+        "fi\n"
+        "exit 0\n",
+        encoding="utf-8",
+    )
+    modules = repo / "modules" / "checkout"
+    modules.mkdir(parents=True)
+    (modules / "checks.sh").write_text(
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        'DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"\n'
+        'source "${DIR}/tests/assertions.sh"\n',
+        encoding="utf-8",
+    )
+    (modules / "measure.sh").write_text(_TRUSTED_MEASURE_SH, encoding="utf-8")
+    _git(repo, "add", "state.txt", "tests", "modules")
+    _git(repo, "commit", "-m", "baseline")
+    _git(repo, "switch", "-c", "candidate/R-200")
+    (repo / "state.txt").write_text("broken\n", encoding="utf-8")
+    (repo / "tests" / "assertions.sh").write_text("exit 0\n", encoding="utf-8")
+    _git(repo, "add", "state.txt", "tests")
+    _git(repo, "commit", "-m", "break state and weaken the checks.sh dependency")
+    _git(repo, "switch", "main")
+
+    code, reason = gate.evaluate_isolated_candidate(
+        repo, "checkout", "candidate/R-200", authorization=_independent_review(repo)
+    )
+
+    assert code == gate.REVERT
+    assert "checks.sh failed" in reason
+    assert (repo / "state.txt").read_text(encoding="utf-8") == "baseline\n"
+
+
 def test_isolated_candidate_refuses_a_module_without_trusted_baseline_probes(tmp_path: Path):
     repo = _repo_with_candidate(tmp_path)
 
@@ -963,6 +1058,33 @@ def test_isolated_candidate_ignores_recurspec_runtime_state_when_checking_cleanl
     )
 
     assert code == gate.KEEP
+
+
+def test_isolated_candidate_still_refuses_a_tracked_dirty_file_under_recurspec(
+    tmp_path, monkeypatch
+):
+    """A project that deliberately commits something under .recurspec/ (e.g. a checked-in
+    config) must still block evaluation if that tracked file is dirty - R-604 only
+    excludes Recurspec's own *untracked, generated* runtime state, never a blanket
+    exclusion of the whole directory (which would also hide this)."""
+    repo = _repo_with_candidate(tmp_path)
+    (repo / ".recurspec").mkdir()
+    (repo / ".recurspec" / "config.json").write_text('{"tracked": true}', encoding="utf-8")
+    _git(repo, "add", ".recurspec/config.json")
+    _git(repo, "commit", "-m", "track a .recurspec config on purpose")
+    (repo / ".recurspec" / "config.json").write_text('{"tracked": false}', encoding="utf-8")
+    monkeypatch.setattr(
+        gate,
+        "evaluate_change",
+        lambda *_args, **_kwargs: pytest.fail(
+            "dirty tracked .recurspec file must not be evaluated"
+        ),
+    )
+
+    with pytest.raises(gate.CandidateLifecycleError, match="clean"):
+        gate.evaluate_isolated_candidate(
+            repo, "checkout", "candidate/R-200", authorization=_independent_review(repo)
+        )
 
 
 def test_isolated_candidate_refuses_a_dirty_or_wrong_baseline(tmp_path, monkeypatch):

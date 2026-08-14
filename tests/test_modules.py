@@ -51,3 +51,29 @@ def test_every_declared_module_has_both_probe_scripts():
         module_dir = REPO_ROOT / "modules" / module
         assert (module_dir / "checks.sh").is_file(), f"modules/{module}/checks.sh is missing"
         assert (module_dir / "measure.sh").is_file(), f"modules/{module}/measure.sh is missing"
+
+
+def test_bundled_probes_never_invoke_a_bare_python_command():
+    """Some systems only ship `python3`, not a bare `python` alias - a probe that shells
+    out to `python` directly fails on those systems even though the recurspec package
+    itself is installed and importable (R-606). Every bundled script must resolve an
+    interpreter (`command -v python3 || command -v python`) before calling it."""
+    offenders: list[str] = []
+    for script in sorted((REPO_ROOT / "modules").glob("*/*.sh")):
+        text = script.read_text(encoding="utf-8")
+        if "python" not in text:
+            continue
+        assert 'command -v python3' in text and 'command -v python' in text, (
+            f"{script.relative_to(REPO_ROOT)} calls python without resolving an "
+            "interpreter first"
+        )
+        for line in text.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("python") and not stripped.startswith("python3"):
+                # Only the resolution line itself and comments may start with the bare
+                # word "python"; every actual invocation must go through ${PYTHON}.
+                if "command -v python" in stripped or stripped.startswith("#"):
+                    continue
+                offenders.append(f"{script.relative_to(REPO_ROOT)}: {stripped}")
+
+    assert offenders == []

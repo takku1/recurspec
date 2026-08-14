@@ -52,30 +52,55 @@ class StructureResult:
         return not self.diagnostics
 
 
+_DRIVE_LETTER_RE = re.compile(r"^[A-Za-z]:")
+
+
 def _relative_path(value: str) -> str:
     return PurePosixPath(value.replace("\\", "/")).as_posix()
 
 
-def declared_paths(contract: str | Path) -> tuple[set[str], set[str]]:
-    """Return repository-relative implementation and test paths declared in §6."""
+def _is_contained(declared: str) -> bool:
+    """True iff a §6-declared path is a genuine repository-relative path (R-608).
+
+    A declaration is untrusted contract-author text, not code: a leading ``/``, a
+    Windows drive letter, or a ``..`` segment must never be joined onto the repository
+    root and used for I/O, because ``Path(root) / "/etc/passwd.py"`` (or a drive-letter
+    path on Windows) discards ``root`` entirely rather than raising, and a ``..`` prefix
+    resolves outside it - either way a Contract Node could claim ownership of, or point
+    a "missing" check at, a file that was never part of the checked repository.
+    """
+    if not declared or declared.startswith("/") or _DRIVE_LETTER_RE.match(declared):
+        return False
+    parts = PurePosixPath(declared).parts
+    return ".." not in parts
+
+
+def declared_paths(contract: str | Path) -> tuple[set[str], set[str], set[str]]:
+    """Return repository-relative implementation and test paths declared in §6, plus
+    any declared path that fails repository containment (R-608)."""
     contract = Path(contract)
     text = contract.read_text(encoding="utf-8")
     section = _SECTION_SIX.search(text)
     if section is None:
-        return set(), set()
+        return set(), set(), set()
     implementation: set[str] = set()
     tests: set[str] = set()
+    unsafe: set[str] = set()
     for item in _DECLARATION.finditer(section.group("body")):
         label = item.group("label")
         body = item.group("body")
         if any(marker in body.lower() for marker in ("not yet built", "none yet")):
             continue
-        paths = {_relative_path(path) for path in _PATH.findall(body)}
+        if label not in _IMPLEMENTATION_LABELS and label not in _TEST_LABELS:
+            continue
+        raw_paths = {_relative_path(path) for path in _PATH.findall(body)}
+        safe_paths = {path for path in raw_paths if _is_contained(path)}
+        unsafe.update(raw_paths - safe_paths)
         if label in _IMPLEMENTATION_LABELS:
-            implementation.update(paths)
-        elif label in _TEST_LABELS:
-            tests.update(paths)
-    return implementation, tests
+            implementation.update(safe_paths)
+        else:
+            tests.update(safe_paths)
+    return implementation, tests, unsafe
 
 
 def _public_symbols(path: Path) -> list[str]:
@@ -165,8 +190,16 @@ def check_structure(
 
     for contract in sorted(contracts.rglob("SYSTEM.md")):
         contract_name = contract.relative_to(root).as_posix()
-        implementations, tests = declared_paths(contract)
+        implementations, tests, unsafe = declared_paths(contract)
         declared_tests.update(tests)
+        for declared in sorted(unsafe):
+            diagnostics.append(
+                StructureDiagnostic(
+                    "structure.declaration.unsafe_path",
+                    declared,
+                    f"{contract_name} declares a path that escapes the repository",
+                )
+            )
         for declared in sorted(implementations):
             owners.setdefault(declared, []).append(contract_name)
             tests_for_implementation.setdefault(declared, set()).update(tests)

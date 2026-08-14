@@ -128,6 +128,11 @@ class WorkerPool:
         self._semaphore = threading.Semaphore(concurrency)
         self._maker_lock = threading.Lock()
         self._maker_of: dict[str, str] = {}
+        # Bumped on every PRODUCE so an in-flight CHECK can tell, at commit time,
+        # whether the node it reviewed is still the one currently registered - a
+        # produce racing a long-running CHECK call must invalidate that CHECK's
+        # approval rather than let it authorize content the checker never saw (R-601).
+        self._generation_of: dict[str, int] = {}
         self._checker_of: dict[str, str] = {}
         self._checked_candidate: dict[str, tuple[str, str]] = {}
         self._authorization_state = Path(authorization_state) if authorization_state else None
@@ -192,6 +197,7 @@ class WorkerPool:
                 )
             with self._maker_lock:
                 maker = self._maker_of.get(node_id)
+                expected_generation = self._generation_of.get(node_id, 0)
             # No producer yet, or the producer reviewing itself: refuse before ever
             # calling the runtime (R-601).
             if maker is None or maker == worker_id:
@@ -220,6 +226,7 @@ class WorkerPool:
         with self._maker_lock:
             if phase in PRODUCE_PHASES:
                 self._maker_of[node_id] = worker_id
+                self._generation_of[node_id] = self._generation_of.get(node_id, 0) + 1
                 # A fresh produce supersedes any prior review of this node: an approval
                 # of the old content must not authorize a merge of the new content
                 # (R-601 - "keep the maker immutable for the reviewed Candidate").
@@ -227,13 +234,18 @@ class WorkerPool:
                 self._checked_candidate.pop(node_id, None)
             if phase in CHECK_PHASES:
                 # Revalidate at commit time, not just at the pre-runtime-call guard
-                # above: a concurrent produce could have changed the maker while this
-                # call was in flight.
+                # above: a concurrent produce could have changed the maker - or
+                # re-produced under the *same* maker, which the identity check alone
+                # cannot see - while this call was in flight. The generation counter
+                # catches both: any produce since this CHECK started means it reviewed
+                # a node this pool no longer stands behind (R-601).
                 current_maker = self._maker_of.get(node_id)
+                current_generation = self._generation_of.get(node_id, 0)
                 approved = (
                     isinstance(response.body, Mapping) and response.body.get("approved") is True
                 )
-                if current_maker is None or current_maker == worker_id or not approved:
+                stale = current_generation != expected_generation
+                if current_maker is None or current_maker == worker_id or not approved or stale:
                     self._persist_authorizations()
                     return WorkerResult(
                         outcome="ok",

@@ -65,6 +65,26 @@ reproductions; this table is the sole status record, per hard rule 1.
 | R-607 | Reject floating dependency versions in both the inventory and §8 Pin fields | done | `tests/test_technology_resolver.py` (floating-version tests) |
 | R-608 | Validate the CLI `module` argument as a single safe path segment and reject a structure/stack root that escapes the repository | done | `tests/test_evaluation.py` (unsafe module name tests), `tests/test_structure_gate.py::test_structure_gate_refuses_a_source_root_that_escapes_the_repository` |
 
+## Follow-up hardening (2026-08-13)
+
+A second, deeper adversarial pass over the R-600–R-608 fixes above found narrower gaps
+in the same seams. `contract.py`'s sole-root check was also examined for whether it
+should require the root to be level 0 (L0); doing so broke
+`test_validate_contract_accepts_an_independently_authored_two_stage_tree`, which is
+deliberate support for validating a composable subtree that is not itself an L0 root
+(the same "investigated, by design" precedent as R-105) — no change was made there.
+
+| ID | Outcome | Status | Evidence |
+|---|---|---|---|
+| R-609 | Pin the whole `tests/` tree (not just `checks.sh`/`measure.sh`) to the trusted baseline, since every bundled `checks.sh` shells out to test files a Candidate could otherwise weaken | done | `test_isolated_candidate_evaluates_against_trusted_tests_dependency_not_the_candidates_own` in `tests/test_evaluation.py` |
+| R-610 | Bind a CHECK's approval to the maker generation it reviewed so a produce racing an in-flight CHECK call cannot authorize content the checker never saw | done | `test_a_concurrent_re_produce_invalidates_an_in_flight_check` in `tests/test_worker_pool.py` |
+| R-611 | Only forgive a non-newline-terminated final evidence line as a torn write; a complete-but-corrupt final line or a non-object JSON scalar now raises instead of being skipped or crashing later with `AttributeError` | done | `test_read_events_raises_on_a_complete_but_corrupt_final_line`, `test_read_events_raises_on_a_non_object_json_scalar` in `tests/test_evaluation.py` |
+| R-612 | Resolve `python3`/`python` at runtime in every bundled `checks.sh`/`measure.sh` instead of assuming a bare `python` alias is on PATH | done | `test_bundled_probes_never_invoke_a_bare_python_command` in `tests/test_modules.py` |
+| R-613 | Stop excluding the whole `.recurspec/` directory from the baseline cleanliness check; only Recurspec's own untracked generated runtime-state paths are ignorable, so a tracked dirty file anywhere (including under `.recurspec/`) still blocks evaluation | done | `test_isolated_candidate_still_refuses_a_tracked_dirty_file_under_recurspec` in `tests/test_evaluation.py` |
+| R-614 | Accept ecosystem-valid immutable versions (`v`-prefixed tags, hex revisions, `algo:hex` digests) as exact, and reject malformed pins (leading/trailing/doubled separators), instead of only recognizing digit-led dotted strings | done | `test_dependency_inventory_accepts_ecosystem_valid_exact_forms`, expanded `test_dependency_inventory_rejects_a_floating_version` in `tests/test_technology_resolver.py` |
+| R-615 | Reject a Contract Node §6 declaration whose implementation/test path is absolute, drive-lettered, or escapes the repository via `..`, instead of joining it onto the repository root unchecked | done | `test_structure_gate_rejects_a_declared_path_that_escapes_the_repository`, `test_structure_gate_rejects_an_absolute_declared_path` in `tests/test_structure_gate.py` |
+| R-616 | Remove the bundled skill's one repository-only relative link (into `docs/research/`, which is not packaged) and add a standing check that no skill reference links outside the installed skill directory | done | `test_skill_references_never_link_outside_the_installed_skill` in `tests/test_skill_references.py` |
+
 ## Research and validation
 
 These items are required before claiming that Recurspec improves engineering outcomes.

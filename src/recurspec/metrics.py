@@ -81,32 +81,49 @@ def resolve_direction(metric: str, declared: str | None = None) -> str | None:
 def read_events(module: str, log_dir: str = ".recurspec/evidence") -> list[dict[str, Any]]:
     """Read the append-only evidence log.
 
-    Only the file's last line may be silently dropped, as a recoverable truncated
-    append (e.g. a crash mid-write). A malformed line anywhere else is real corruption
-    of prior history - erasing it could turn a real baseline regression into a false
-    "no baseline" first measurement, so it raises ``EvidenceInstrumentError`` instead of
-    being skipped.
+    ``log_event`` always terminates a completed append with ``\\n``; only a line left
+    without one is evidence of a crash mid-write. That specific truncated final line may
+    be silently dropped as a recoverable partial append. Everything else - a malformed
+    line anywhere else, or a *complete* (newline-terminated) final line that is still
+    unparseable or not a JSON object - is real corruption of prior history: erasing it
+    could turn a real baseline regression into a false "no baseline" first measurement,
+    or (for a non-object event, e.g. a bare number or list) crash a later ``.get()`` call
+    with ``AttributeError`` instead of failing closed. Both raise
+    ``EvidenceInstrumentError`` instead of being skipped or silently propagating.
     """
     path = os.path.join(log_dir, module, "log.jsonl")
     if not os.path.exists(path):
         return []
     with open(path, encoding="utf-8") as f:
-        raw_lines = f.readlines()
+        raw_text = f.read()
+    if not raw_text:
+        return []
+    ends_with_newline = raw_text.endswith("\n")
+    raw_lines = raw_text.splitlines()
     last_index = len(raw_lines) - 1
     events: list[dict[str, Any]] = []
     for index, raw_line in enumerate(raw_lines):
         line = raw_line.strip()
         if not line:
             continue
+        is_recoverable_truncation = index == last_index and not ends_with_newline
         try:
-            events.append(json.loads(line))
+            obj = json.loads(line)
         except json.JSONDecodeError as exc:
-            if index == last_index:
+            if is_recoverable_truncation:
                 continue
             raise EvidenceInstrumentError(
                 f"{path}:{index + 1}: corrupt evidence event blocks a safe baseline "
                 f"lookup: {exc}"
             ) from exc
+        if not isinstance(obj, dict):
+            if is_recoverable_truncation:
+                continue
+            raise EvidenceInstrumentError(
+                f"{path}:{index + 1}: evidence event is not a JSON object "
+                f"(got {type(obj).__name__})"
+            )
+        events.append(obj)
     return events
 
 

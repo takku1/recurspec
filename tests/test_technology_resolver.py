@@ -140,13 +140,43 @@ def test_dependency_inventory_normalizes_package_keys_without_altering_versions(
     assert load_dependency_inventory(inventory) == {"example-sdk": "1.0.0"}
 
 
-@pytest.mark.parametrize("floating", ["latest", ">=1.0", "*", "1.x", "^1.0.0"])
+@pytest.mark.parametrize(
+    "floating",
+    [
+        "latest", ">=1.0", "*", "1.x", "^1.0.0", "~1.2.3", "1.*", "1.2.x",
+        "snapshot", "nightly", "edge", "canary", "trunk", "dev",
+        "1.", ".1.2", "1..2", "1.2-", "-1.2",
+    ],
+)
 def test_dependency_inventory_rejects_a_floating_version(tmp_path: Path, floating):
     inventory = tmp_path / "inventory.json"
     inventory.write_text(f'{{"example-sdk":"{floating}"}}', encoding="utf-8")
 
     with pytest.raises(ResolutionInstrumentError, match="floating"):
         load_dependency_inventory(inventory)
+
+
+@pytest.mark.parametrize(
+    "exact",
+    [
+        "1.0.0",
+        "v1.2.3",
+        "1.2.3-rc.1",
+        "1.2.3+build.5",
+        "2024.01.15",
+        "abc1234",
+        "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+        "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b85",
+    ],
+)
+def test_dependency_inventory_accepts_ecosystem_valid_exact_forms(tmp_path: Path, exact):
+    """v-prefixed tags, hex revisions, and digest pins are all legitimate immutable
+    references and must not be rejected merely for not being digit-led dotted numbers
+    (R-607)."""
+    inventory = tmp_path / "inventory.json"
+    inventory.write_text(f'{{"example-sdk":"{exact}"}}', encoding="utf-8")
+
+    assert load_dependency_inventory(inventory) == {"example-sdk": exact}
 
 
 def test_resolution_audit_flags_a_floating_pin_even_when_the_inventory_agrees(tmp_path: Path):
