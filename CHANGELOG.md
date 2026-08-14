@@ -171,8 +171,19 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
   longer scales with tree size; and `nodes.status` is now indexed so `claim_next_ready()`
   is no longer a full table scan under concurrent workers. See ROADMAP.md's "Optimization
   and bug pass" table for the full ID-by-ID evidence.
+- Corrected the Ernst & Baldassarre Registered Reports citation to *Empirical Software
+  Engineering* 28, 55 (2023). The DOI was already right; the volume and year were not.
+- Tightened the R-619/R-620 job-store tests: a mid-rebuild upsert failure now has to
+  leave the prior store unchanged, and `idx_nodes_status` is asserted on `nodes.status`
+  via `PRAGMA index_info`, not just by index name. Job Store and Worker Pool §6 test
+  counts were brought in line with the files (14 and 17).
 
 ### Added
+
+- `recurspec skills install` now also writes the bundled skill to Grok
+  (`$GROK_HOME/skills`, default `~/.grok/skills`). `--target` accepts `grok`; `all`
+  still installs every supported consumer. `GROK_HOME` is Grok's documented config-directory
+  override, not an invented Recurspec variable.
 
 - The EARS "Complex" pattern (two or more keyword clauses combined in one statement, e.g.
   `WHILE <state>, WHEN <trigger> ... SHALL ...`) is now recognized, per the design

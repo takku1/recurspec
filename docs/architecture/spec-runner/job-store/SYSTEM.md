@@ -71,11 +71,13 @@ node's *contract surface*. Editing §5 prose does not dirty anything downstream.
 
 - **Implementation:** `src/recurspec/spec_runner/store.py` — same `spec_runner`
   subpackage as context-packer and worker-pool.
-- **Tests:** `tests/test_job_store.py` (11 tests) — covers atomic claim under
+- **Tests:** `tests/test_job_store.py` (14 tests) — covers atomic claim under
   concurrency (threaded, run repeatedly to rule out flakiness); sibling
   non-invalidation; TTL expiry returns `stale` not a hit; full rebuild from markdown
   reproduces the store; markdown wins on disagreement; removal of nodes no longer
-  present in the tree.
+  present in the tree; a rebuild is one transaction (one connection, and a mid-rebuild
+  failure leaves the prior store unchanged); `nodes.status` is indexed for
+  `claim_next_ready()`.
 - **Roadmap:** none for this leaf.
 
 ## 7. Measurement Seams

@@ -146,16 +146,49 @@ def test_rebuild_from_tree_commits_as_a_single_transaction(
     assert len(connections) == 1
 
 
+def test_rebuild_from_tree_rolls_back_when_a_node_upsert_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """A crash mid-rebuild must leave the prior store unchanged. Per-node commits
+    would persist the first upserted tree node and leave stale rows that the
+    interrupted rebuild never reached."""
+    store = _store(tmp_path)
+    store.upsert_node("stale-node", None, "BUILD", contract_hash="stale-hash")
+    before = store.export_tree_json()
+
+    original = store._upsert_node
+    seen = {"count": 0}
+
+    def fail_after_first(conn, *args, **kwargs):
+        seen["count"] += 1
+        if seen["count"] > 1:
+            raise RuntimeError("injected mid-rebuild failure")
+        return original(conn, *args, **kwargs)
+
+    monkeypatch.setattr(store, "_upsert_node", fail_after_first)
+
+    with pytest.raises(RuntimeError, match="injected mid-rebuild failure"):
+        store.rebuild_from_tree(FIXTURES / "valid-tree")
+
+    assert store.export_tree_json() == before
+    assert store._all_node_ids() == {"stale-node"}
+
+
 def test_nodes_table_is_indexed_by_status_for_claim_next_ready(tmp_path: Path):
     store = _store(tmp_path)
     conn = store._connect()
     try:
-        names = {
-            row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'index'")
-        }
+        table = conn.execute(
+            "SELECT tbl_name FROM sqlite_master WHERE type = 'index' AND name = ?",
+            ("idx_nodes_status",),
+        ).fetchone()
+        columns = [
+            row[2] for row in conn.execute("PRAGMA index_info('idx_nodes_status')")
+        ]
     finally:
         conn.close()
-    assert "idx_nodes_status" in names
+    assert table == ("nodes",)
+    assert columns == ["status"]
 
 
 def test_rebuild_refuses_an_invalid_tree_rather_than_guess(tmp_path: Path):

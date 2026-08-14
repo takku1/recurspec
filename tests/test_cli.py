@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from recurspec import cli
-from recurspec.cli import build_parser, main, sync_skill
+from recurspec.cli import _skill_targets, build_parser, main, sync_skill
 
 
 def test_parser_exposes_the_public_commands():
@@ -21,7 +21,7 @@ def test_parser_exposes_the_public_commands():
             "node-42",
         ]
     )
-    skills = parser.parse_args(["skills", "check", "--target", "codex"])
+    skills = parser.parse_args(["skills", "check", "--target", "grok"])
     contract = parser.parse_args(["contract", "check", "docs"])
     structure = parser.parse_args(["structure", "check", ".", "--format", "json"])
     reconcile = parser.parse_args(["reconcile", "plan", ".", "--format", "json"])
@@ -32,7 +32,7 @@ def test_parser_exposes_the_public_commands():
     assert evaluate.worker_state == Path("worker-state.json")
     assert evaluate.authorization_id == "node-42"
     assert skills.action == "check"
-    assert skills.target == "codex"
+    assert skills.target == "grok"
     assert contract.action == "check"
     assert structure.action == "check"
     assert structure.format == "json"
@@ -76,6 +76,32 @@ def test_every_cli_argument_documents_itself():
     for subparser in (evaluate, skills, check):
         for action in actions(subparser):
             assert action.help, f"{subparser.prog} {action.dest} is missing help text"
+
+
+def test_skill_targets_include_grok_under_grok_home(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    grok_home = tmp_path / "grok-home"
+    monkeypatch.setenv("GROK_HOME", str(grok_home))
+
+    grok_only = _skill_targets("grok")
+    everyone = _skill_targets("all")
+
+    assert grok_only == [("Grok", grok_home / "skills")]
+    assert ("Grok", grok_home / "skills") in everyone
+    assert {label for label, _path in everyone} == {"Claude Code", "Codex", "Grok"}
+
+
+def test_skills_install_writes_the_bundled_skill_to_grok_home(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
+):
+    grok_home = tmp_path / "grok-home"
+    monkeypatch.setenv("GROK_HOME", str(grok_home))
+
+    assert main(["skills", "install", "--target", "grok"]) == 0
+    assert (grok_home / "skills" / "recurspec" / "SKILL.md").is_file()
+    assert "Grok:" in capsys.readouterr().out
+    assert main(["skills", "check", "--target", "grok"]) == 0
 
 
 def test_skill_sync_installs_one_self_contained_skill(tmp_path: Path):

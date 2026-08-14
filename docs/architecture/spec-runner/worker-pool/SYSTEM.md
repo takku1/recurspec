@@ -80,10 +80,13 @@ packet, and anything it learned is in its result.
   tier routing, maker ≠ checker, concurrency cap) against an injected `RuntimeCall`; does
   not ship a concrete agent-runtime integration (see §8 - the SDK pin is still
   unverified, deliberately not asserted).
-- **Tests:** `tests/test_worker_pool.py` (8 tests) — worker cannot reach the filesystem
+- **Tests:** `tests/test_worker_pool.py` (17 tests) — worker cannot reach the filesystem
   outside its packet; budget abort yields `budget_exceeded` not a partial node; maker ≠
   checker enforced on the atomicity call; concurrency cap respected (timing-based, run
-  repeatedly to rule out flakiness); tier routing; invalid concurrency rejected.
+  repeatedly to rule out flakiness); tier routing; invalid concurrency rejected;
+  authorization persistence is single-writer so a later unrelated `dispatch()` cannot
+  drop a prior Candidate identity
+  (`test_persisted_candidate_identity_survives_a_later_unrelated_dispatch`).
 - **Runtime adapter:** the module's policy is complete and tested against a fake adapter;
   the primary-source-verified production adapter is tracked only as ROADMAP R-204.
 - **Authorization seam:** `WorkerPool` persists maker/checker state only after successful

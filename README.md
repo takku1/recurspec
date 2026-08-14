@@ -50,8 +50,9 @@ python -m pip install -e ".[dev]"
 pytest
 ```
 
-The skill installer targets Claude Code and Codex by default. Verify installation without
-writing with `recurspec skills check`.
+The skill installer targets Claude Code, Codex, and Grok by default. Verify installation
+without writing with `recurspec skills check`. Use `--target grok` to install only to
+`$GROK_HOME/skills` (default `~/.grok/skills`).
 
 ## Use the agent skill
 

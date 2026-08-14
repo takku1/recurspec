@@ -8,12 +8,14 @@ recurspec skills install
 recurspec skills check
 ```
 
-`skills install` copies one self-contained `recurspec` skill to Claude Code and Codex.
-Use `--target claude` or `--target codex` to install only one. The installer honors
-`CLAUDE_SKILLS_DIR`, `CODEX_SKILLS_DIR`, and `CODEX_HOME`.
+`skills install` copies one self-contained `recurspec` skill to Claude Code, Codex, and
+Grok. Use `--target claude`, `--target codex`, or `--target grok` to install only one.
+The installer honors `CLAUDE_SKILLS_DIR`, `CODEX_SKILLS_DIR`, `CODEX_HOME`, and
+`GROK_HOME` (Grok's documented config-directory override; skills land in
+`$GROK_HOME/skills`, default `~/.grok/skills`).
 
-Invoke `/recurspec` in Claude Code. In Codex, select it through `/skills` or invoke
-`$recurspec`.
+Invoke `/recurspec` in Claude Code or Grok. In Codex, select it through `/skills` or
+invoke `$recurspec`.
 
 ## Design a system
 

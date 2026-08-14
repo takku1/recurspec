@@ -49,6 +49,9 @@ def _skill_targets(target: str) -> list[tuple[str, Path]]:
     if target in {"codex", "all"}:
         codex_home = Path(os.environ.get("CODEX_HOME", home / ".codex"))
         targets.append(("Codex", Path(os.environ.get("CODEX_SKILLS_DIR", codex_home / "skills"))))
+    if target in {"grok", "all"}:
+        grok_home = Path(os.environ.get("GROK_HOME", home / ".grok"))
+        targets.append(("Grok", grok_home / "skills"))
     return targets
 
 
@@ -303,7 +306,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     skills.add_argument(
         "--target",
-        choices=("claude", "codex", "all"),
+        choices=("claude", "codex", "grok", "all"),
         default="all",
         help="which tool's skill directory to target",
     )

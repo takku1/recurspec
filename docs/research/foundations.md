@@ -114,7 +114,7 @@ Skelton and Pais extend this into a team-design method: naming recurring team sh
 
 ## 9. Pre-registration precedent for effectiveness claims
 
-Registered Reports (RR) are an established mechanism in software-engineering venues: a study protocol is peer-reviewed and given in-principle acceptance *before* data collection, and the completed study is then published under that protocol regardless of whether the hypothesis was supported. RR tracks in SE started at the International Conference on Mining Software Repositories (MSR) in 2020 and are now established at several conferences and journals, including *Empirical Software Engineering* (EMSE). See [Ernst & Baldassarre, *Registered Reports in Software Engineering*, Empirical Software Engineering 27, 2022](https://doi.org/10.1007/s10664-022-10277-5).
+Registered Reports (RR) are an established mechanism in software-engineering venues: a study protocol is peer-reviewed and given in-principle acceptance *before* data collection, and the completed study is then published under that protocol regardless of whether the hypothesis was supported. RR tracks in SE started at the International Conference on Mining Software Repositories (MSR) in 2020 and are now established at several conferences and journals, including *Empirical Software Engineering* (EMSE). See [Ernst & Baldassarre, *Registered Reports in Software Engineering*, Empirical Software Engineering 28, 2023](https://doi.org/10.1007/s10664-022-10277-5).
 
 The ACM SIGSOFT Empirical Standards catalog supplies a community-maintained checklist for what an Experiment protocol should specify: participants and objects, a justified comparator, justified dependent variables and how they are measured, formal hypotheses, and a justified sample size. Its Case Study standard — the form closest to a small before/after Recurspec case study — has no equivalent comparator or sample-size requirement, and lists a published protocol as an "extraordinary" criterion rather than an expected one. See [ACM SIGSOFT Empirical Standards](https://www2.sigsoft.org/EmpiricalStandards/docs/standards).
 
@@ -178,7 +178,7 @@ Any future effectiveness claim should pre-register at least the task population,
 12. Black, P., Guttman, B., & Okun, V. (2021). [*Guidelines on Minimum Standards for Developer Verification of Software*](https://doi.org/10.6028/NIST.IR.8397). NISTIR 8397.
 13. Conway, M. E. (1968). [*How Do Committees Invent?*](https://www.melconway.com/research/committees.html). *Datamation*, 14(4), 28-31.
 14. Skelton, M., & Pais, M. (2019). [*Team Topologies: Organizing Business and Technology Teams for Fast Flow*](https://teamtopologies.com/book). IT Revolution Press. ISBN 978-1942788812.
-15. Ernst, N. A., & Baldassarre, M. T. (2022). [*Registered Reports in Software Engineering*](https://doi.org/10.1007/s10664-022-10277-5). *Empirical Software Engineering*, 27(2).
+15. Ernst, N. A., & Baldassarre, M. T. (2023). [*Registered Reports in Software Engineering*](https://doi.org/10.1007/s10664-022-10277-5). *Empirical Software Engineering*, 28, 55.
 16. ACM SIGSOFT. [*Empirical Standards*](https://www2.sigsoft.org/EmpiricalStandards/docs/standards).
 17. Becker, J., Rush, N., Barnes, E., & Rein, D. (2025). [*Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity*](https://arxiv.org/abs/2507.09089). METR.
 18. Xia, C. S., & Zhang, L. (2024). [*Automated Program Repair via Conversation: Fixing 162 out of 337 Bugs for $0.42 Each using ChatGPT*](https://doi.org/10.1145/3650212.3680323). ISSTA 2024.
