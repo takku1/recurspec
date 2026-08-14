@@ -100,7 +100,63 @@ ISO/IEC 25010 can inform the vocabulary of product-quality dimensions, but it do
 
 Therefore `Q(S)` is `EvidenceStage: Unknown` until Recurspec defines each component operationally, publishes the weights and missing-data rule, tests sensitivity to normalization and weights, and validates whether changes in the score predict outcomes users actually value. Hard safety or correctness constraints must remain non-compensatory gates rather than dimensions that a high score elsewhere can offset.
 
-## 8. Claim boundary for Recurspec
+## 8. Organizational structure and interface boundaries: Conway's Law
+
+Conway's original article argued that an organization which designs a system is constrained to produce a design whose structure mirrors the organization's communication structure. See [Conway, *How Do Committees Invent?*, Datamation, April 1968](https://www.melconway.com/research/committees.html). This is a practitioner article that argues its thesis through examples, not a controlled study.
+
+Skelton and Pais extend this into a team-design method: naming recurring team shapes (stream-aligned, platform, enabling, complicated-subsystem) and interaction modes, and prescribing the "Inverse Conway Maneuver" — deliberately shaping team boundaries to produce a desired architecture. See [Skelton & Pais, *Team Topologies: Organizing Business and Technology Teams for Fast Flow*, IT Revolution Press, 2019](https://teamtopologies.com/book) (ISBN 978-1942788812). It is a synthesis of case studies and a pattern language, not an experimentally validated causal result.
+
+**What this supports:** a Contract Tree seam and a communication/ownership boundary are the same design decision seen from two sides. Choosing where a seam falls is inseparable from choosing who, or what, can independently develop and check each side without cross-seam coordination.
+
+**What this does not support:** neither source proves that a particular seam placement improves outcomes, or that assigning role labels (for example "Engineer 1" or "C-suite") to Contract Nodes by itself produces the independence NASA's IV&V standard (§2 above) requires. A label is not a boundary; a boundary requires actual separation of who can edit acceptance criteria from who implements against them.
+
+**Recurspec design inference:** when placing a Contract Tree seam, treat "can this be assigned to an independently accountable owner without requiring synchronous negotiation with siblings" as a necessary property of a good seam, alongside "independently failing." This is the same maker-checker independence already required by the Evaluation Gate (§2) applied one level up, at decomposition time rather than acceptance time. Recurspec does not need new role vocabulary for this: CONTEXT.md's existing terms (Contract Node, Decision Class, Evaluation Gate) already carry this weight, and CONTEXT.md's own `_Avoid_` fields exist precisely to prevent synonym proliferation like role-title vocabulary would introduce.
+
+## 9. Pre-registration precedent for effectiveness claims
+
+Registered Reports (RR) are an established mechanism in software-engineering venues: a study protocol is peer-reviewed and given in-principle acceptance *before* data collection, and the completed study is then published under that protocol regardless of whether the hypothesis was supported. RR tracks in SE started at the International Conference on Mining Software Repositories (MSR) in 2020 and are now established at several conferences and journals, including *Empirical Software Engineering* (EMSE). See [Ernst & Baldassarre, *Registered Reports in Software Engineering*, Empirical Software Engineering 27, 2022](https://doi.org/10.1007/s10664-022-10277-5).
+
+The ACM SIGSOFT Empirical Standards catalog supplies a community-maintained checklist for what an Experiment protocol should specify: participants and objects, a justified comparator, justified dependent variables and how they are measured, formal hypotheses, and a justified sample size. Its Case Study standard — the form closest to a small before/after Recurspec case study — has no equivalent comparator or sample-size requirement, and lists a published protocol as an "extraordinary" criterion rather than an expected one. See [ACM SIGSOFT Empirical Standards](https://www2.sigsoft.org/EmpiricalStandards/docs/standards).
+
+**What this supports:** the protocol elements §13 below already asks any future Recurspec effectiveness claim to pre-register — task population, comparator workflow, outcome measures, failure definition, stopping rule, sample size rationale — match real, adoptable SE precedent, and venues exist (MSR, ESEM, ICSME, EMSE) that would peer-review such a protocol before data collection.
+
+**What this does not support:** neither source shows that pre-registration itself causally improves study validity; Ernst and Baldassarre describe what RRs *can prevent*, not a measured effect. The SIGSOFT standards are a task-force consensus checklist, not an empirical result, and treat a published protocol as rare rather than required for a case study specifically.
+
+**Recurspec design inference:** R-405's "public protocol before collecting outcome data" should start from the SIGSOFT Experiment standard's fields and target a Registered Reports track, or an equivalent public pre-registration (e.g. OSF), if venue submission is out of scope. Citing this precedent does not itself satisfy R-405 — the protocol still has to be written and published before any outcome data is collected.
+
+## 10. A disclosed-methodology human-baseline precedent
+
+METR, an AI-evaluations research organization, ran a randomized controlled trial measuring how AI coding tools affected 16 experienced open-source developers completing 246 real GitHub issues on repositories they already maintained, randomly assigning AI-tool permission per task and measuring completion time. The disclosed, adverse result: developers were 19% slower with AI tools allowed, despite forecasting a 24% speedup beforehand. The paper explicitly scopes its claim to this developer population, this AI-tool condition (Cursor Pro with Claude 3.5/3.7 Sonnet), and this task type. See [Becker, Rush, Barnes, & Rein, *Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity*, METR, July 2025](https://arxiv.org/abs/2507.09089).
+
+**What this supports:** a real, first-party research-lab precedent for randomizing AI-tool condition against a human baseline on real repository issues, measuring a pre-declared outcome, and disclosing a null/adverse result rather than only favorable ones — directly the shape §13 already asks of any future Recurspec effectiveness claim.
+
+**What this does not support:** this study evaluates general AI-assisted coding (an editor plus a chat model), not spec-driven decomposition, Contract Trees, or maker-checker separation. Its 19%-slower finding is not evidence about Recurspec's workflow in either direction; treating it as such would be exactly the kind of overreach this evidence policy exists to prevent.
+
+**Recurspec design inference:** R-400's "two real-project case studies" can borrow METR's structural choices — real repositories the participant already knows, randomized condition assignment where feasible, a pre-declared primary outcome, and a commitment to publish the result whether or not it favors Recurspec — without borrowing its conclusion.
+
+## 11. A repair-memory ablation precedent
+
+Xia and Zhang's ChatRepair feeds a failed patch and its concrete test-failure information back into the next repair prompt — an explicit mechanism for not repeating a previously failed fix. Their ablation against an otherwise-identical no-memory baseline ("BaseChatGPT") on the Defects4j benchmark, holding the underlying model constant, found ChatRepair fixed 114 bugs on Defects4j 1.2 versus the baseline's 80 (34 more), and 48 versus 25 on Defects4j 2.0 (23 more). See [Xia & Zhang, *Automated Program Repair via Conversation: Fixing 162 out of 337 Bugs for $0.42 Each using ChatGPT*, ISSTA 2024](https://doi.org/10.1145/3650212.3680323).
+
+**What this supports:** retaining and re-injecting information about a previously failed repair attempt — the same concept Recurspec calls a Negative Pattern — measurably increased the fix rate of an LLM-driven repair tool over an otherwise-identical no-memory baseline, in a controlled, peer-reviewed ablation.
+
+**What this does not support:** Defects4j is Java-only, single-function-scale bug fixing under a fixed automated test oracle. ChatRepair's "memory" is one conversation transcript scoped to a single repair session for a single bug; it does not test whether a persistent, cross-session Negative Pattern store — the actual R-402 mechanism, meant to survive across different Candidates and different work sessions — produces the same benefit. The evaluation is also bounded by the same generate-and-validate oracle limitation §3 already raises for Qi et al. 2015: a fix is scored correct only relative to Defects4j's own test suite, not independently verified.
+
+**Recurspec design inference:** R-402's acceptance criterion ("compare repeated-failure rate with and without repair memory") has real precedent for the ablation *design* — run the same repair task with Negative Pattern lookups enabled and disabled, holding the model and task constant, and report the delta. ChatRepair's specific counts do not transfer to Recurspec's cross-session, multi-file setting and must not be cited as if they did.
+
+## 12. Sandboxed agent-execution references
+
+No ratified standards-track specification for sandboxing AI coding-agent tool-use loops was found. Two first-party technical references are concrete enough to use as design input. Anthropic's Managed Agents documentation describes a control-plane/execution-plane split: Anthropic secures session integrity and multitenant isolation, while a self-hosted sandbox owns tool execution (filesystem, process spawn, network egress); its security-model page states Anthropic does not inspect or verify the operator's sandbox image, and that isolating individual tool executions from each other inside that boundary is "entirely" the operator's responsibility. See [Claude Platform Docs, *Self-hosted sandboxes*](https://platform.claude.com/docs/en/managed-agents/self-hosted-sandboxes) and [*Security model*](https://platform.claude.com/docs/en/managed-agents/self-hosted-sandboxes-security).
+
+The Model Context Protocol's security-practices document gives guidance for locally-run MCP servers specifically: a client MUST implement consent before executing a new local server, and SHOULD execute server commands in a sandboxed environment with minimal default privileges, restricted filesystem/network access, and platform-appropriate sandboxing technology (containers, chroot, application sandboxes). See [Model Context Protocol, *Security Best Practices*](https://modelcontextprotocol.io/docs/2026-07-28/tutorials/security/security_best_practices), section "Local MCP Server Compromise."
+
+**What this supports:** a concrete, first-party reference design exists for declaring a control-plane/execution-plane boundary and a shared-responsibility split, directly analogous to what a Worker Pool agent-runtime adapter needs to state about itself; and real sandboxing guidance exists for the narrower case of a locally-spawned tool-server process.
+
+**What this does not support:** neither source is a ratified ISO/IEEE/IETF standard, and neither describes or validates a worktree-per-Candidate isolation model like Recurspec's Worker Pool specifically. Both are vendor/consortium technical documentation current as of their publication date, not an evaluated security result.
+
+**Recurspec design inference:** R-204's adapter should document its own boundary in the same shape these sources use — what the adapter's control plane guarantees, what falls to the sandbox/worktree, and what it explicitly cannot verify (for example, supply-chain integrity of a worker's runtime image) — rather than presenting isolation as complete. This is a documentation and design-boundary precedent, not a drop-in implementation.
+
+## 13. Claim boundary for Recurspec
 
 The sources above justify individual design ingredients. They do not establish that Recurspec as an integrated method improves defect rate, delivery time, architecture quality, agent reliability, or cost. Those are empirical hypotheses for this project.
 
@@ -120,3 +176,11 @@ Any future effectiveness claim should pre-register at least the task population,
 10. Flater, D. W., Black, P. E., Fong, E. N., Kacker, R. N., Okun, V., Wood, S. S., & Kuhn, D. R. (2016). [*A Rational Foundation for Software Metrology*](https://doi.org/10.6028/NIST.IR.8101). NISTIR 8101.
 11. ISO/IEC (2023). [*25010:2023 Systems and software Quality Requirements and Evaluation — Product quality model*](https://www.iso.org/standard/78176.html).
 12. Black, P., Guttman, B., & Okun, V. (2021). [*Guidelines on Minimum Standards for Developer Verification of Software*](https://doi.org/10.6028/NIST.IR.8397). NISTIR 8397.
+13. Conway, M. E. (1968). [*How Do Committees Invent?*](https://www.melconway.com/research/committees.html). *Datamation*, 14(4), 28-31.
+14. Skelton, M., & Pais, M. (2019). [*Team Topologies: Organizing Business and Technology Teams for Fast Flow*](https://teamtopologies.com/book). IT Revolution Press. ISBN 978-1942788812.
+15. Ernst, N. A., & Baldassarre, M. T. (2022). [*Registered Reports in Software Engineering*](https://doi.org/10.1007/s10664-022-10277-5). *Empirical Software Engineering*, 27(2).
+16. ACM SIGSOFT. [*Empirical Standards*](https://www2.sigsoft.org/EmpiricalStandards/docs/standards).
+17. Becker, J., Rush, N., Barnes, E., & Rein, D. (2025). [*Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity*](https://arxiv.org/abs/2507.09089). METR.
+18. Xia, C. S., & Zhang, L. (2024). [*Automated Program Repair via Conversation: Fixing 162 out of 337 Bugs for $0.42 Each using ChatGPT*](https://doi.org/10.1145/3650212.3680323). ISSTA 2024.
+19. Anthropic. [*Self-hosted sandboxes*](https://platform.claude.com/docs/en/managed-agents/self-hosted-sandboxes) and [*Security model*](https://platform.claude.com/docs/en/managed-agents/self-hosted-sandboxes-security). Claude Platform Docs.
+20. Model Context Protocol. [*Security Best Practices*](https://modelcontextprotocol.io/docs/2026-07-28/tutorials/security/security_best_practices), spec revision 2026-07-28.

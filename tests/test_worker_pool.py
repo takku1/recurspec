@@ -55,6 +55,30 @@ def test_completed_independent_check_persists_merge_authorization(tmp_path):
     assert authorization == issued
 
 
+def test_persisted_candidate_identity_survives_a_later_unrelated_dispatch(tmp_path):
+    """merge_authorization() must not be the only place candidate identity reaches
+    disk: a later dispatch() for a different node rewrites the whole authorization
+    file from in-memory state, and previously used to do so without candidate_branch/
+    candidate_oid, silently dropping node-a's already-recorded identity the moment
+    node-b's check completed."""
+    state = tmp_path / "worker-authorizations.json"
+    pool = WorkerPool(
+        lambda *_args: RuntimeResponse({"approved": True}, 1, 1, 1.0),
+        concurrency=1,
+        authorization_state=state,
+    )
+    pool.dispatch("node-a", {}, "frame", "maker", 100)
+    pool.dispatch("node-a", {}, "check", "checker", 100, "candidate/node-a", "oid-a")
+    pool.merge_authorization("node-a")
+
+    pool.dispatch("node-b", {}, "frame", "maker", 100)
+    pool.dispatch("node-b", {}, "check", "checker", 100, "candidate/node-b", "oid-b")
+
+    authorization = load_merge_authorization(state, "node-a")
+    assert authorization.candidate_branch == "candidate/node-a"
+    assert authorization.candidate_oid == "oid-a"
+
+
 def test_budget_rejected_producer_cannot_establish_merge_authorization():
     pool = WorkerPool(
         lambda *_args: RuntimeResponse({}, 50, 50, 1.0),

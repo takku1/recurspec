@@ -164,30 +164,28 @@ def _invariants(section: str) -> tuple[list[dict[str, str]], list[tuple[str, str
             if continuation.strip():
                 statement_lines.append(continuation.strip())
         statement = " ".join(statement_lines)
-        if not _matches_ears_pattern(pattern, statement):
+        matches_ears = _matches_ears_pattern(pattern, statement)
+        stage = evidence.group(1) if evidence is not None else None
+        if not matches_ears:
             problems.append(
                 (
                     "contract.invariant.ears",
                     f"invariant {index + 1} does not match a recognized EARS pattern",
                 )
             )
-        if evidence is None or evidence.group(1) not in EVIDENCE_STAGES:
+        if stage not in EVIDENCE_STAGES:
             problems.append(
                 (
                     "contract.invariant.evidence-stage",
                     f"invariant {index + 1} lacks a recognized Evidence Stage",
                 )
             )
-        if (
-            _matches_ears_pattern(pattern, statement)
-            and evidence is not None
-            and evidence.group(1) in EVIDENCE_STAGES
-        ):
+        elif matches_ears:
             normalized.append(
                 {
                     "ears_pattern": pattern,
                     "statement": statement,
-                    "evidence_stage": evidence.group(1),
+                    "evidence_stage": stage,
                 }
             )
     return normalized, problems
@@ -231,8 +229,9 @@ def _normalize(path: Path) -> tuple[dict[str, Any] | None, list[Diagnostic]]:
         return None, diagnostics
 
     sections = _sections(text)
+    atomic_leaf = _is_atomic_leaf(sections.get("2", ""))
     required_sections = ("1", "2", "3", "4", "5")
-    if _is_atomic_leaf(sections.get("2", "")):
+    if atomic_leaf:
         required_sections += ("6", "7", "8")
     for number in required_sections:
         if number not in sections:
@@ -245,7 +244,6 @@ def _normalize(path: Path) -> tuple[dict[str, Any] | None, list[Diagnostic]]:
             )
     invariants, problems = _invariants(sections.get("4", ""))
     diagnostics.extend(Diagnostic(display_path, code, message) for code, message in problems)
-    atomic_leaf = _is_atomic_leaf(sections.get("2", ""))
     interface_lines = {
         name.lower(): PORT_RE.findall(value)
         for name, value in INTERFACE_RE.findall(sections.get("3", ""))
@@ -321,7 +319,7 @@ def validate_contract(path: str | Path) -> ValidationResult:
             if parent["atomic_leaf"]:
                 continue
             available = set(parent["inputs"])
-            remaining = []
+            remaining: list[tuple[Path, dict[str, Any]]] = []
             seen_children: set[Path] = set()
             for child_link in parent["children"]:
                 linked_path = Path(child_link)
@@ -376,18 +374,18 @@ def validate_contract(path: str | Path) -> ValidationResult:
                         )
                     )
                     continue
-                remaining.append(child)
+                remaining.append((child_path, child))
             while remaining:
-                satisfiable = [child for child in remaining if set(child["inputs"]) <= available]
+                satisfiable = {
+                    path for path, child in remaining if set(child["inputs"]) <= available
+                }
                 if not satisfiable:
                     break
-                for child in satisfiable:
-                    available.update(child["outputs"])
-                    remaining.remove(child)
-            for child in remaining:
-                child_path = next(
-                    path for path, normalized in normalized_by_path.items() if normalized is child
-                )
+                for path, child in remaining:
+                    if path in satisfiable:
+                        available.update(child["outputs"])
+                remaining = [item for item in remaining if item[0] not in satisfiable]
+            for child_path, child in remaining:
                 for input_port in child["inputs"]:
                     if input_port not in available:
                         diagnostics.append(
@@ -474,7 +472,11 @@ def build_tree_index(tree_root: str | Path) -> dict[str, dict[str, Any]]:
     (job-store, context-packer) share this one walk instead of each
     re-deriving parent/child relationships independently.
     """
-    tree_root = Path(tree_root)
+    # Resolved up front so every path below is absolute: resolve_child_path() always
+    # returns a resolved Path, and parent_of's membership check requires its keys to be
+    # in the same form or a relative tree_root would silently match nothing, leaving
+    # every non-root node's parent_id as None instead of raising.
+    tree_root = Path(tree_root).resolve()
     result = validate_contract(tree_root)
     if not result.valid:
         raise ContractInstrumentError(
@@ -484,8 +486,7 @@ def build_tree_index(tree_root: str | Path) -> dict[str, dict[str, Any]]:
     if len(paths) != len(result.contracts):
         raise ContractInstrumentError("contract discovery and validation disagree on node count")
     contracts_by_path = dict(zip(paths, result.contracts, strict=True))
-    resolved_root = tree_root.resolve()
-    node_ids = {path: path.resolve().relative_to(resolved_root).as_posix() for path in paths}
+    node_ids = {path: path.relative_to(tree_root).as_posix() for path in paths}
 
     parent_of: dict[Path, Path | None] = dict.fromkeys(paths)
     for path, contract in contracts_by_path.items():

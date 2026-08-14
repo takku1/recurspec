@@ -27,6 +27,8 @@ modules and clearly label work that has not yet been implemented.
 ## Evidence and project status
 
 - [Research foundations](./research/foundations.md) contains source-backed rationale.
+- [Evaluation protocol](./research/evaluation-protocol.md) is the pre-registered plan for
+  R-400–R-403; it commits to metrics and analysis before any outcome data exists.
 - [ROADMAP.md](../ROADMAP.md) is the only incomplete-work registry.
 - Historical drafts were removed from the published tree and remain recoverable from git
   history.

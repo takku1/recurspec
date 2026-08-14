@@ -122,6 +122,42 @@ def test_full_rebuild_from_markdown_reproduces_the_store(tmp_path: Path):
     assert store._all_node_ids() == {"SYSTEM.md", "publish/SYSTEM.md", "transform/SYSTEM.md"}
 
 
+def test_rebuild_from_tree_commits_as_a_single_transaction(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """A rebuild is one atomic swap to the markdown-derived state, not one commit per
+    node: opening a fresh connection/transaction per node scales connection and lock
+    overhead with tree size, and a crash between per-node commits would otherwise leave
+    the store in a mix of old and new state that is neither."""
+    store = _store(tmp_path)
+    original_connect = store._connect
+    connections: list[object] = []
+
+    def counting_connect(*args, **kwargs):
+        conn = original_connect(*args, **kwargs)
+        connections.append(conn)
+        return conn
+
+    monkeypatch.setattr(store, "_connect", counting_connect)
+
+    report = store.rebuild_from_tree(FIXTURES / "valid-tree")
+
+    assert report.node_count == 3
+    assert len(connections) == 1
+
+
+def test_nodes_table_is_indexed_by_status_for_claim_next_ready(tmp_path: Path):
+    store = _store(tmp_path)
+    conn = store._connect()
+    try:
+        names = {
+            row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'index'")
+        }
+    finally:
+        conn.close()
+    assert "idx_nodes_status" in names
+
+
 def test_rebuild_refuses_an_invalid_tree_rather_than_guess(tmp_path: Path):
     store = _store(tmp_path)
     invalid_tree = tmp_path / "broken-tree"

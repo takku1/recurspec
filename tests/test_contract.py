@@ -56,6 +56,23 @@ def test_build_tree_index_maps_node_id_to_parent_id():
     assert set(index) == {"SYSTEM.md", "transform/SYSTEM.md", "publish/SYSTEM.md"}
 
 
+def test_build_tree_index_resolves_parent_ids_from_a_relative_tree_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """A relative tree_root must index identically to its absolute form: paths built
+    from an un-resolved rglob() never matched resolve_child_path()'s always-resolved
+    output, so every non-root node's parent_id silently came back None instead of the
+    real parent."""
+    tree = tmp_path / "tree"
+    shutil.copytree(FIXTURES / "valid-tree", tree)
+    monkeypatch.chdir(tmp_path)
+
+    index = build_tree_index("tree")
+
+    assert index["transform/SYSTEM.md"]["parent_id"] == "SYSTEM.md"
+    assert index["publish/SYSTEM.md"]["parent_id"] == "SYSTEM.md"
+
+
 def test_build_tree_index_refuses_an_invalid_tree(tmp_path: Path):
     (tmp_path / "SYSTEM.md").write_text("# Broken (L0)\nno contract marker\n", encoding="utf-8")
 

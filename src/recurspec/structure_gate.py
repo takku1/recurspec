@@ -108,24 +108,24 @@ def _public_symbols(path: Path) -> list[str]:
     explicit_exports: list[str] | None = None
     symbols: list[str] = []
     for node in tree.body:
-        if isinstance(node, (ast.Assign, ast.AnnAssign)):
-            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-            if any(isinstance(target, ast.Name) and target.id == "__all__" for target in targets):
-                value = node.value
-                if isinstance(value, (ast.List, ast.Tuple)) and all(
-                    isinstance(item, ast.Constant) and isinstance(item.value, str)
-                    for item in value.elts
-                ):
-                    explicit_exports = [item.value for item in value.elts]
-                    continue
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             if not node.name.startswith("_"):
                 symbols.append(node.name)
-        elif isinstance(node, (ast.Assign, ast.AnnAssign)):
-            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-            for target in targets:
-                if isinstance(target, ast.Name) and not target.id.startswith("_"):
-                    symbols.append(target.id)
+            continue
+        if not isinstance(node, (ast.Assign, ast.AnnAssign)):
+            continue
+        targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+        if any(isinstance(target, ast.Name) and target.id == "__all__" for target in targets):
+            value = node.value
+            if isinstance(value, (ast.List, ast.Tuple)) and all(
+                isinstance(item, ast.Constant) and isinstance(item.value, str)
+                for item in value.elts
+            ):
+                explicit_exports = [item.value for item in value.elts]
+                continue
+        for target in targets:
+            if isinstance(target, ast.Name) and not target.id.startswith("_"):
+                symbols.append(target.id)
     return sorted(set(explicit_exports if explicit_exports is not None else symbols))
 
 

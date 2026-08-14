@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS nodes (
     dirty INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE INDEX IF NOT EXISTS idx_nodes_status ON nodes(status);
+
 CREATE TABLE IF NOT EXISTS claims (
     node_id TEXT PRIMARY KEY REFERENCES nodes(node_id) ON DELETE CASCADE,
     worker_id TEXT NOT NULL,
@@ -104,6 +106,15 @@ class JobStore:
             conn.execute("BEGIN IMMEDIATE")
         return conn
 
+    def _write(self, sql: str, params: tuple[Any, ...]) -> None:
+        """Run one self-contained statement on its own short-lived connection."""
+        conn = self._connect()
+        try:
+            conn.execute(sql, params)
+            conn.commit()
+        finally:
+            conn.close()
+
     def _migrate(self) -> None:
         conn = self._connect()
         try:
@@ -133,30 +144,43 @@ class JobStore:
         """
         conn = self._connect(immediate=True)
         try:
-            existing = conn.execute(
-                "SELECT contract_hash FROM nodes WHERE node_id = ?", (node_id,)
-            ).fetchone()
-            conn.execute(
-                """
-                INSERT INTO nodes (node_id, parent_id, class, status, contract_hash, dirty)
-                VALUES (?, ?, ?, ?, ?, 0)
-                ON CONFLICT(node_id) DO UPDATE SET
-                    parent_id = excluded.parent_id,
-                    class = excluded.class,
-                    contract_hash = excluded.contract_hash
-                """,
-                (node_id, parent_id, node_class, status, contract_hash),
-            )
-            if existing is not None and existing[0] != contract_hash:
-                self._mark_dirty(conn, node_id, existing[0], contract_hash)
-                if parent_id is not None:
-                    self._mark_dirty(conn, parent_id, None, None)
+            self._upsert_node(conn, node_id, parent_id, node_class, contract_hash, status)
             conn.execute("COMMIT")
         except BaseException:
             conn.execute("ROLLBACK")
             raise
         finally:
             conn.close()
+
+    def _upsert_node(
+        self,
+        conn: sqlite3.Connection,
+        node_id: str,
+        parent_id: str | None,
+        node_class: str | None,
+        contract_hash: str,
+        status: str = "ready",
+    ) -> None:
+        """Same as ``upsert_node``, but on a caller-owned connection/transaction so a
+        multi-node rebuild can commit as one atomic unit instead of one per node."""
+        existing = conn.execute(
+            "SELECT contract_hash FROM nodes WHERE node_id = ?", (node_id,)
+        ).fetchone()
+        conn.execute(
+            """
+            INSERT INTO nodes (node_id, parent_id, class, status, contract_hash, dirty)
+            VALUES (?, ?, ?, ?, ?, 0)
+            ON CONFLICT(node_id) DO UPDATE SET
+                parent_id = excluded.parent_id,
+                class = excluded.class,
+                contract_hash = excluded.contract_hash
+            """,
+            (node_id, parent_id, node_class, status, contract_hash),
+        )
+        if existing is not None and existing[0] != contract_hash:
+            self._mark_dirty(conn, node_id, existing[0], contract_hash)
+            if parent_id is not None:
+                self._mark_dirty(conn, parent_id, None, None)
 
     def _mark_dirty(
         self, conn: sqlite3.Connection, node_id: str, old_hash: str | None, new_hash: str | None
@@ -168,12 +192,7 @@ class JobStore:
         )
 
     def clear_dirty(self, node_id: str) -> None:
-        conn = self._connect()
-        try:
-            conn.execute("UPDATE nodes SET dirty = 0 WHERE node_id = ?", (node_id,))
-            conn.commit()
-        finally:
-            conn.close()
+        self._write("UPDATE nodes SET dirty = 0 WHERE node_id = ?", (node_id,))
 
     def dirty_nodes(self) -> set[str]:
         conn = self._connect()
@@ -187,14 +206,6 @@ class JobStore:
         conn = self._connect()
         try:
             return {row[0] for row in conn.execute("SELECT node_id FROM nodes")}
-        finally:
-            conn.close()
-
-    def _delete_node(self, node_id: str) -> None:
-        conn = self._connect()
-        try:
-            conn.execute("DELETE FROM nodes WHERE node_id = ?", (node_id,))
-            conn.commit()
         finally:
             conn.close()
 
@@ -259,12 +270,7 @@ class JobStore:
             conn.close()
 
     def release(self, node_id: str) -> None:
-        conn = self._connect()
-        try:
-            conn.execute("DELETE FROM claims WHERE node_id = ?", (node_id,))
-            conn.commit()
-        finally:
-            conn.close()
+        self._write("DELETE FROM claims WHERE node_id = ?", (node_id,))
 
     # -- capability-survey cache ------------------------------------------
 
@@ -276,22 +282,17 @@ class JobStore:
         fetched_at: datetime | None = None,
     ) -> None:
         fetched = (fetched_at or datetime.now(timezone.utc)).isoformat()
-        conn = self._connect()
-        try:
-            conn.execute(
-                """
-                INSERT INTO survey_cache (capability_key, result, sources, fetched_at)
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT(capability_key) DO UPDATE SET
-                    result = excluded.result,
-                    sources = excluded.sources,
-                    fetched_at = excluded.fetched_at
-                """,
-                (capability_key, result, json.dumps(sources), fetched),
-            )
-            conn.commit()
-        finally:
-            conn.close()
+        self._write(
+            """
+            INSERT INTO survey_cache (capability_key, result, sources, fetched_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(capability_key) DO UPDATE SET
+                result = excluded.result,
+                sources = excluded.sources,
+                fetched_at = excluded.fetched_at
+            """,
+            (capability_key, result, json.dumps(sources), fetched),
+        )
 
     def get_survey(
         self, capability_key: str, ttl_days: float, now: datetime | None = None
@@ -323,17 +324,32 @@ class JobStore:
         Refuses to run against an invalid tree rather than guess (delegated to
         ``build_tree_index``). Any stored node absent from a fresh walk is
         discarded - markdown always wins (invariant 5).
+
+        Runs as one transaction rather than one per node: besides the per-node
+        connection/lock-acquire overhead that would otherwise scale with tree size, a
+        rebuild is conceptually one atomic swap to the markdown-derived state, and a
+        crash between per-node commits would otherwise leave the store in a mix of old
+        and new state that is neither.
         """
         index = build_tree_index(tree_root)
-        for node in index.values():
-            self.upsert_node(
-                node_id=node["node_id"],
-                parent_id=node["parent_id"],
-                node_class=decision_class(node["sections"]),
-                contract_hash=compute_contract_hash(node),
-            )
-
-        removed = tuple(sorted(self._all_node_ids() - set(index)))
-        for node_id in removed:
-            self._delete_node(node_id)
+        conn = self._connect(immediate=True)
+        try:
+            for node in index.values():
+                self._upsert_node(
+                    conn,
+                    node_id=node["node_id"],
+                    parent_id=node["parent_id"],
+                    node_class=decision_class(node["sections"]),
+                    contract_hash=compute_contract_hash(node),
+                )
+            existing_ids = {row[0] for row in conn.execute("SELECT node_id FROM nodes")}
+            removed = tuple(sorted(existing_ids - set(index)))
+            for node_id in removed:
+                conn.execute("DELETE FROM nodes WHERE node_id = ?", (node_id,))
+            conn.execute("COMMIT")
+        except BaseException:
+            conn.execute("ROLLBACK")
+            raise
+        finally:
+            conn.close()
         return RebuildReport(node_count=len(index), removed=removed)

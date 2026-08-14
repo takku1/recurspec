@@ -85,6 +85,18 @@ deliberate support for validating a composable subtree that is not itself an L0 
 | R-615 | Reject a Contract Node §6 declaration whose implementation/test path is absolute, drive-lettered, or escapes the repository via `..`, instead of joining it onto the repository root unchecked | done | `test_structure_gate_rejects_a_declared_path_that_escapes_the_repository`, `test_structure_gate_rejects_an_absolute_declared_path` in `tests/test_structure_gate.py` |
 | R-616 | Remove the bundled skill's one repository-only relative link (into `docs/research/`, which is not packaged) and add a standing check that no skill reference links outside the installed skill directory | done | `test_skill_references_never_link_outside_the_installed_skill` in `tests/test_skill_references.py` |
 
+## Optimization and bug pass (2026-08-14)
+
+A general (non-adversarial) pass over the remaining source not covered by the reviews
+above, looking for correctness and performance defects rather than security bypasses.
+
+| ID | Outcome | Status | Evidence |
+|---|---|---|---|
+| R-617 | Resolve `tree_root` before walking it in `build_tree_index()`; a relative `tree_root` compared unresolved `rglob()` paths against `resolve_child_path()`'s always-resolved output, so every non-root node's `parent_id` silently came back `None` instead of raising or resolving correctly | done | `test_build_tree_index_resolves_parent_ids_from_a_relative_tree_root` in `tests/test_contract.py` |
+| R-618 | Make Worker Pool authorization persistence single-writer: `_persist_authorizations()` now always includes candidate identity from in-memory state, so `merge_authorization()` no longer does its own unsynchronized, non-atomic read-modify-write of the same file `dispatch()` writes atomically under lock - which could race a concurrent `dispatch()` call and, even sequentially, went stale the moment the next `dispatch()` rewrote the file from its own snapshot | done | `test_persisted_candidate_identity_survives_a_later_unrelated_dispatch` in `tests/test_worker_pool.py` |
+| R-619 | Make `JobStore.rebuild_from_tree()` commit as one transaction instead of one per node, so a tree rebuild is atomic (a crash mid-rebuild can no longer leave a mix of old and new state) and does not scale connection/lock overhead with tree size | done | `test_rebuild_from_tree_commits_as_a_single_transaction` in `tests/test_job_store.py` |
+| R-620 | Add an index on `nodes.status` so `claim_next_ready()`'s `WHERE status = 'ready'` is no longer a full table scan under concurrent workers | done | `test_nodes_table_is_indexed_by_status_for_claim_next_ready` in `tests/test_job_store.py` |
+
 ## Research and validation
 
 These items are required before claiming that Recurspec improves engineering outcomes.
@@ -98,7 +110,7 @@ whole.
 | R-402 | Negative Pattern effectiveness | research | Compare repeated-failure rate with and without repair memory |
 | R-403 | Contract drift effectiveness | research | Compare detected and escaped code/contract mismatches |
 | R-404 | Domain-general example outside web software | ready | Published CLI, systems, or data-pipeline Contract Tree |
-| R-405 | Pre-register evaluation metrics and analysis | research | Public protocol before collecting outcome data |
+| R-405 | Pre-register evaluation metrics and analysis | done | [Evaluation protocol](./docs/research/evaluation-protocol.md), published before any R-400–R-403 outcome data is collected |
 
 ## Long horizon: compounding intelligence
 

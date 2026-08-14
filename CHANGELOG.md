@@ -156,6 +156,21 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
   that were never part of the current architecture. `.scratch/` is now gitignored in full
   (previously only `.scratch/handoffs/`), and `test_local_scratch_state_is_never_committed`
   guards against this recurring.
+- Fixed R-617 through R-620, a general (non-adversarial) optimization and bug pass: a
+  relative `tree_root` passed to `build_tree_index()` silently lost every non-root node's
+  `parent_id` instead of resolving it correctly (a path-identity mismatch between an
+  unresolved `rglob()` walk and `resolve_child_path()`'s always-resolved output), which
+  would have dropped parent context from Context Packer packets and broken the Job Store's
+  parent-dirty propagation had either been called with a relative path; the Worker Pool's
+  authorization-state file is now written from one place (`_persist_authorizations()`)
+  instead of also being independently read-modified-written by `merge_authorization()`,
+  which raced concurrent `dispatch()` calls and, even sequentially, went stale the moment
+  the next `dispatch()` rewrote the file from its own snapshot and silently dropped
+  candidate identity it had just recorded; `JobStore.rebuild_from_tree()` now commits as
+  one transaction instead of one per node, so a rebuild is atomic and its overhead no
+  longer scales with tree size; and `nodes.status` is now indexed so `claim_next_ready()`
+  is no longer a full table scan under concurrent workers. See ROADMAP.md's "Optimization
+  and bug pass" table for the full ID-by-ID evidence.
 
 ### Added
 

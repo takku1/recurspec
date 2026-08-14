@@ -235,8 +235,10 @@ def audit_resolutions(
                 "Selected", ""
             ).lower()
             if not standard_library and (not pin or not dependency):
-                missing = "Dependency and Pin" if not pin and not dependency else (
-                    "Dependency" if not dependency else "Pin"
+                missing = " and ".join(
+                    label
+                    for label, value in (("Dependency", dependency), ("Pin", pin))
+                    if not value
                 )
                 diagnostics.append(
                     ResolutionDiagnostic(

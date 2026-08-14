@@ -138,12 +138,30 @@ class WorkerPool:
         self._authorization_state = Path(authorization_state) if authorization_state else None
 
     def _persist_authorizations(self) -> None:
+        """Write the full authorization state atomically (temp file + replace).
+
+        Always called under ``self._maker_lock`` (from ``dispatch()``), and always
+        rebuilt from the in-memory maker/checker/candidate registries - including
+        candidate identity, once a checker has registered one - so this is the single
+        place authorization state reaches disk. ``merge_authorization()`` deliberately
+        does not write here itself: an independent read-modify-write from that method
+        raced a concurrent ``dispatch()`` call (both mutate the same file), and even
+        sequentially it would have gone stale the moment the next ``dispatch()`` call
+        rewrote the file from its own snapshot, silently dropping the candidate fields
+        ``merge_authorization()`` had just added.
+        """
         if self._authorization_state is None:
             return
-        payload = {
-            node_id: {"maker_id": maker, "checker_id": self._checker_of.get(node_id)}
-            for node_id, maker in sorted(self._maker_of.items())
-        }
+        payload: dict[str, dict[str, str | None]] = {}
+        for node_id, maker in sorted(self._maker_of.items()):
+            entry: dict[str, str | None] = {
+                "maker_id": maker,
+                "checker_id": self._checker_of.get(node_id),
+            }
+            candidate = self._checked_candidate.get(node_id)
+            if candidate is not None:
+                entry["candidate_branch"], entry["candidate_oid"] = candidate
+            payload[node_id] = entry
         self._authorization_state.parent.mkdir(parents=True, exist_ok=True)
         temporary = self._authorization_state.with_suffix(".tmp")
         temporary.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
@@ -161,7 +179,9 @@ class WorkerPool:
             # authorization must never be issued on a stale invariant read alone.
             raise ValueError("maker and checker must differ")
         candidate_branch, candidate_oid = candidate
-        authorization = MergeAuthorization(
+        # Nothing left to persist here: dispatch() already wrote candidate identity to
+        # disk via _persist_authorizations() the moment the checker registered.
+        return MergeAuthorization(
             node_id,
             candidate_branch,
             candidate_oid,
@@ -169,15 +189,6 @@ class WorkerPool:
             checker,
             _AUTHORIZATION_ISSUER,
         )
-        if self._authorization_state is not None:
-            payload = json.loads(self._authorization_state.read_text(encoding="utf-8"))
-            payload[node_id].update(
-                candidate_branch=candidate_branch, candidate_oid=candidate_oid
-            )
-            self._authorization_state.write_text(
-                json.dumps(payload, sort_keys=True), encoding="utf-8"
-            )
-        return authorization
 
     def dispatch(
         self,
@@ -240,22 +251,15 @@ class WorkerPool:
                 # catches both: any produce since this CHECK started means it reviewed
                 # a node this pool no longer stands behind (R-601).
                 current_maker = self._maker_of.get(node_id)
-                current_generation = self._generation_of.get(node_id, 0)
                 approved = (
                     isinstance(response.body, Mapping) and response.body.get("approved") is True
                 )
-                stale = current_generation != expected_generation
-                if current_maker is None or current_maker == worker_id or not approved or stale:
-                    self._persist_authorizations()
-                    return WorkerResult(
-                        outcome="ok",
-                        body=response.body,
-                        tokens_in=response.tokens_in,
-                        tokens_out=response.tokens_out,
-                        ms=response.ms,
-                    )
-                self._checker_of[node_id] = worker_id
-                self._checked_candidate[node_id] = (candidate_branch, candidate_oid)
+                fresh = self._generation_of.get(node_id, 0) == expected_generation
+                # Anything else is still a successful runtime call, but it registers no
+                # checker, so it can never authorize a merge.
+                if current_maker is not None and current_maker != worker_id and approved and fresh:
+                    self._checker_of[node_id] = worker_id
+                    self._checked_candidate[node_id] = (candidate_branch, candidate_oid)
             self._persist_authorizations()
         return WorkerResult(
             outcome="ok",
