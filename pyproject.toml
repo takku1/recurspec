@@ -1,5 +1,9 @@
 [build-system]
-requires = ["setuptools>=77"]
+# >=83 for CVE-2026-59890 (PYSEC-2026-3447, macOS APFS/HFS+ Unicode-normalization
+# MANIFEST.in exclude bypass) - not exploitable through Recurspec's own build, but a
+# floor that permits a known-CVE version is exactly what dependency-graph scanners
+# (e.g. GitHub's, even without installing anything) flag from pyproject.toml alone.
+requires = ["setuptools>=83"]
 build-backend = "setuptools.build_meta"
 
 [project]

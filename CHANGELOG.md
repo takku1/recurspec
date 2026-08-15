@@ -55,6 +55,11 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 - R-644: `ruff check` now runs `flake8-bandit` (S) and `flake8-bugbear` (B). `git`
   and `gh` invocations resolve to an absolute path instead of a bare PATH lookup;
   the two intentional `subprocess`/`shell=True` uses carry inline justification.
+- R-645: `[build-system] requires` raised to `setuptools>=83` (CVE-2026-59890 /
+  PYSEC-2026-3447). `pip-audit` against a clean `recurspec[runtime,rust]` install
+  found no vulnerability in anything Recurspec itself declares; a bare `python -m
+  venv` seeds a vulnerable `setuptools` from the interpreter's own bundled
+  `ensurepip` regardless of this project, which the floor bump cannot fix.
 - Implemented the deterministic Structure Gate (ROADMAP R-300) with a standard-library
   Python AST adapter, Contract Node §6 ownership and test-surface checks, bounded
   changed-file scans, stable diagnostics, CLI exit codes, and a seeded false-negative
