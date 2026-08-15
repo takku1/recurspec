@@ -121,3 +121,17 @@ def test_skill_states_escalate_is_the_wrong_space_path():
     assert "search space" in skill
     assert "fourth gate outcome" in skill
     assert "`ESCALATE`" in skill
+
+
+def test_skill_cli_surface_names_the_current_commands():
+    skill = Path(str(files("recurspec").joinpath("skill/SKILL.md"))).read_text(
+        encoding="utf-8"
+    )
+
+    assert "| `recurspec contract evidence PATH` |" in skill
+    assert "| `recurspec study accept` |" in skill
+    assert "| `recurspec predict MODULE` |" in skill
+    assert "| `recurspec recommend` |" in skill
+    assert "--bks-metrics-only" in skill
+    assert "recurspec[rust]" in skill
+    assert "contaminated" in skill

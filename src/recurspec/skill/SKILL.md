@@ -141,22 +141,24 @@ parallel scripts.
 | `recurspec fanout --item ...` | Split a work list into one strategy handoff per item |
 | `recurspec contract check PATH` | Validate one node or a Contract Tree |
 | `recurspec contract evidence PATH` | Count Evidence Stages; list Sampled/Measured/Proved claims that name no check. Observation only |
-| `recurspec structure check REPO` | Detect uncontracted symbols and §6 drift |
+| `recurspec structure check REPO` | Detect uncontracted symbols and §6 drift. Python by default; `recurspec[rust]` adds `*.rs` |
 | `recurspec stack check REPO` | Audit §8 fields and pins |
 | `recurspec reconcile plan REPO` | Draft-only Structural Feedback actions |
-| `recurspec evaluate MODULE BRANCH ...` | Isolated Candidate keep/revert/escalate |
+| `recurspec evaluate MODULE BRANCH ...` | Isolated Candidate keep/revert/escalate. Optional `--bks-metrics-only` hides prior source |
 | `recurspec modules check REPO --changed-file PATH` | Run `checks.sh`/`measure.sh` for touched modules |
 | `recurspec frontier publish TREE` | Write Research Frontier tickets (optional `--remote github`) |
 | `recurspec frontier check REPO` | Verify every ticket still points at a Contract Node |
 | `recurspec corpus export --output FILE --i-opt-in` | Redacted decision corpus; refuses without `--i-opt-in` |
 | `recurspec predict MODULE` | Negative Pattern reason frequencies; refuses when none exist |
 | `recurspec recommend` | Refuses to invent a Decision Class from a redacted corpus |
-| `recurspec study init/assign/list` | R-400 pair log + coin flip before either arm starts |
+| `recurspec study init/assign/list` | R-400 pair log + coin flip before either arm starts. `init` refuses a contaminated subject |
 | `recurspec study accept` | Record an independent arm accept after a verify command exits 0; refuses maker = checker |
 | `recurspec skills install --target grok` | Install this skill to `$GROK_HOME/skills` |
 
-Optional extra `recurspec[runtime]` pins the packet-only Messages adapter. The Worker
-Pool still requires an injected `RuntimeCall`; do not give a worker a filesystem path.
+Optional extras: `recurspec[runtime]` pins the packet-only Messages adapter;
+`recurspec[rust]` enables the Structure Gate's tree-sitter Rust adapter and is
+omitted, not failed, when missing. The Worker Pool still requires an injected
+`RuntimeCall`; do not give a worker a filesystem path.
 
 ## Close-out
 
