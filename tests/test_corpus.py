@@ -3,7 +3,12 @@ from pathlib import Path
 
 import pytest
 
-from recurspec.evidence import export_decision_corpus, log_event
+from recurspec.evidence import (
+    RecommendationError,
+    export_decision_corpus,
+    log_event,
+    recommend_decision_class,
+)
 
 
 def test_export_refuses_without_opt_in(tmp_path: Path):
@@ -36,3 +41,8 @@ def test_export_drops_reasons_branches_and_metric_values(tmp_path: Path):
     assert "branch" not in row
     assert "secret.py" not in dest.read_text(encoding="utf-8")
     assert "candidate/private" not in dest.read_text(encoding="utf-8")
+
+
+def test_recommend_decision_class_refuses_to_invent_from_a_redacted_corpus():
+    with pytest.raises(RecommendationError, match="refusing to invent"):
+        recommend_decision_class()

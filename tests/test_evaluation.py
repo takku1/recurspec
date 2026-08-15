@@ -1241,3 +1241,65 @@ def test_isolated_candidate_refuses_worker_authorization_for_another_candidate(t
             "candidate/R-200",
             authorization=pool.merge_authorization("R-999"),
         )
+
+
+def test_implementor_bks_metrics_only_omits_source_even_when_files_are_named(tmp_path):
+    from recurspec.metrics import implementor_bks
+
+    log_dir = tmp_path / "evidence"
+    source = tmp_path / "winner.py"
+    source.write_text("def leaked():\n    return 1\n", encoding="utf-8")
+    log_event(
+        "checkout",
+        "baseline",
+        {"metric": "latency", "value": 12.0, "direction": "lower", "tier": "target"},
+        branch="main",
+        log_dir=str(log_dir),
+    )
+
+    hidden = implementor_bks(
+        "checkout",
+        log_dir=str(log_dir),
+        metrics_only=True,
+        source_files=[str(source)],
+    )
+    shown = implementor_bks(
+        "checkout",
+        log_dir=str(log_dir),
+        metrics_only=False,
+        source_files=[str(source)],
+    )
+
+    assert hidden.metrics_only is True
+    assert hidden.source_excerpts == ()
+    assert hidden.metrics[0]["metric"] == "latency"
+    assert hidden.metrics[0]["value"] == 12.0
+    assert "leaked" not in json.dumps(hidden.as_dict())
+    assert shown.source_excerpts[0][1].startswith("def leaked")
+
+
+def test_predict_from_negative_patterns_refuses_without_evidence(tmp_path):
+    from recurspec.metrics import PredictorError, predict_from_negative_patterns
+
+    with pytest.raises(PredictorError, match="refuse to invent"):
+        predict_from_negative_patterns("checkout", log_dir=str(tmp_path / "empty"))
+
+    log_dir = tmp_path / "evidence"
+    log_event(
+        "checkout",
+        "negative_pattern",
+        {},
+        reason="retry the same patch",
+        verdict="REVERT",
+        log_dir=str(log_dir),
+    )
+    log_event(
+        "checkout",
+        "negative_pattern",
+        {},
+        reason="retry the same patch",
+        verdict="REVERT",
+        log_dir=str(log_dir),
+    )
+    rows = predict_from_negative_patterns("checkout", log_dir=str(log_dir))
+    assert rows == [{"count": 2, "reason": "retry the same patch"}]

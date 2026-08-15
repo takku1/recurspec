@@ -145,7 +145,7 @@ whole.
 | R-635 | Structure Gate language-adapter abstraction (behavior-preserving refactor of the Python AST walker) | done | `LanguageAdapter` + default `PYTHON_ADAPTER`; `test_check_structure_uses_an_injected_language_adapter` |
 | R-636 | Optional Rust Structure Gate adapter (`recurspec[rust]`, tree-sitter) | done | `test_rust_adapter_detects_pub_items_and_skips_cfg_test`; `test_available_adapters_omits_rust_when_the_extra_is_missing` |
 | R-637 | Evidence-stage honesty report: count stages and list Sampled/Measured/Proved invariants that name no check. Observation only — never fail the tree. Formality-evasion: Bowen & Hinchey; Shipman & Marshall | done | `test_evidence_audit_lists_unlicensed_sampled_and_counts_unknown`; `recurspec contract evidence` |
-| R-638 | Optional Best Known State metric-only implementor packet (hide prior candidate code). Design-fixation ablation, not a default | research | Jansson & Smith 1991; [constrained-creativity.md](./docs/research/constrained-creativity.md) §3. No outcome data yet. |
+| R-638 | Optional Best Known State metric-only implementor packet (hide prior candidate code). Design-fixation ablation, not a default | done | `test_implementor_bks_metrics_only_omits_source_even_when_files_are_named`; `evaluate --bks-metrics-only`. Ablation outcome data is still absent. |
 | R-639 | Clarify that `ESCALATE` is the path when the Contract Node (the search space) may be wrong, not only when the candidate is wrong. Do not add a fourth gate outcome | done | evaluation-gate ADR-006; `test_skill_states_escalate_is_the_wrong_space_path` |
 
 ## Long horizon: compounding intelligence
@@ -153,8 +153,8 @@ whole.
 | ID | Outcome | Status | Constraint |
 |---|---|---|---|
 | R-500 | Export a privacy-preserving decision corpus | done | Explicit opt-in (`recurspec corpus export --i-opt-in`); redacts reason, branch, metric values, source, and prompts. `tests/test_corpus.py` |
-| R-501 | Learn reusable failure predictors from Negative Patterns | blocked | R-400, R-402, R-500 |
-| R-502 | Recommend Decision Classes from comparable outcomes | blocked | R-401, R-500; recommendations remain reviewable evidence, never authority |
+| R-501 | Learn reusable failure predictors from Negative Patterns | blocked | R-400, R-402, R-500. Instrument: `recurspec predict` reports reason frequencies or refuses; no trained model. |
+| R-502 | Recommend Decision Classes from comparable outcomes | blocked | R-401, R-500; recommendations remain reviewable evidence, never authority. Instrument: `recurspec recommend` refuses because the R-500 corpus redacts Decision Class. |
 
 ## Intentionally out of scope
 

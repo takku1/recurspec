@@ -40,6 +40,8 @@ def test_parser_exposes_the_public_commands():
     corpus = parser.parse_args(
         ["corpus", "export", "--output", "corpus.jsonl", "--i-opt-in"]
     )
+    predict = parser.parse_args(["predict", "checkout", "--format", "json"])
+    recommend = parser.parse_args(["recommend"])
     study_accept = parser.parse_args(
         [
             "study",
@@ -76,6 +78,9 @@ def test_parser_exposes_the_public_commands():
     assert fanout.write is True
     assert corpus.action == "export"
     assert corpus.i_opt_in is True
+    assert predict.module == "checkout"
+    assert predict.format == "json"
+    assert recommend.corpus is None
     assert contract.path == Path("docs")
     assert contract_evidence.action == "evidence"
     assert contract_evidence.path == Path("docs")
@@ -115,6 +120,8 @@ def test_every_cli_argument_documents_itself():
         return [action for action in subparser._actions if action.dest != "help"]
 
     evaluate = parser._subparsers._group_actions[0].choices["evaluate"]
+    predict = parser._subparsers._group_actions[0].choices["predict"]
+    recommend = parser._subparsers._group_actions[0].choices["recommend"]
     skills = parser._subparsers._group_actions[0].choices["skills"]
     status = parser._subparsers._group_actions[0].choices["status"]
     fanout = parser._subparsers._group_actions[0].choices["fanout"]
@@ -142,6 +149,8 @@ def test_every_cli_argument_documents_itself():
 
     for subparser in (
         evaluate,
+        predict,
+        recommend,
         skills,
         status,
         fanout,
@@ -160,6 +169,18 @@ def test_corpus_export_cli_refuses_without_opt_in(tmp_path: Path, capsys):
 
     assert code == 2
     assert "opt-in" in capsys.readouterr().err
+
+
+def test_predict_cli_refuses_without_negative_patterns(tmp_path: Path, capsys):
+    code = main(["predict", "checkout", "--log-dir", str(tmp_path / "empty")])
+
+    assert code == 1
+    assert "refuse to invent" in capsys.readouterr().err
+
+
+def test_recommend_cli_refuses_to_invent_a_decision_class(capsys):
+    assert main(["recommend"]) == 1
+    assert "refusing to invent" in capsys.readouterr().err
 
 
 def test_skill_targets_include_grok_under_grok_home(

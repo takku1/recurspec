@@ -38,6 +38,11 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
   excluded. A missing extra omits the adapter instead of failing.
 - R-639: `ESCALATE` is documented as the path when the Contract Node (the
   search space) may be wrong. No fourth gate outcome.
+- R-638: `implementor_bks(..., metrics_only=True)` and `evaluate --bks-metrics-only`
+  expose the Best Known State metric vector and omit prior source.
+- R-501/R-502 instruments: `recurspec predict` reports Negative Pattern
+  frequencies or refuses; `recurspec recommend` refuses to invent a Decision
+  Class from the redacted corpus. The study outcomes remain blocked.
 - Implemented the deterministic Structure Gate (ROADMAP R-300) with a standard-library
   Python AST adapter, Contract Node §6 ownership and test-surface checks, bounded
   changed-file scans, stable diagnostics, CLI exit codes, and a seeded false-negative

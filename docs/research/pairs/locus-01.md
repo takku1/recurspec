@@ -45,7 +45,11 @@ Locus ROADMAP + docs/open-work.md alias; implement on main; cargo test / cargo c
 
 - Recurspec arm started: 2026-08-15 after assignment (not accepted; NEED_CHECKER)
 - Recurspec arm work this session: added catalog rule `numerical.one_minus_exp` (`1-exp(x) ≡ -expm1(x)`) plus `one_minus_exp_is_a_catalog_hit` (7 catalog_hit lib tests passed). Horner/expm1/conjugate/hypot were already in RULES_ACCURACY.
-- Baseline arm started: contaminated, not validly started (see Post-hoc metrics). Do not run R-ARCH-13 as this pair's baseline arm without a checker decision.
+- Baseline arm started: contaminated, not validly started (see Post-hoc metrics).
+- Baseline arm disposition (2026-08-15): **disqualified**. R-ARCH-13 is not a valid
+  no-Recurspec control. Do not run it as this pair's baseline arm. Substitute a
+  fresh, uncontaminated Locus ticket in a new pair log if a second baseline
+  observation is needed.
 - Accepted implementation: yes. Recurspec arm accepted 2026-08-15 ~01:33 by checker dillon.c.carney@gmail.com (independent of implementor session). Committed `3de12f6` (4 files: `catalog_hit.rs`, `rules/mod.rs`, `rules/records.rs`, `rules/registry.rs` only — Locus main carries ~230 unrelated uncommitted paths from prior work, left untouched). Tests: `cargo test -p locus-engine rules::catalog_hit` (8 passed).
 
 ## Post-hoc metrics

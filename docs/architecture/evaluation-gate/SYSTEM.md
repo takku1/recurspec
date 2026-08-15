@@ -24,6 +24,10 @@ Empirical Feedback infrastructure: explicit Best Known State (BKS) baselines, `m
 
 - **[Ubiquitous]** The Evaluation Gate SHALL compare a candidate against the trunk BKS and SHALL promote a new baseline only through explicit `--record-baseline` after merge. (`find_baseline`, baseline-promotion, and isolated-lifecycle coverage)
   - `EvidenceStage:` Sampled
+- **[Optional]** WHERE `--bks-metrics-only` is set THE SYSTEM SHALL give the Implementor
+  the BKS metric vector and SHALL NOT include prior implementation source.
+  (`test_implementor_bks_metrics_only_omits_source_even_when_files_are_named`)
+  - `EvidenceStage:` Sampled
 - **[Event-driven]** WHEN `checks.sh` fails THE SYSTEM SHALL block keep regardless of primary metric improvement. (`test_runner_logs_negative_patterns_and_enforces_total_attempt_ceiling`)
   - `EvidenceStage:` Sampled
 - **[Conditional]** IF telemetry self-contradiction is detected THEN THE SYSTEM SHALL flag the instrument broken and halt Empirical Feedback Contract Tree updates. (legacy and multi-metric contradiction tests)

@@ -50,6 +50,26 @@ def log_event(
 _CORPUS_KEEP = ("event_type", "verdict", "evidence_stage", "ts")
 
 
+class RecommendationError(RuntimeError):
+    """A Decision Class recommendation would be invented from redacted or missing data."""
+
+
+def recommend_decision_class(
+    corpus_path: str | os.PathLike[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Refuse to recommend a Decision Class (R-502).
+
+    R-500's corpus redacts reason, branch, metric values, and has no Decision
+    Class field. Comparable-outcome recommendations stay blocked until R-401
+    data exists in a corpus that actually carries those fields.
+    """
+    del corpus_path
+    raise RecommendationError(
+        "R-500 corpus redacts Decision Class, reasons, and metric values; "
+        "refusing to invent a recommendation"
+    )
+
+
 def export_decision_corpus(
     log_dir: str | os.PathLike[str],
     destination: str | os.PathLike[str],

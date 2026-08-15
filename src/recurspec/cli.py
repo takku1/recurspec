@@ -16,7 +16,7 @@ from pathlib import Path
 from . import __version__
 from .contract import ContractInstrumentError, audit_evidence_stages, validate_contract
 from .evaluation import ERROR, evaluate_isolated_candidate
-from .evidence import export_decision_corpus
+from .evidence import RecommendationError, export_decision_corpus, recommend_decision_class
 from .fanout import FanoutInstrumentError, plan_fanout, render_fanout, write_fanout
 from .frontier import (
     FrontierInstrumentError,
@@ -24,6 +24,7 @@ from .frontier import (
     github_issue_publisher,
     publish_frontiers,
 )
+from .metrics import PredictorError, implementor_bks, predict_from_negative_patterns
 from .modules_gate import evaluate_changed_modules
 from .project_status import StatusInstrumentError, inspect_project, render_status
 from .reconcile import ReconciliationInstrumentError, plan_reconciliation
@@ -96,6 +97,15 @@ def sync_skill(destination_root: Path, *, check: bool = False) -> bool:
 def _run_evaluate(args: argparse.Namespace) -> int:
     try:
         authorization = load_merge_authorization(args.worker_state, args.authorization_id)
+        if args.bks_metrics_only:
+            packet = implementor_bks(
+                args.module,
+                log_dir=str(args.log_dir),
+                baseline_branch=args.baseline_branch,
+                metrics_only=True,
+                source_files=args.bks_source,
+            )
+            print(json.dumps(packet.as_dict(), separators=(",", ":"), sort_keys=True))
         code, _ = evaluate_isolated_candidate(
             args.repo,
             args.module,
@@ -365,6 +375,29 @@ def _run_fanout(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_predict(args: argparse.Namespace) -> int:
+    try:
+        rows = predict_from_negative_patterns(args.module, str(args.log_dir))
+    except PredictorError as exc:
+        print(f"[ERROR] {exc}", file=sys.stderr)
+        return 1
+    if args.format == "json":
+        print(json.dumps(rows, separators=(",", ":"), sort_keys=True))
+    else:
+        for row in rows:
+            print(f"{row['count']}\t{row['reason']}")
+    return 0
+
+
+def _run_recommend(args: argparse.Namespace) -> int:
+    try:
+        recommend_decision_class(args.corpus)
+    except RecommendationError as exc:
+        print(f"[ERROR] {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
 def _run_corpus_export(args: argparse.Namespace) -> int:
     try:
         count = export_decision_corpus(args.log_dir, args.output, opt_in=args.i_opt_in)
@@ -496,6 +529,17 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=8,
         help="total reverts on this branch before returning ESCALATE",
+    )
+    evaluate.add_argument(
+        "--bks-metrics-only",
+        action="store_true",
+        help="implementor BKS packet includes the metric vector and omits prior source (R-638)",
+    )
+    evaluate.add_argument(
+        "--bks-source",
+        action="append",
+        default=[],
+        help="baseline source file; ignored when --bks-metrics-only is set",
     )
     evaluate.set_defaults(handler=_run_evaluate)
 
@@ -818,6 +862,39 @@ def build_parser() -> argparse.ArgumentParser:
         help="required explicit project-level opt-in (R-500)",
     )
     corpus_export.set_defaults(handler=_run_corpus_export)
+
+    predict = commands.add_parser(
+        "predict",
+        help="report Negative Pattern reason frequencies; refuses when none exist",
+        formatter_class=defaults_formatter,
+    )
+    predict.add_argument("module", help="module name under .recurspec/evidence/<module>/")
+    predict.add_argument(
+        "--log-dir",
+        type=Path,
+        default=Path(".recurspec/evidence"),
+        help="evidence log directory",
+    )
+    predict.add_argument(
+        "--format",
+        choices=("text", "json"),
+        default="text",
+        help="text prints count and reason; json prints a stable payload",
+    )
+    predict.set_defaults(handler=_run_predict)
+
+    recommend = commands.add_parser(
+        "recommend",
+        help="refuse to invent a Decision Class recommendation without comparable outcomes",
+        formatter_class=defaults_formatter,
+    )
+    recommend.add_argument(
+        "--corpus",
+        type=Path,
+        default=None,
+        help="optional redacted corpus path; does not license a recommendation",
+    )
+    recommend.set_defaults(handler=_run_recommend)
 
     study = commands.add_parser(
         "study",

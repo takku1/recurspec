@@ -149,6 +149,8 @@ parallel scripts.
 | `recurspec frontier publish TREE` | Write Research Frontier tickets (optional `--remote github`) |
 | `recurspec frontier check REPO` | Verify every ticket still points at a Contract Node |
 | `recurspec corpus export --output FILE --i-opt-in` | Redacted decision corpus; refuses without `--i-opt-in` |
+| `recurspec predict MODULE` | Negative Pattern reason frequencies; refuses when none exist |
+| `recurspec recommend` | Refuses to invent a Decision Class from a redacted corpus |
 | `recurspec study init/assign/list` | R-400 pair log + coin flip before either arm starts |
 | `recurspec study accept` | Record an independent arm accept after a verify command exits 0; refuses maker = checker |
 | `recurspec skills install --target grok` | Install this skill to `$GROK_HOME/skills` |

@@ -23,6 +23,7 @@ import json
 import math
 import os
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -483,6 +484,109 @@ def read_negative_patterns(
 ) -> list[dict[str, Any]]:
     """All negative_pattern events recorded for a module, oldest first."""
     return [e for e in read_events(module, log_dir) if e.get("event_type") == "negative_pattern"]
+
+
+class PredictorError(RuntimeError):
+    """No Negative Pattern evidence exists; a predictor would be invented."""
+
+
+class BksPacketError(RuntimeError):
+    """The Best Known State implementor packet could not be built."""
+
+
+@dataclass(frozen=True)
+class BksPacket:
+    """Implementor-facing Best Known State view (R-638)."""
+
+    metrics: tuple[dict[str, Any], ...]
+    source_excerpts: tuple[tuple[str, str], ...]
+    metrics_only: bool
+
+    def as_dict(self) -> dict[str, Any]:
+        excerpts = (
+            []
+            if self.metrics_only
+            else [{"path": path, "text": text} for path, text in self.source_excerpts]
+        )
+        return {
+            "metrics": [dict(item) for item in self.metrics],
+            "metrics_only": self.metrics_only,
+            "source_excerpts": excerpts,
+        }
+
+
+def implementor_bks(
+    module: str,
+    log_dir: str = ".recurspec/evidence",
+    baseline_branch: str = "main",
+    *,
+    metrics_only: bool = False,
+    source_files: Sequence[str] | None = None,
+) -> BksPacket:
+    """Build the implementor BKS packet.
+
+    ``metrics_only=True`` is the design-fixation ablation: the metric vector is
+    included and prior implementation text is omitted even if ``source_files``
+    were supplied. Default is the opposite (opt-in ablation, not a new default).
+    """
+    latest: dict[str, dict[str, Any]] = {}
+    for event in read_events(module, log_dir):
+        if event.get("branch") != baseline_branch:
+            continue
+        if event.get("event_type") not in ("baseline", "measurement"):
+            continue
+        payload = event.get("metrics")
+        if not isinstance(payload, dict):
+            continue
+        name = payload.get("metric")
+        value = _numeric(payload.get("value"))
+        if not isinstance(name, str) or not name or value is None:
+            continue
+        latest[name] = {
+            "direction": payload.get("direction"),
+            "metric": name,
+            "tier": payload.get("tier"),
+            "value": value,
+        }
+    metrics = tuple(latest[name] for name in sorted(latest))
+    excerpts: list[tuple[str, str]] = []
+    if not metrics_only:
+        for raw in source_files or ():
+            path = os.fspath(raw)
+            try:
+                with open(path, encoding="utf-8") as handle:
+                    excerpts.append((path.replace("\\", "/"), handle.read()))
+            except (OSError, UnicodeError) as exc:
+                raise BksPacketError(f"could not read BKS source {path}: {exc}") from exc
+    return BksPacket(
+        metrics=metrics,
+        source_excerpts=tuple(excerpts),
+        metrics_only=metrics_only,
+    )
+
+
+def predict_from_negative_patterns(
+    module: str, log_dir: str = ".recurspec/evidence"
+) -> list[dict[str, Any]]:
+    """Descriptive frequency predictors from recorded Negative Patterns (R-501).
+
+    Refuses when the module has no patterns — there is nothing to learn from.
+    This is not a trained model and does not invent a predictor.
+    """
+    patterns = read_negative_patterns(module, log_dir)
+    if not patterns:
+        raise PredictorError(
+            f"no Negative Patterns for {module}; refuse to invent a predictor"
+        )
+    counts: dict[str, int] = {}
+    for event in patterns:
+        reason = event.get("reason")
+        key = reason.strip() if isinstance(reason, str) and reason.strip() else "unspecified"
+        counts[key] = counts.get(key, 0) + 1
+    return [
+        {"count": counts[reason], "reason": reason}
+        for reason in sorted(counts, key=lambda item: (-counts[item], item))
+    ]
 
 
 # --- Escalation boundaries ---------------------------------------------------
