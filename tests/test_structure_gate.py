@@ -1,6 +1,10 @@
 from pathlib import Path
 
-from recurspec.structure_gate import check_structure, declared_paths
+from recurspec.structure_gate import (
+    check_structure,
+    declared_paths,
+    declared_probe_paths,
+)
 
 
 def _contract(implementation: str, tests: str) -> str:
@@ -46,6 +50,66 @@ def test_structure_gate_reports_each_public_symbol_in_an_uncontracted_source_fil
         ("structure.public.uncontracted", "PublicThing"),
         ("structure.public.uncontracted", "helper"),
     ]
+
+
+def test_declared_probe_paths_resolves_a_bare_checks_sibling(tmp_path: Path):
+    contract = tmp_path / "SYSTEM.md"
+    contract.write_text(
+        """# Example (L2)
+
+## 7. Measurement Seams
+
+- **Evaluation Gate / checks:** `modules/ingest-parse/measure.sh`, `checks.sh`
+""",
+        encoding="utf-8",
+    )
+
+    probes, unsafe = declared_probe_paths(contract, repository=tmp_path)
+
+    assert unsafe == set()
+    assert probes == {
+        "modules/ingest-parse/measure.sh",
+        "modules/ingest-parse/checks.sh",
+    }
+
+
+def test_declared_probe_paths_keeps_a_bare_script_as_repo_relative(tmp_path: Path):
+    contract = tmp_path / "SYSTEM.md"
+    contract.write_text(
+        """# Example (L2)
+
+## 7. Measurement Seams
+
+- **Evaluation Gate:** `measure.sh`
+""",
+        encoding="utf-8",
+    )
+
+    probes, unsafe = declared_probe_paths(contract, repository=tmp_path)
+
+    assert unsafe == set()
+    assert probes == {"measure.sh"}
+
+
+def test_structure_gate_reports_a_missing_declared_probe(tmp_path: Path):
+    source = tmp_path / "src" / "pkg" / "feature.py"
+    test = tmp_path / "tests" / "test_feature.py"
+    contract = tmp_path / "docs" / "architecture" / "feature" / "SYSTEM.md"
+    source.parent.mkdir(parents=True)
+    test.parent.mkdir(parents=True)
+    contract.parent.mkdir(parents=True)
+    source.write_text("def public_seam():\n    return 1\n", encoding="utf-8")
+    test.write_text("def test_public_seam():\n    assert True\n", encoding="utf-8")
+    contract.write_text(
+        _contract("src/pkg/feature.py", "tests/test_feature.py")
+        + "\n- **Evaluation Gate:** `modules/feature/measure.sh`\n",
+        encoding="utf-8",
+    )
+
+    result = check_structure(tmp_path, source_root="src", contract_root="docs/architecture")
+
+    assert [item.code for item in result.diagnostics] == ["structure.probe.missing"]
+    assert result.diagnostics[0].path == "modules/feature/measure.sh"
 
 
 def test_structure_gate_reports_missing_declared_implementation_and_test_paths(tmp_path: Path):

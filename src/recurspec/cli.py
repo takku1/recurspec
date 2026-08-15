@@ -17,6 +17,7 @@ from . import __version__
 from .contract import ContractInstrumentError, validate_contract
 from .evaluation import ERROR, evaluate_isolated_candidate
 from .evidence import export_decision_corpus
+from .fanout import FanoutInstrumentError, plan_fanout, render_fanout, write_fanout
 from .frontier import (
     FrontierInstrumentError,
     check_frontiers,
@@ -24,6 +25,7 @@ from .frontier import (
     publish_frontiers,
 )
 from .modules_gate import evaluate_changed_modules
+from .project_status import StatusInstrumentError, inspect_project, render_status
 from .reconcile import ReconciliationInstrumentError, plan_reconciliation
 from .spec_runner.workers import load_merge_authorization
 from .structure_gate import check_structure
@@ -293,6 +295,48 @@ def _run_frontier(args: argparse.Namespace) -> int:
         return 2
 
 
+def _run_status(args: argparse.Namespace) -> int:
+    try:
+        status = inspect_project(args.repository, contract_root=args.contract_root)
+    except StatusInstrumentError as exc:
+        print(f"[ERROR] {exc}", file=sys.stderr)
+        return 2
+    if args.format == "json":
+        print(json.dumps(status.as_dict(), separators=(",", ":"), sort_keys=True))
+    else:
+        print(render_status(status), end="")
+    return 0
+
+
+def _run_fanout(args: argparse.Namespace) -> int:
+    raw_items = list(args.item)
+    if args.list_file is not None:
+        try:
+            raw_items.append(args.list_file.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError) as exc:
+            print(f"[ERROR] could not read list file: {exc}", file=sys.stderr)
+            return 2
+    try:
+        plan = plan_fanout(raw_items, prefix=args.prefix, output_dir=args.output)
+    except FanoutInstrumentError as exc:
+        print(f"[ERROR] {exc}", file=sys.stderr)
+        return 1
+    if args.write:
+        try:
+            write_fanout(plan, repository=args.repository)
+        except FanoutInstrumentError as exc:
+            print(f"[ERROR] {exc}", file=sys.stderr)
+            return 2
+        except OSError as exc:
+            print(f"[ERROR] could not write handoffs: {exc}", file=sys.stderr)
+            return 2
+    if args.format == "json":
+        print(json.dumps(plan.as_dict(), separators=(",", ":"), sort_keys=True))
+    else:
+        print(render_fanout(plan), end="")
+    return 0
+
+
 def _run_corpus_export(args: argparse.Namespace) -> int:
     try:
         count = export_decision_corpus(args.log_dir, args.output, opt_in=args.i_opt_in)
@@ -393,6 +437,77 @@ def build_parser() -> argparse.ArgumentParser:
         help="which tool's skill directory to target",
     )
     skills.set_defaults(handler=_run_skills)
+
+    status = commands.add_parser(
+        "status",
+        help="classify Recurspec readiness of a repository",
+        formatter_class=defaults_formatter,
+    )
+    status.add_argument(
+        "repository",
+        type=Path,
+        nargs="?",
+        default=Path("."),
+        help="repository root to inspect",
+    )
+    status.add_argument(
+        "--contract-root",
+        default="docs/architecture",
+        help="repository-relative Contract Tree root",
+    )
+    status.add_argument(
+        "--format",
+        choices=("text", "json"),
+        default="text",
+        help="text prints an orientation block; json prints a stable payload",
+    )
+    status.set_defaults(handler=_run_status)
+
+    fanout = commands.add_parser(
+        "fanout",
+        help="split a work list into one strategy handoff per item",
+        formatter_class=defaults_formatter,
+    )
+    fanout.add_argument(
+        "--item",
+        action="append",
+        default=[],
+        help="one work item; repeat for each independently failing item",
+    )
+    fanout.add_argument(
+        "--list-file",
+        type=Path,
+        help="markdown file whose numbered or bulleted list expands into items",
+    )
+    fanout.add_argument(
+        "--prefix",
+        default="FAN",
+        help="ticket stem, e.g. FAN-01 or R-631",
+    )
+    fanout.add_argument(
+        "--output",
+        type=Path,
+        default=Path(".recurspec/handoffs"),
+        help="directory for strategy-<ticket>.md files",
+    )
+    fanout.add_argument(
+        "--repository",
+        type=Path,
+        default=Path("."),
+        help="repository root used when --write is set",
+    )
+    fanout.add_argument(
+        "--write",
+        action="store_true",
+        help="write one strategy handoff per item; default is print only",
+    )
+    fanout.add_argument(
+        "--format",
+        choices=("text", "json"),
+        default="text",
+        help="text prints the split; json prints a stable payload",
+    )
+    fanout.set_defaults(handler=_run_fanout)
 
     contract = commands.add_parser(
         "contract",

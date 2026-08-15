@@ -50,3 +50,64 @@ def test_skill_design_reference_carries_a_self_contained_ears_citation():
     assert "docs/research/foundations.md" not in text
     assert "10.1109/RE.2009.9" in text
     assert "Mavin" in text
+
+
+def test_skill_requires_status_before_design_and_names_not_recurspec():
+    skill_root = Path(str(files("recurspec").joinpath("skill")))
+    skill = (skill_root / "SKILL.md").read_text(encoding="utf-8")
+    design = (skill_root / "references" / "design.md").read_text(encoding="utf-8")
+
+    assert skill.index("recurspec status") < skill.index("Raw goal or missing contract tree")
+    assert "| `recurspec status REPO` |" in skill
+    assert "`not_recurspec`" in skill
+    assert "NEED_CHECKER" in skill
+    assert "source material" in design
+    assert "Existing architecture documents" in design
+    assert "FEATURE_GAPS.md" in design
+
+
+def test_skill_requires_status_on_paper_and_research_asks():
+    skill = Path(str(files("recurspec").joinpath("skill/SKILL.md"))).read_text(
+        encoding="utf-8"
+    )
+    design = Path(str(files("recurspec").joinpath("skill/references/design.md"))).read_text(
+        encoding="utf-8"
+    )
+
+    assert "skill install" in skill
+    assert "*subject* repository" in skill
+    assert "missing_probes" in skill
+    assert ".recurspec/contracts" in skill
+    assert "prose-only preprint" in skill
+    assert "until those files exist" in design
+
+
+def test_skill_requires_work_lists_to_fan_out():
+    skill = Path(str(files("recurspec").joinpath("skill/SKILL.md"))).read_text(
+        encoding="utf-8"
+    )
+    design = Path(str(files("recurspec").joinpath("skill/references/design.md"))).read_text(
+        encoding="utf-8"
+    )
+
+    assert "## Work lists fan out" in skill
+    assert "| `recurspec fanout --item ...` |" in skill
+    assert "Do not implement 1–N" in skill or "Do not implement 1-N" in skill
+    assert "not one FRAME" in design
+    assert "fanout" in design
+
+
+def test_skill_states_evidence_class_licensing():
+    skill = Path(str(files("recurspec").joinpath("skill/SKILL.md"))).read_text(
+        encoding="utf-8"
+    )
+    design = Path(str(files("recurspec").joinpath("skill/references/design.md"))).read_text(
+        encoding="utf-8"
+    )
+
+    assert "Executed behavior" in skill
+    assert "Does not license" in skill
+    assert "research-informed" in skill
+    assert "research-validated" in skill
+    assert "oracles" in design
+    assert "claim boundary" in design

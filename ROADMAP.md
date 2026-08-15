@@ -111,6 +111,20 @@ already named the optimization pass above, so these tickets continue from R-621.
 | R-625 | Pass `sys.executable` to probes as `RECURSPEC_PYTHON` and invoke Ruff as `python -m ruff` | done | `test_run_script_exports_the_running_interpreter`; bundled `modules/*/*.sh` |
 | R-626 | Put the complete EARS bibliographic citation in the installed skill instead of pointing at a repository-only file | done | `test_skill_design_reference_carries_a_self_contained_ears_citation` |
 
+## Live-use follow-up (2026-08-15)
+
+Off-repo Grok sessions loaded the skill and skipped the CLI. They treated any existing
+`SYSTEM.md` as a finished Contract Tree and kept process debt in rival registries.
+
+| ID | Outcome | Status | Evidence |
+|---|---|---|---|
+| R-627 | Classify project readiness with `recurspec status` and require that classification before design: `missing`, `not_recurspec`, `invalid`, or `valid`. Rival registries do not replace `ROADMAP.md` | done | `tests/test_project_status.py`; skill first-action tests in `tests/test_skill_references.py` |
+| R-628 | Report declared §7 probe scripts that are not on disk. Contract Engine still validates Markdown only (no repository root). Structure Gate owns path existence; `status` surfaces the same list so the first action cannot say `ready` over a fictional `measure.sh` | done | `test_declared_probe_paths_resolves_a_bare_checks_sibling`; `test_status_repairs_when_a_declared_probe_is_missing` |
+| R-629 | Discover the extra well-known Contract Tree at `.recurspec/contracts` and classify it separately from `docs/architecture`. Do not merge the two trees; composition stays per root | done | `test_status_classifies_an_extra_contracts_tree` |
+| R-630 | First action still runs when the user asked for a paper, skill install, or research. Status the *subject* repository. A `missing` tree on a prose-only folder is expected; do not invent a Contract Tree for a preprint | done | `test_skill_requires_status_on_paper_and_research_asks` |
+| R-631 | A work list is not one Contract Node. `recurspec fanout` splits it into one strategy handoff per item; the skill forbids implementing 1–N in a single shared context | done | `tests/test_fanout.py`; skill work-list tests |
+| R-632 | Skill close-out states what each evidence class licenses. Tests are not outcome evidence; "no data yet" is a complete finding | done | `test_skill_states_evidence_class_licensing` |
+
 ## Research and validation
 
 These items are required before claiming that Recurspec improves engineering outcomes.

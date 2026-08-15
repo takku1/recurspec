@@ -37,6 +37,11 @@ The flat list fails in three specific ways:
 The loop below fixes all three by forcing every node through the same five phases, and
 by tying *when to stop* to *what you decided to use*.
 
+An existing `SYSTEM.md` without `<!-- recurspec-contract: 1.0 -->` is not this loop. Run
+`recurspec status` first: `not_recurspec` means treat those files as source material and
+author real Contract Nodes. Do not keep Recurspec incomplete work only in
+`FEATURE_GAPS.md` or another project's incomplete-work file.
+
 ---
 
 ## The loop
@@ -60,6 +65,9 @@ graph TD
 
 Write the node's **single** responsibility as one sentence, plus what it explicitly does
 *not* own. If the sentence needs an "and", that is the first evidence the node splits.
+A numbered list of work items is the same signal: each line is a candidate node, not a
+bullet under one shared context. `recurspec fanout` emits one strategy handoff per line
+so FRAME/RESEARCH/RESOLVE can run with that item's packet only.
 
 Frame in terms of the **capability**, not the implementation: "prove a visitor is who
 they claim to be", not "users table". Naming the implementation this early is what

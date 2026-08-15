@@ -11,6 +11,11 @@ _SECTION_SIX = re.compile(
     r"^## 6\.[^\n]*\n(?P<body>.*?)(?=^## [78]\.|\Z)",
     re.MULTILINE | re.DOTALL,
 )
+_SECTION_SEVEN = re.compile(
+    r"^## 7\.[^\n]*\n(?P<body>.*?)(?=^## 8\.|\Z)",
+    re.MULTILINE | re.DOTALL,
+)
+_BACKTICK = re.compile(r"`([^`]+)`")
 _DECLARATION = re.compile(
     r"^- \*\*(?P<label>[^*]+):\*\*(?P<body>.*?)(?=^- \*\*|\Z)",
     re.MULTILINE | re.DOTALL,
@@ -113,6 +118,48 @@ def declared_paths(
     return implementation, tests, unsafe
 
 
+def _qualify_probe_scripts(tokens: list[str]) -> list[str]:
+    """Turn §7 backtick tokens into repository-relative script paths.
+
+    A bare ``checks.sh`` or ``measure.sh`` inherits the directory of the most
+    recent qualified script on the same node (the ``measure.sh`, `checks.sh`` idiom).
+    """
+    qualified: list[str] = []
+    last_directory = ""
+    for raw in tokens:
+        token = _relative_path(raw.strip())
+        if not token.endswith(".sh"):
+            continue
+        if "/" not in token:
+            if last_directory:
+                token = f"{last_directory}/{token}"
+        else:
+            last_directory = str(PurePosixPath(token).parent)
+        qualified.append(token)
+    return qualified
+
+
+def declared_probe_paths(
+    contract: str | Path, repository: str | Path | None = None
+) -> tuple[set[str], set[str]]:
+    """Return §7-declared probe scripts plus any that fail repository containment."""
+    contract = Path(contract)
+    text = contract.read_text(encoding="utf-8")
+    section = _SECTION_SEVEN.search(text)
+    if section is None:
+        return set(), set()
+    tokens = [match.group(1) for match in _BACKTICK.finditer(section.group("body"))]
+    repo = Path(repository) if repository is not None else None
+    safe: set[str] = set()
+    unsafe: set[str] = set()
+    for declared in _qualify_probe_scripts(tokens):
+        if _is_contained(declared, repo):
+            safe.add(declared)
+        else:
+            unsafe.add(declared)
+    return safe, unsafe
+
+
 def _public_symbols(path: Path) -> list[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     explicit_exports: list[str] | None = None
@@ -201,8 +248,9 @@ def check_structure(
     for contract in sorted(contracts.rglob("SYSTEM.md")):
         contract_name = contract.relative_to(root).as_posix()
         implementations, tests, unsafe = declared_paths(contract, repository=root)
+        probes, unsafe_probes = declared_probe_paths(contract, repository=root)
         declared_tests.update(tests)
-        for declared in sorted(unsafe):
+        for declared in sorted(unsafe | unsafe_probes):
             diagnostics.append(
                 StructureDiagnostic(
                     "structure.declaration.unsafe_path",
@@ -210,6 +258,15 @@ def check_structure(
                     f"{contract_name} declares a path that escapes the repository",
                 )
             )
+        for declared in sorted(probes):
+            if not (root / declared).is_file():
+                diagnostics.append(
+                    StructureDiagnostic(
+                        "structure.probe.missing",
+                        declared,
+                        f"{contract_name} declares a missing evaluation probe",
+                    )
+                )
         for declared in sorted(implementations):
             owners.setdefault(declared, []).append(contract_name)
             tests_for_implementation.setdefault(declared, set()).update(tests)

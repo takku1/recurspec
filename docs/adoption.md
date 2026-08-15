@@ -29,11 +29,16 @@ where its recommendation is wrong so it can later be calibrated.
 
 ### 1. Check only
 
-Write one versioned Contract Node for the highest-risk boundary and run:
+Start with orientation, then write one versioned Contract Node for the highest-risk
+boundary:
 
 ```bash
+recurspec status .
 recurspec contract check path/to/SYSTEM.md
 ```
+
+If `status` reports `not_recurspec`, existing `SYSTEM.md` files are source material, not
+Recurspec contracts. Do not stamp the version marker onto an incomplete file.
 
 Expand into a Contract Tree only when responsibilities can fail independently. You do
 not need Candidates, metrics, or the full vocabulary to gain structural validation.

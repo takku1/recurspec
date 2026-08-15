@@ -22,6 +22,7 @@ EXPECTED_METRICS = {
     "structure-gate": {"gate_false_negative_rate"},
     "worker-pool": {"wall_clock_per_node_p95"},
     "frontier-adapter": {"ticket_to_leaf_link_integrity"},
+    "context-packer": {"tokens_per_node_p95"},
 }
 
 

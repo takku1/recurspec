@@ -6,6 +6,20 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ### Added
 
+- R-627: `recurspec status` classifies a repository as `missing`, `not_recurspec`,
+  `invalid`, or `valid` before design. The bundled skill must run it first and treats
+  unmarked `SYSTEM.md` files as source material, not Recurspec contracts. Rival
+  incomplete-work files (`FEATURE_GAPS.md` and similar) do not replace
+  `ROADMAP.md`.
+- R-628: `status` and `structure check` report §7 `checks.sh`/`measure.sh` paths that
+  are not on disk and route `repair` instead of `ready`.
+- R-629: `status` classifies an extra Contract Tree at `.recurspec/contracts`.
+- R-630: the skill still requires `status` on the subject repository when the user
+  asked for a paper, install, or research.
+- R-631: `recurspec fanout` splits a work list into one strategy handoff per item.
+  The skill treats a numbered list as N nodes, not one shared context.
+- R-632: the skill close-out states what each evidence class licenses and forbids
+  promoting a passing test suite to an outcome claim.
 - Implemented the deterministic Structure Gate (ROADMAP R-300) with a standard-library
   Python AST adapter, Contract Node §6 ownership and test-surface checks, bounded
   changed-file scans, stable diagnostics, CLI exit codes, and a seeded false-negative

@@ -65,8 +65,9 @@ Start with the single public skill:
 /recurspec design a booking system for independent music teachers
 ```
 
-In Codex, select `recurspec` through `/skills` or invoke `$recurspec`. The skill inspects
-the repository state and loads only the internal phase reference it needs.
+In Codex, select `recurspec` through `/skills` or invoke `$recurspec`. The skill's first
+action is `recurspec status .`, which classifies whether existing `SYSTEM.md` files are
+Recurspec contracts. It then loads only the internal phase reference it needs.
 
 ## Evaluate a candidate
 

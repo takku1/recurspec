@@ -7,6 +7,34 @@ The failure this exists to prevent: a flat plan whose every line is the same siz
 page and wildly different in reality, where `- Login and user accounts` sits beside
 `- CSS` and an agent responds by hand-rolling a credential store.
 
+## Existing architecture documents
+
+`recurspec status` reports `not_recurspec` when `SYSTEM.md` files exist without
+`<!-- recurspec-contract: 1.0 -->`. That is a missing Recurspec Contract Tree, not a
+finished design.
+
+- Read those files as source material for FRAME.
+- Do not treat their headings, crate maps, or process prose as §1–§8.
+- Do not add the version marker until the node meets the template below.
+- Create root `ROADMAP.md`. If `FEATURE_GAPS.md` or another incomplete-work file already
+  lists work, index those IDs into `ROADMAP.md`; do not keep Recurspec debt only there.
+
+A second Contract Tree may live at `.recurspec/contracts` (for example a hygiene
+overhaul next to the product tree). `recurspec status` classifies it separately. Do not
+merge two roots into one composition check.
+
+Do not name `modules/<leaf>/checks.sh` or `measure.sh` in §7 until those files exist.
+`status` reports missing declared probes and routes `repair`.
+
+A paper, skill-install, or literature-review request is not a reason to skip
+`recurspec status` on the subject repository. It is a reason not to invent a Contract
+Tree for a folder that only holds prose.
+
+Evidence Stage (Unknown … Proved) is maturity. A passing test suite is executed
+behavior: it licenses "the exercised cases satisfied their oracles," not "the system
+achieves its goal." Do not promote Sampled tests to an outcome claim. If no
+comparative study exists, write the claim boundary instead of a performance sentence.
+
 ## The loop — run for every node, at every depth
 
 ### 1. FRAME
@@ -17,6 +45,9 @@ One sentence of responsibility, plus explicit non-goals.
   identity"*, not *"users table"*. Naming an implementation here pre-commits you to
   building it.
 - If the sentence needs an "and", that is the first evidence the node splits.
+- A numbered or bulleted list of deliverables is not one FRAME. Split it (`recurspec
+  fanout`) and run this loop on each item with only that item's packet. Sibling items
+  stay out of the implementor context.
 
 ### 2. RESEARCH — before decomposing, ask if it already exists
 

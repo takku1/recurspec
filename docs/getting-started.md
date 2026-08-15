@@ -20,7 +20,30 @@ invoke `$recurspec`.
 
 ## Design a system
 
-Start with a goal:
+The skill's first action is the CLI, not a guess from existing docs:
+
+```bash
+recurspec status .
+recurspec status . --format json
+```
+
+`status` classifies the Contract Tree as `missing`, `not_recurspec`, `invalid`, or
+`valid`. A `SYSTEM.md` file without `<!-- recurspec-contract: 1.0 -->` is
+`not_recurspec` — source material, not a finished Recurspec design. `FEATURE_GAPS.md`
+and similar incomplete-work files do not replace `ROADMAP.md`. Declared §7 probe
+scripts that are not on disk set `route` to `repair`. A second tree at
+`.recurspec/contracts` is listed under `extra_trees`.
+
+A numbered list of work is not one design pass. Split it first:
+
+```bash
+recurspec fanout --item "missing probes" --item "extra contract trees" --write
+```
+
+Each item gets its own `.recurspec/handoffs/strategy-*.md`. Design and implement one
+handoff at a time.
+
+Then start with a goal:
 
 ```text
 /recurspec design a booking system for independent music teachers

@@ -30,6 +30,10 @@ def test_parser_exposes_the_public_commands():
         ["modules", "check", ".", "--changed-file", "src/recurspec/contract.py"]
     )
     frontier = parser.parse_args(["frontier", "check", ".", "--format", "json"])
+    status = parser.parse_args(["status", ".", "--format", "json"])
+    fanout = parser.parse_args(
+        ["fanout", "--item", "one", "--item", "two", "--write"]
+    )
     corpus = parser.parse_args(
         ["corpus", "export", "--output", "corpus.jsonl", "--i-opt-in"]
     )
@@ -48,6 +52,10 @@ def test_parser_exposes_the_public_commands():
     assert modules.action == "check"
     assert modules.changed_file == ["src/recurspec/contract.py"]
     assert frontier.action == "check"
+    assert status.repository == Path(".")
+    assert status.format == "json"
+    assert fanout.item == ["one", "two"]
+    assert fanout.write is True
     assert corpus.action == "export"
     assert corpus.i_opt_in is True
     assert contract.path == Path("docs")
@@ -82,6 +90,8 @@ def test_every_cli_argument_documents_itself():
 
     evaluate = parser._subparsers._group_actions[0].choices["evaluate"]
     skills = parser._subparsers._group_actions[0].choices["skills"]
+    status = parser._subparsers._group_actions[0].choices["status"]
+    fanout = parser._subparsers._group_actions[0].choices["fanout"]
     contract = parser._subparsers._group_actions[0].choices["contract"]
     check = contract._subparsers._group_actions[0].choices["check"]
     modules_check = (
@@ -97,7 +107,15 @@ def test_every_cli_argument_documents_itself():
         .choices["export"]
     )
 
-    for subparser in (evaluate, skills, check, modules_check, corpus_export):
+    for subparser in (
+        evaluate,
+        skills,
+        status,
+        fanout,
+        check,
+        modules_check,
+        corpus_export,
+    ):
         for action in actions(subparser):
             assert action.help, f"{subparser.prog} {action.dest} is missing help text"
 

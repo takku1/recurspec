@@ -24,8 +24,11 @@ seam and cannot fail independently from a user's perspective.
 - **Interface syntax:** Section 3 declares machine-checkable ports as backtick identifiers
   on `**Inputs:**` and `**Outputs:**` lines. Descriptive prose remains human context but
   does not create a port.
-- **CLI:** `recurspec contract check PATH [--format text|json]`.
+- **CLI:** `recurspec contract check PATH [--format text|json]`;
+  `recurspec status REPO` classifies a repository using this engine plus filesystem facts.
 - **Exit status:** `0` valid, `1` contract invalid, `2` validation instrument failed.
+  `status` exits `0` after a successful inspection and `2` if the repository cannot be
+  read; missing probes change `route`, not the process exit.
 
 ## 4. Invariants (EARS + Epistemic Stage)
 
@@ -64,13 +67,17 @@ seam and cannot fail independently from a user's perspective.
 - **ADR-004:** Interface satisfaction uses a deterministic fixed-point traversal over
   explicit port identifiers. This detects missing producers and dependency cycles without
   pretending that prose similarity proves compatibility.
+- **ADR-005:** `recurspec status` is a WRAP over this engine plus Structure Gate §7 path
+  extraction. It does not move file-existence checks into Markdown validation, because
+  `contract check` has no repository root.
 
 ## 6. Leaf Execution & Test Seam
 
 - **Implementation Files:** `src/recurspec/contract.py`,
-  `src/recurspec/schemas/contract-node-1.0.schema.json`, `src/recurspec/cli.py`.
+  `src/recurspec/schemas/contract-node-1.0.schema.json`, `src/recurspec/cli.py`,
+  `src/recurspec/project_status.py`.
 - **Test Surface Seam:** `tests/test_contract.py` through `validate_contract()` and the
-  public CLI parser/handler.
+  public CLI parser/handler; `tests/test_project_status.py` for repository orientation.
 
 ## 7. Measurement Seams
 

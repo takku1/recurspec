@@ -27,6 +27,10 @@ output without structural verification.
   belong to a Contract Node and that declared implementation/test paths exist.
   (`test_structure_gate_accepts_contract_owned_python_with_a_real_test_surface`)
   - `EvidenceStage:` Sampled
+- **[Conditional]** IF a Contract Node §7 names a `checks.sh` or `measure.sh` path THEN
+  THE SYSTEM SHALL require that file to exist inside the repository.
+  (`test_structure_gate_reports_a_missing_declared_probe`)
+  - `EvidenceStage:` Sampled
 - **[Conditional]** IF a module declares literal `__all__` exports THEN THE SYSTEM SHALL
   use that set as its public surface; every owned exported surface SHALL have a declared
   test seam. (`test_structure_gate_uses_explicit_exports_and_requires_their_test_surface`)
@@ -38,8 +42,8 @@ output without structural verification.
 
 ## 5. Architectural Decisions (ADRs)
 
-- **ADR-001:** Derive implementation ownership and test surfaces from Contract Node §6;
-  do not maintain a parallel structure-policy file.
+- **ADR-001:** Derive implementation ownership and test surfaces from Contract Node §6,
+  and declared evaluation probes from §7; do not maintain a parallel structure-policy file.
 - **ADR-003:** Use Python's concrete AST for Python symbols and a narrow Markdown §6
   extractor for declared paths. Unsupported source languages are refused, not guessed.
 - **ADR-002:** Gatekeeper is Auditor-side infrastructure; Implementor may run it locally but cannot waive failures without Outer Loop.
@@ -71,8 +75,9 @@ output without structural verification.
   | Interactive `graphgraph` / `code-review-graph` tooling | Not an installable runtime dependency or stable package protocol; would make the CLI environment-dependent. |
   | A generic dependency-cruiser-style tool | Enforces import boundaries, not "does this symbol have a parent Contract Node," which needs the tree as ground truth. |
 
-- **Fit gap:** `ast` has no notion of a Contract Tree or required test seam; the adapter
-  owns only §6 path extraction, ownership joins, and deterministic diagnostics.
+- **Fit gap:** `ast` has no notion of a Contract Tree, required test seam, or §7 probe
+  scripts; the adapter owns §6 path extraction, §7 script extraction, ownership joins,
+  and deterministic diagnostics.
 - **Seam:** `src/recurspec/structure_gate.py`.
 - **Exit cost:** LOW — symbol extraction is isolated behind `check_structure()` and can
   accept another language parser later without changing policy diagnostics.

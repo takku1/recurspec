@@ -9,9 +9,59 @@ Advance a system by one evidence-backed state transition at a time. This is the 
 public Recurspec skill; load its phase references only when the current state requires
 them.
 
+## First action
+
+Before reading a phase reference or editing contracts, run:
+
+```text
+recurspec status .
+```
+
+Use the printed `tree` and `route`. Do not infer Recurspec readiness from a `SYSTEM.md`
+file, a crate map, or a rival registry such as `FEATURE_GAPS.md`.
+
+| `tree` | `route` | What to do |
+|---|---|---|
+| `missing` | `design` | Follow `references/design.md`. Create the Contract Tree and `ROADMAP.md`. |
+| `not_recurspec` | `design` | Follow `references/design.md`. Existing `SYSTEM.md` is source material, not a Contract Node. Do not stamp the version marker onto an incomplete file. Create `ROADMAP.md` even if another incomplete-work file exists. |
+| `invalid` | `repair` | Run `recurspec contract check` and fix diagnostics. Do not implement product code first. |
+| `valid` | `ready` | Then take the first matching request route below. |
+
+If `missing_probes` is non-empty, `route` is `repair` even when `tree` is `valid`: write
+those scripts or remove the §7 claim. If `extra_trees` lists `.recurspec/contracts`,
+classify that tree too; do not ignore a second Contract Tree.
+
+This first action still runs when the user asked for a paper, skill install, or
+research. Status the *subject* repository (the software being written about), not only a
+new folder you created. A `missing` tree on a prose-only preprint directory is expected;
+do not invent a Contract Tree for a paper.
+
+Keep process debt in one `ROADMAP.md`. A rival file may be cited from `ROADMAP.md`; it
+does not replace it.
+
+## Work lists fan out
+
+A numbered or bulleted list is not one Contract Node and not one candidate. After
+`recurspec status`, split the list so each item can fail independently and receive its
+own FRAME → RESEARCH → RESOLVE pass.
+
+```text
+recurspec fanout --item "..." --item "..."
+recurspec fanout --list-file work.md --write
+```
+
+For each item:
+
+1. Give it a ROADMAP id and a `strategy-<id>.md` handoff.
+2. Load only that handoff plus the target contract into the implementor.
+3. Do not keep sibling items in the same packet.
+4. If parallel workers exist, dispatch one worker per item after the split.
+
+Do not implement 1–N in a single pass because they arrived in one message.
+
 ## Route by current state
 
-Inspect the request and repository, then take the first matching route:
+After `recurspec status` reports `ready`, take the first matching route:
 
 | State | Route |
 |---|---|
@@ -23,9 +73,10 @@ Inspect the request and repository, then take the first matching route:
 | Prior REVERT | Repair from the latest Negative Patterns |
 | Implemented or merged change | Read and follow `references/reconcile.md` |
 
-After each route, classify the new state again. Continue while the next transition is
-safe and in scope. Stop at `PASS`, `DEFER`, `ESCALATE`, or a decision that genuinely
-requires the user. Keep process debt in one `ROADMAP.md`.
+After each route, classify the new state again with `recurspec status` when the tree
+changed. Continue while the next transition is safe and in scope. Stop at `PASS`,
+`DEFER`, `ESCALATE`, or a decision that genuinely requires the user. Keep process debt
+in one `ROADMAP.md`.
 
 ## Authority seam
 
@@ -33,8 +84,9 @@ requires the user. Keep process debt in one `ROADMAP.md`.
   reconciliation, and the final report.
 - The **Implementor** owns source and tests on an isolated candidate branch. It cannot
   change the target contract or authorize its own merge.
-- Maker and checker must differ. If an independent checker is unavailable, report that
-  limitation and require human review.
+- Maker and checker must differ. If you produced the candidate in this session, you
+  cannot KEEP it. If an independent checker is unavailable, report `NEED_CHECKER` and
+  require human review.
 
 ## Candidate cycle
 
@@ -83,6 +135,8 @@ parallel scripts.
 
 | Command | When |
 |---|---|
+| `recurspec status REPO` | First action: classify `missing` / `not_recurspec` / `invalid` / `valid` |
+| `recurspec fanout --item ...` | Split a work list into one strategy handoff per item |
 | `recurspec contract check PATH` | Validate one node or a Contract Tree |
 | `recurspec structure check REPO` | Detect uncontracted symbols and §6 drift |
 | `recurspec stack check REPO` | Audit §8 fields and pins |
@@ -113,3 +167,19 @@ RESULT:        READY FOR HUMAN REVIEW
 ```
 
 Tests and measurements are `Sampled` or `Measured`, never `Proved`.
+
+Evidence Stage is maturity. Evidence *class* is what a signal may license. Do not let
+one class stand in for another.
+
+| Class | Licenses | Does not license |
+|---|---|---|
+| Executed behavior (tests) | Exercised cases satisfied their oracles | General correctness or product outcome |
+| Static structure | Inspected artifact satisfied those rules | Runtime behavior |
+| Empirical measurement | This workload in this environment | A different workload or scale |
+| Model judgment | Named model and rubric produced this assessment | Ground truth or merge authority |
+| Human decision | An accountable person accepted residual risk | That the decision was correct |
+
+End any effectiveness claim with an explicit boundary. "No data yet" is a complete
+finding. Never invent a metric. If the user asks whether the system "works" or is
+"better" and no outcome study exists, say it is research-informed, not
+research-validated.
