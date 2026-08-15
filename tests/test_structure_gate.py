@@ -1,9 +1,15 @@
 from pathlib import Path
 
+import pytest
+
 from recurspec.structure_gate import (
+    RUST_ADAPTER,
+    LanguageAdapter,
+    available_adapters,
     check_structure,
     declared_paths,
     declared_probe_paths,
+    rust_adapter,
 )
 
 
@@ -315,3 +321,162 @@ def test_structure_gate_uses_explicit_exports_and_requires_their_test_surface(tm
     assert [(item.code, item.symbol) for item in result.diagnostics] == [
         ("structure.public.untested", "exported")
     ]
+
+
+def test_default_adapters_ignore_non_python_source(tmp_path: Path):
+    source = tmp_path / "src" / "pkg"
+    source.mkdir(parents=True)
+    (source / "feature.py").write_text("def public_seam():\n    return 1\n", encoding="utf-8")
+    (source / "lib.rs").write_text("pub fn leftover() {}\n", encoding="utf-8")
+    test = tmp_path / "tests" / "test_feature.py"
+    test.parent.mkdir()
+    test.write_text("def test_public_seam():\n    assert True\n", encoding="utf-8")
+    contract = tmp_path / "docs" / "architecture" / "feature" / "SYSTEM.md"
+    contract.parent.mkdir(parents=True)
+    contract.write_text(_contract("src/pkg/feature.py", "tests/test_feature.py"), encoding="utf-8")
+
+    result = check_structure(tmp_path, source_root="src", contract_root="docs/architecture")
+
+    assert result.valid
+    assert all("lib.rs" not in item.path for item in result.diagnostics)
+
+
+def test_check_structure_uses_an_injected_language_adapter(tmp_path: Path):
+    source = tmp_path / "src" / "pkg" / "lib.rs"
+    source.parent.mkdir(parents=True)
+    source.write_text("pub fn leftover() {}\n", encoding="utf-8")
+    (tmp_path / "docs" / "architecture").mkdir(parents=True)
+    adapter = LanguageAdapter(
+        name="rust",
+        glob="*.rs",
+        public_symbols=lambda _path: ["leftover"],
+    )
+
+    result = check_structure(
+        tmp_path,
+        source_root="src",
+        contract_root="docs/architecture",
+        adapters=(adapter,),
+    )
+
+    assert [(item.code, item.symbol) for item in result.diagnostics] == [
+        ("structure.public.uncontracted", "leftover")
+    ]
+
+
+def test_declared_paths_matches_injected_adapter_extensions(tmp_path: Path):
+    contract = tmp_path / "SYSTEM.md"
+    contract.write_text(
+        """# Example
+
+## 6. Leaf Execution & Test Seam
+
+- **Implementation:** `src/pkg/lib.rs`.
+- **Tests:** `tests/lib.rs`.
+""",
+        encoding="utf-8",
+    )
+    adapter = LanguageAdapter(
+        name="rust",
+        glob="*.rs",
+        public_symbols=lambda _path: [],
+    )
+
+    implementations, tests, unsafe = declared_paths(
+        contract, repository=tmp_path, adapters=(adapter,)
+    )
+
+    assert unsafe == set()
+    assert implementations == {"src/pkg/lib.rs"}
+    assert tests == {"tests/lib.rs"}
+    default_impl, default_tests, _unsafe = declared_paths(contract, repository=tmp_path)
+    assert default_impl == set()
+    assert default_tests == set()
+
+
+_RUST_FIXTURE = """
+pub fn visible() {}
+fn hidden() {}
+pub struct Visible {}
+pub enum Kind { A }
+#[cfg(test)]
+mod tests {
+    pub fn test_only() {}
+}
+"""
+
+
+def test_rust_adapter_detects_pub_items_and_skips_cfg_test(tmp_path: Path):
+    pytest.importorskip("tree_sitter_rust")
+    source = tmp_path / "src" / "pkg" / "lib.rs"
+    test = tmp_path / "tests" / "lib.rs"
+    contract = tmp_path / "docs" / "architecture" / "feature" / "SYSTEM.md"
+    source.parent.mkdir(parents=True)
+    test.parent.mkdir(parents=True)
+    contract.parent.mkdir(parents=True)
+    source.write_text(_RUST_FIXTURE, encoding="utf-8")
+    test.write_text("fn helper() {}\n", encoding="utf-8")
+    contract.write_text(
+        """# Example
+
+## 6. Leaf Execution & Test Seam
+
+- **Implementation:** `src/pkg/lib.rs`.
+- **Tests:** `tests/lib.rs`.
+""",
+        encoding="utf-8",
+    )
+
+    result = check_structure(
+        tmp_path,
+        source_root="src",
+        contract_root="docs/architecture",
+        adapters=(RUST_ADAPTER,),
+    )
+
+    assert result.valid
+    symbols = RUST_ADAPTER.public_symbols(source)
+    assert symbols == ["Kind", "Visible", "visible"]
+    assert "test_only" not in symbols
+    assert "hidden" not in symbols
+
+
+def test_rust_adapter_reports_a_missing_declared_rust_test_file(tmp_path: Path):
+    pytest.importorskip("tree_sitter_rust")
+    source = tmp_path / "src" / "pkg" / "lib.rs"
+    contract = tmp_path / "docs" / "architecture" / "feature" / "SYSTEM.md"
+    source.parent.mkdir(parents=True)
+    contract.parent.mkdir(parents=True)
+    source.write_text("pub fn visible() {}\n", encoding="utf-8")
+    contract.write_text(
+        """# Example
+
+## 6. Leaf Execution & Test Seam
+
+- **Implementation:** `src/pkg/lib.rs`.
+- **Tests:** `tests/lib.rs`.
+""",
+        encoding="utf-8",
+    )
+
+    result = check_structure(
+        tmp_path,
+        source_root="src",
+        contract_root="docs/architecture",
+        adapters=(RUST_ADAPTER,),
+    )
+
+    assert [item.code for item in result.diagnostics] == ["structure.test_surface.missing"]
+    assert result.diagnostics[0].path == "tests/lib.rs"
+
+
+def test_available_adapters_omits_rust_when_the_extra_is_missing(monkeypatch):
+    import recurspec.structure_gate as gate
+
+    def missing():
+        raise ImportError("recurspec[rust] is not installed")
+
+    monkeypatch.setattr(gate, "_import_rust_parser", missing)
+    assert rust_adapter() is None
+    assert all(adapter.name != "rust" for adapter in available_adapters())
+    assert available_adapters()[0].name == "python"

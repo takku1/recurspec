@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import re
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
@@ -20,7 +21,6 @@ _DECLARATION = re.compile(
     r"^- \*\*(?P<label>[^*]+):\*\*(?P<body>.*?)(?=^- \*\*|\Z)",
     re.MULTILINE | re.DOTALL,
 )
-_PATH = re.compile(r"`([^`]+\.py)`")
 _IMPLEMENTATION_LABELS = {
     "Implementation",
     "Implementation Files",
@@ -29,6 +29,18 @@ _IMPLEMENTATION_LABELS = {
     "Package implementation glue",
 }
 _TEST_LABELS = {"Tests", "Test Surface Seam"}
+
+
+class StructureParseError(Exception):
+    """A language adapter could not parse a source file."""
+
+
+@dataclass(frozen=True)
+class LanguageAdapter:
+    name: str
+    glob: str
+    public_symbols: Callable[[Path], list[str]]
+    invalid_code: str = "structure.source.invalid"
 
 
 @dataclass(frozen=True, order=True)
@@ -87,8 +99,22 @@ def _is_contained(declared: str, repository: Path | None = None) -> bool:
     return resolved.is_relative_to(root)
 
 
+def _source_path_re(adapters: Sequence[LanguageAdapter]) -> re.Pattern[str]:
+    extensions: list[str] = []
+    for adapter in adapters:
+        glob = adapter.glob
+        if glob.startswith("*."):
+            extensions.append(re.escape(glob[2:]))
+    if not extensions:
+        extensions = ["py"]
+    return re.compile(r"`([^`]+\.(?:" + "|".join(extensions) + r"))`")
+
+
 def declared_paths(
-    contract: str | Path, repository: str | Path | None = None
+    contract: str | Path,
+    repository: str | Path | None = None,
+    *,
+    adapters: Sequence[LanguageAdapter] | None = None,
 ) -> tuple[set[str], set[str], set[str]]:
     """Return repository-relative implementation and test paths declared in §6, plus
     any declared path that fails repository containment (R-608, R-623)."""
@@ -101,6 +127,7 @@ def declared_paths(
     tests: set[str] = set()
     unsafe: set[str] = set()
     repo = Path(repository) if repository is not None else None
+    path_re = _source_path_re(adapters if adapters is not None else DEFAULT_ADAPTERS)
     for item in _DECLARATION.finditer(section.group("body")):
         label = item.group("label")
         body = item.group("body")
@@ -108,7 +135,7 @@ def declared_paths(
             continue
         if label not in _IMPLEMENTATION_LABELS and label not in _TEST_LABELS:
             continue
-        raw_paths = {_relative_path(path) for path in _PATH.findall(body)}
+        raw_paths = {_relative_path(path) for path in path_re.findall(body)}
         safe_paths = {path for path in raw_paths if _is_contained(path, repo)}
         unsafe.update(raw_paths - safe_paths)
         if label in _IMPLEMENTATION_LABELS:
@@ -160,7 +187,7 @@ def declared_probe_paths(
     return safe, unsafe
 
 
-def _public_symbols(path: Path) -> list[str]:
+def _extract_python_public_symbols(path: Path) -> list[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     explicit_exports: list[str] | None = None
     symbols: list[str] = []
@@ -186,6 +213,140 @@ def _public_symbols(path: Path) -> list[str]:
     return sorted(set(explicit_exports if explicit_exports is not None else symbols))
 
 
+def _python_public_symbols(path: Path) -> list[str]:
+    try:
+        return _extract_python_public_symbols(path)
+    except (SyntaxError, UnicodeError) as exc:
+        raise StructureParseError(str(exc)) from exc
+
+
+PYTHON_ADAPTER = LanguageAdapter(
+    name="python",
+    glob="*.py",
+    public_symbols=_python_public_symbols,
+    invalid_code="structure.python.invalid",
+)
+DEFAULT_ADAPTERS: tuple[LanguageAdapter, ...] = (PYTHON_ADAPTER,)
+
+
+_RUST_PUB_ITEMS = frozenset(
+    {
+        "function_item",
+        "struct_item",
+        "enum_item",
+        "trait_item",
+        "const_item",
+        "static_item",
+        "type_item",
+    }
+)
+
+
+def _import_rust_parser():
+    import tree_sitter_rust
+    from tree_sitter import Language, Parser
+
+    return Parser(Language(tree_sitter_rust.language()))
+
+
+def _rust_node_name(node, source: bytes) -> str | None:
+    for child in node.children:
+        if child.type in {"identifier", "type_identifier"}:
+            return source[child.start_byte : child.end_byte].decode("utf-8")
+    return None
+
+
+def _rust_is_pub(node) -> bool:
+    return any(child.type == "visibility_modifier" for child in node.children)
+
+
+def _rust_attribute_is_cfg_test(node, source: bytes) -> bool:
+    for child in node.children:
+        if child.type != "attribute":
+            continue
+        name = None
+        tree = None
+        for part in child.children:
+            if part.type == "identifier" and name is None:
+                name = part
+            elif part.type == "token_tree":
+                tree = part
+        if name is None or tree is None:
+            continue
+        if source[name.start_byte : name.end_byte] != b"cfg":
+            continue
+        idents = [part for part in tree.children if part.type == "identifier"]
+        has_test = any(source[part.start_byte : part.end_byte] == b"test" for part in idents)
+        has_not = any(source[part.start_byte : part.end_byte] == b"not" for part in idents)
+        if has_test and not has_not:
+            return True
+    return False
+
+
+def _rust_skip_cfg_test_mod(children, index: int, source: bytes) -> bool:
+    node = children[index]
+    if node.type != "mod_item":
+        return False
+    cursor = index - 1
+    while cursor >= 0 and children[cursor].type in {
+        "attribute_item",
+        "line_comment",
+        "block_comment",
+    }:
+        sibling = children[cursor]
+        if sibling.type == "attribute_item" and _rust_attribute_is_cfg_test(sibling, source):
+            return True
+        cursor -= 1
+    return False
+
+
+def _rust_public_symbols(path: Path) -> list[str]:
+    try:
+        parser = _import_rust_parser()
+        source = path.read_bytes()
+    except ImportError as exc:
+        raise StructureParseError("rust adapter requires recurspec[rust]") from exc
+    except OSError as exc:
+        raise StructureParseError(str(exc)) from exc
+    tree = parser.parse(source)
+    names: list[str] = []
+    children = tree.root_node.children
+    for index, node in enumerate(children):
+        if _rust_skip_cfg_test_mod(children, index, source):
+            continue
+        if node.type not in _RUST_PUB_ITEMS or not _rust_is_pub(node):
+            continue
+        name = _rust_node_name(node, source)
+        if name:
+            names.append(name)
+    return sorted(set(names))
+
+
+RUST_ADAPTER = LanguageAdapter(
+    name="rust",
+    glob="*.rs",
+    public_symbols=_rust_public_symbols,
+    invalid_code="structure.rust.invalid",
+)
+
+
+def rust_adapter() -> LanguageAdapter | None:
+    try:
+        _import_rust_parser()
+    except ImportError:
+        return None
+    return RUST_ADAPTER
+
+
+def available_adapters() -> tuple[LanguageAdapter, ...]:
+    """Adapters whose runtime dependency is importable."""
+    adapters: list[LanguageAdapter] = [PYTHON_ADAPTER]
+    rust = rust_adapter()
+    if rust is not None:
+        adapters.append(rust)
+    return tuple(adapters)
+
+
 def check_structure(
     repository: str | Path,
     *,
@@ -193,12 +354,15 @@ def check_structure(
     contract_root: str | Path = "docs/architecture",
     test_root: str | Path = "tests",
     changed_files: set[str] | None = None,
+    adapters: Sequence[LanguageAdapter] | None = None,
 ) -> StructureResult:
-    """Check that Python source is owned by Contract Node §6 declarations.
+    """Check that source is owned by Contract Node §6 declarations.
 
     ``changed_files`` narrows source inspection for pre-commit use while declarations are
     still validated globally. Paths are repository-relative and diagnostics are stable.
+    Default adapters are Python-only so existing Python checks stay identical.
     """
+    active = tuple(adapters) if adapters is not None else DEFAULT_ADAPTERS
     root = Path(repository).resolve()
     source = (root / source_root).resolve()
     contracts = (root / contract_root).resolve()
@@ -247,7 +411,9 @@ def check_structure(
 
     for contract in sorted(contracts.rglob("SYSTEM.md")):
         contract_name = contract.relative_to(root).as_posix()
-        implementations, tests, unsafe = declared_paths(contract, repository=root)
+        implementations, tests, unsafe = declared_paths(
+            contract, repository=root, adapters=active
+        )
         probes, unsafe_probes = declared_probe_paths(contract, repository=root)
         declared_tests.update(tests)
         for declared in sorted(unsafe | unsafe_probes):
@@ -301,63 +467,76 @@ def check_structure(
 
     instrument_error = False
     selected = {_relative_path(path) for path in changed_files} if changed_files else None
-    for path in sorted(source.rglob("*.py")):
-        relative = path.relative_to(root).as_posix()
-        if selected is not None and relative not in selected:
-            continue
-        try:
-            symbols = _public_symbols(path)
-        except (SyntaxError, UnicodeError) as error:
-            instrument_error = True
-            diagnostics.append(
-                StructureDiagnostic(
-                    "structure.python.invalid", relative, f"cannot parse Python source: {error}"
+    seen_source: set[str] = set()
+    for adapter in active:
+        for path in sorted(source.rglob(adapter.glob)):
+            relative = path.relative_to(root).as_posix()
+            if relative in seen_source:
+                continue
+            seen_source.add(relative)
+            if selected is not None and relative not in selected:
+                continue
+            try:
+                symbols = adapter.public_symbols(path)
+            except StructureParseError as error:
+                instrument_error = True
+                diagnostics.append(
+                    StructureDiagnostic(
+                        adapter.invalid_code,
+                        relative,
+                        f"cannot parse {adapter.name} source: {error}",
+                    )
                 )
-            )
-            continue
-        if relative in owners:
-            if symbols and not tests_for_implementation.get(relative):
+                continue
+            if relative in owners:
+                if symbols and not tests_for_implementation.get(relative):
+                    diagnostics.extend(
+                        StructureDiagnostic(
+                            "structure.public.untested",
+                            relative,
+                            "public symbol belongs to a Contract Node "
+                            "with no declared test surface",
+                            symbol,
+                        )
+                        for symbol in symbols
+                    )
+                continue
+            if symbols:
                 diagnostics.extend(
                     StructureDiagnostic(
-                        "structure.public.untested",
+                        "structure.public.uncontracted",
                         relative,
-                        "public symbol belongs to a Contract Node with no declared test surface",
+                        "public symbol has no parent Contract Node",
                         symbol,
                     )
                     for symbol in symbols
                 )
-            continue
-        if symbols:
-            diagnostics.extend(
-                StructureDiagnostic(
-                    "structure.public.uncontracted",
-                    relative,
-                    "public symbol has no parent Contract Node",
-                    symbol,
-                )
-                for symbol in symbols
-            )
-        else:
-            diagnostics.append(
-                StructureDiagnostic(
-                    "structure.source.uncontracted",
-                    relative,
-                    "source file has no parent Contract Node",
-                )
-            )
-
-    if tests_root.is_dir():
-        for path in sorted(tests_root.rglob("*.py")):
-            relative = path.relative_to(root).as_posix()
-            if selected is not None and relative not in selected:
-                continue
-            if relative not in declared_tests:
+            else:
                 diagnostics.append(
                     StructureDiagnostic(
-                        "structure.test.uncontracted",
+                        "structure.source.uncontracted",
                         relative,
-                        "test file is not declared by a Contract Node",
+                        "source file has no parent Contract Node",
                     )
                 )
+
+    if tests_root.is_dir():
+        seen_tests: set[str] = set()
+        for adapter in active:
+            for path in sorted(tests_root.rglob(adapter.glob)):
+                relative = path.relative_to(root).as_posix()
+                if relative in seen_tests:
+                    continue
+                seen_tests.add(relative)
+                if selected is not None and relative not in selected:
+                    continue
+                if relative not in declared_tests:
+                    diagnostics.append(
+                        StructureDiagnostic(
+                            "structure.test.uncontracted",
+                            relative,
+                            "test file is not declared by a Contract Node",
+                        )
+                    )
 
     return StructureResult(tuple(sorted(diagnostics)), instrument_error=instrument_error)

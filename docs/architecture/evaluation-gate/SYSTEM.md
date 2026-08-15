@@ -58,7 +58,7 @@ Empirical Feedback infrastructure: explicit Best Known State (BKS) baselines, `m
 - **ADR-003:** Unknown behavioral boundaries become Research Frontiers (not silent merge).
 - **ADR-004:** Multi-metric payloads use fail-closed tiers: untagged means `hard_gate`; only `observation` is non-blocking.
 - **ADR-005:** KEEP authorization and BKS promotion are separate acts; the gate never silently promotes a candidate measurement.
-- **ADR-006:** Retry is bounded and memory-bearing: every revert becomes a Negative Pattern; stagnation or the attempt ceiling escalates to a human.
+- **ADR-006:** Retry is bounded and memory-bearing: every revert becomes a Negative Pattern; stagnation or the attempt ceiling escalates to a human. `ESCALATE` is the path when the Contract Node (the search space) may be wrong, not only when the candidate is wrong. Do not add a fourth gate outcome.
 
 ## 6. Leaf Execution & Test Seam
 

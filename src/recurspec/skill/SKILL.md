@@ -110,7 +110,9 @@ in one `ROADMAP.md`.
    - `REVERT` (`1`): revert the candidate and create a correction handoff quoting the
      latest Negative Pattern.
    - evaluation error (`2`): repair the instrument; this is not product evidence.
-   - `ESCALATE` (`3`): block the ticket and stop automatic repair.
+   - `ESCALATE` (`3`): stop automatic repair. This is the path when the
+     Contract Node (the search space) may be wrong, not only when the
+     candidate is wrong. Do not add a fourth gate outcome.
 
 The defaults escalate after five consecutive reverts or eight total reverts on one
 candidate branch.

@@ -7,9 +7,11 @@
 
 ## 1. System Intent & Responsibility
 
-Deterministic **L2** gate: Python AST analysis enforces zero-drift and seam coverage
-between code and the Contract Tree. Rejects commits that would land stochastic agent
-output without structural verification.
+Deterministic **L2** gate: language adapters enforce zero-drift and seam coverage
+between code and the Contract Tree. The default adapter is Python's standard-library
+`ast`. An optional Rust adapter (`recurspec[rust]`) is omitted, not guessed, when
+its dependency is missing. Rejects commits that would land stochastic agent output
+without structural verification.
 
 ## 2. Sub-System Decomposition
 
@@ -39,13 +41,20 @@ output without structural verification.
   - `EvidenceStage:` Sampled
 - **[Ubiquitous]** The Gatekeeper SHALL NOT use L4 model-judge scores as a substitute for L1/L2 results. ([research foundation](../../research/foundations.md) §5)
   - `EvidenceStage:` Unknown
+- **[Conditional]** IF the rust extra is importable THEN THE SYSTEM SHALL treat top-level
+  `pub` items as the public Rust surface and SHALL exclude `#[cfg(test)]` modules;
+  IF the extra is missing THEN THE SYSTEM SHALL omit the adapter instead of failing.
+  (`test_rust_adapter_detects_pub_items_and_skips_cfg_test`,
+  `test_available_adapters_omits_rust_when_the_extra_is_missing`)
+  - `EvidenceStage:` Sampled
 
 ## 5. Architectural Decisions (ADRs)
 
 - **ADR-001:** Derive implementation ownership and test surfaces from Contract Node §6,
   and declared evaluation probes from §7; do not maintain a parallel structure-policy file.
-- **ADR-003:** Use Python's concrete AST for Python symbols and a narrow Markdown §6
-  extractor for declared paths. Unsupported source languages are refused, not guessed.
+- **ADR-003:** Extract public symbols through a `LanguageAdapter` seam. Python uses the
+  standard-library AST. Rust, when `recurspec[rust]` is installed, uses tree-sitter.
+  Extensions without an importable adapter are ignored, not guessed.
 - **ADR-002:** Gatekeeper is Auditor-side infrastructure; Implementor may run it locally but cannot waive failures without Outer Loop.
 
 ## 6. Leaf Execution & Test Seam
@@ -62,28 +71,30 @@ output without structural verification.
 ## 8. Technology Resolution
 
 - **Decision class:** BUILD
-- **Justification:** Python's standard-library `ast` already supplies the required parser;
-  the small missing piece is Recurspec-specific policy joining source paths to Contract
-  Node §6 declarations. An external graph runtime would enlarge installation and adapter
-  surface without improving this leaf's required checks.
-- **Selected:** Python `ast` plus `pathlib`, wrapped by `check_structure()`.
-- **Standard / protocol:** Python AST; Contract Node 1.0 Markdown §6 declarations.
+- **Justification:** The ownership policy that joins source paths to Contract Node §6
+  is Recurspec-specific. Language parsers are commodities: Python's standard-library
+  `ast` is already present; Rust parsing is an optional ADOPT of tree-sitter.
+- **Selected:** Python `ast` for `*.py`; optional `tree-sitter` + `tree-sitter-rust`
+  via extra `recurspec[rust]` for `*.rs`.
+- **Standard / protocol:** Python AST; tree-sitter 0.23–0.26; Contract Node 1.0 Markdown §6.
 - **Alternatives considered:**
 
   | Option | Why not |
   |---|---|
   | Interactive `graphgraph` / `code-review-graph` tooling | Not an installable runtime dependency or stable package protocol; would make the CLI environment-dependent. |
   | A generic dependency-cruiser-style tool | Enforces import boundaries, not "does this symbol have a parent Contract Node," which needs the tree as ground truth. |
+  | Hand-rolled Rust regex | Fragile on macros, multi-line signatures, and attributes — a correctness gate cannot guess. |
+  | `syn` via a Rust subprocess | Adds a Rust toolchain Recurspec itself does not otherwise need. |
 
-- **Fit gap:** `ast` has no notion of a Contract Tree, required test seam, or §7 probe
-  scripts; the adapter owns §6 path extraction, §7 script extraction, ownership joins,
-  and deterministic diagnostics.
+- **Fit gap:** neither `ast` nor tree-sitter knows a Contract Tree, required test seam,
+  or §7 probe scripts; the adapter owns §6 path extraction, §7 script extraction,
+  ownership joins, and deterministic diagnostics.
 - **Seam:** `src/recurspec/structure_gate.py`.
-- **Exit cost:** LOW — symbol extraction is isolated behind `check_structure()` and can
-  accept another language parser later without changing policy diagnostics.
-- **Cost model:** no service spend; local compute only.
-- **Liability transferred:** Python parsing correctness.
+- **Exit cost:** LOW — symbol extraction is isolated behind `LanguageAdapter`.
+- **Cost model:** no service spend; local compute only. Rust support is opt-in.
+- **Liability transferred:** Python parsing correctness; tree-sitter/tree-sitter-rust
+  parse trees when the extra is installed.
 - **Operational owner:** us.
 - **Failure mode:** a false negative lets un-specced drift land; measured directly by the
-  primary metric above.
-- **Open questions:** none outside ROADMAP R-300.
+  primary metric above. A missing rust extra skips `*.rs` instead of failing closed.
+- **Open questions:** none outside ROADMAP R-636.

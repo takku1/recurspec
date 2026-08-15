@@ -111,3 +111,13 @@ def test_skill_states_evidence_class_licensing():
     assert "research-validated" in skill
     assert "oracles" in design
     assert "claim boundary" in design
+
+
+def test_skill_states_escalate_is_the_wrong_space_path():
+    skill = Path(str(files("recurspec").joinpath("skill/SKILL.md"))).read_text(
+        encoding="utf-8"
+    )
+
+    assert "search space" in skill
+    assert "fourth gate outcome" in skill
+    assert "`ESCALATE`" in skill

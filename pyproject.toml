@@ -24,6 +24,7 @@ dependencies = ["jsonschema>=4.26,<5"]
 [project.optional-dependencies]
 dev = ["build>=1.2", "pytest>=8", "ruff>=0.12"]
 runtime = ["anthropic==0.122.0"]
+rust = ["tree-sitter>=0.23,<0.27", "tree-sitter-rust>=0.23,<0.25"]
 
 [project.scripts]
 recurspec = "recurspec.cli:main"

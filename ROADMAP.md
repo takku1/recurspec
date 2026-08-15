@@ -142,11 +142,11 @@ whole.
 | R-406 | CLI that writes a pair log and records assignment before either arm starts. Refuses Recurspec as a subject and refuses a second coin flip | done | `tests/test_study.py`; pair logs under [docs/research/pairs](./docs/research/pairs) |
 | R-633 | Refuse `study init` when either task id already has Recurspec fingerprints in the subject project | done | `test_study_init_refuses_a_contaminated_subject`; `check_contamination` |
 | R-634 | `study accept` records an independent accept only after a mechanically executed verify command exits 0, and refuses when maker equals checker | done | `test_accept_arm_records_a_passing_verify_command`; `test_accept_arm_refuses_a_failing_verify_and_leaves_the_log`; `test_accept_arm_refuses_same_identity_before_running_verify` |
-| R-635 | Structure Gate language-adapter abstraction (behavior-preserving refactor of the Python AST walker) | open | `LanguageAdapter` + default `PYTHON_ADAPTER`; existing Python-only `structure check` stays byte-identical |
-| R-636 | Optional Rust Structure Gate adapter (`recurspec[rust]`, tree-sitter) | open | public `pub` items detected; `#[cfg(test)]` module symbols excluded; missing extra is skipped, not an error |
+| R-635 | Structure Gate language-adapter abstraction (behavior-preserving refactor of the Python AST walker) | done | `LanguageAdapter` + default `PYTHON_ADAPTER`; `test_check_structure_uses_an_injected_language_adapter` |
+| R-636 | Optional Rust Structure Gate adapter (`recurspec[rust]`, tree-sitter) | done | `test_rust_adapter_detects_pub_items_and_skips_cfg_test`; `test_available_adapters_omits_rust_when_the_extra_is_missing` |
 | R-637 | Evidence-stage honesty report: count stages and list Sampled/Measured/Proved invariants that name no check. Observation only — never fail the tree. Formality-evasion: Bowen & Hinchey; Shipman & Marshall | done | `test_evidence_audit_lists_unlicensed_sampled_and_counts_unknown`; `recurspec contract evidence` |
 | R-638 | Optional Best Known State metric-only implementor packet (hide prior candidate code). Design-fixation ablation, not a default | research | Jansson & Smith 1991; [constrained-creativity.md](./docs/research/constrained-creativity.md) §3. No outcome data yet. |
-| R-639 | Clarify that `ESCALATE` is the path when the Contract Node (the search space) may be wrong, not only when the candidate is wrong. Do not add a fourth gate outcome | open | Boden exploratory vs transformational; evaluation-gate ADR-006 already escalates on stagnation |
+| R-639 | Clarify that `ESCALATE` is the path when the Contract Node (the search space) may be wrong, not only when the candidate is wrong. Do not add a fourth gate outcome | done | evaluation-gate ADR-006; `test_skill_states_escalate_is_the_wrong_space_path` |
 
 ## Long horizon: compounding intelligence
 

@@ -31,6 +31,13 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 - R-637: `recurspec contract evidence` reports Evidence Stage counts and
   Sampled/Measured/Proved invariants that name no check. The report never
   fails a valid Contract Tree.
+- R-635: Structure Gate extracts public symbols through a `LanguageAdapter`
+  seam. The default adapter remains Python `ast`.
+- R-636: optional extra `recurspec[rust]` adds a tree-sitter Rust adapter.
+  Top-level `pub` items are the public surface; `#[cfg(test)]` modules are
+  excluded. A missing extra omits the adapter instead of failing.
+- R-639: `ESCALATE` is documented as the path when the Contract Node (the
+  search space) may be wrong. No fourth gate outcome.
 - Implemented the deterministic Structure Gate (ROADMAP R-300) with a standard-library
   Python AST adapter, Contract Node §6 ownership and test-surface checks, bounded
   changed-file scans, stable diagnostics, CLI exit codes, and a seeded false-negative

@@ -28,7 +28,7 @@ from .modules_gate import evaluate_changed_modules
 from .project_status import StatusInstrumentError, inspect_project, render_status
 from .reconcile import ReconciliationInstrumentError, plan_reconciliation
 from .spec_runner.workers import load_merge_authorization
-from .structure_gate import check_structure
+from .structure_gate import available_adapters, check_structure, rust_adapter
 from .study import StudyInstrumentError, accept_arm, assign_pair, init_pair, list_pairs
 from .technology_resolver import (
     ResolutionInstrumentError,
@@ -169,12 +169,18 @@ def _run_contract_evidence(args: argparse.Namespace) -> int:
 
 def _run_structure_check(args: argparse.Namespace) -> int:
     try:
+        if rust_adapter() is None:
+            print(
+                "structure: rust adapter unavailable (pip install 'recurspec[rust]')",
+                file=sys.stderr,
+            )
         result = check_structure(
             args.repository,
             source_root=args.source_root,
             contract_root=args.contract_root,
             test_root=args.test_root,
             changed_files=set(args.changed_file) if args.changed_file else None,
+            adapters=available_adapters(),
         )
     except (OSError, ValueError) as exc:
         print(f"[ERROR] structure instrument failed: {exc}", file=sys.stderr)
@@ -636,7 +642,7 @@ def build_parser() -> argparse.ArgumentParser:
         "repository", type=Path, help="repository root containing source and Contract Tree"
     )
     structure_check.add_argument(
-        "--source-root", default="src/recurspec", help="repository-relative Python source root"
+        "--source-root", default="src/recurspec", help="repository-relative source root"
     )
     structure_check.add_argument(
         "--contract-root",
