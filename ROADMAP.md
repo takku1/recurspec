@@ -139,6 +139,7 @@ whole.
 | R-403 | Contract drift effectiveness | research | Compare detected and escaped code/contract mismatches. Same log template. No outcome data yet. |
 | R-404 | Domain-general example outside web software | done | [docs/examples/log-archive](./docs/examples/log-archive/SYSTEM.md); `test_log_archive_example_tree_is_a_valid_contract_tree` |
 | R-405 | Pre-register evaluation metrics and analysis | done | [Evaluation protocol](./docs/research/evaluation-protocol.md), published before any R-400–R-403 outcome data is collected |
+| R-406 | CLI that writes a pair log and records assignment before either arm starts. Refuses Recurspec as a subject and refuses a second coin flip | done | `tests/test_study.py`; pair logs under [docs/research/pairs](./docs/research/pairs) |
 
 ## Long horizon: compounding intelligence
 

@@ -146,6 +146,7 @@ parallel scripts.
 | `recurspec frontier publish TREE` | Write Research Frontier tickets (optional `--remote github`) |
 | `recurspec frontier check REPO` | Verify every ticket still points at a Contract Node |
 | `recurspec corpus export --output FILE --i-opt-in` | Redacted decision corpus; refuses without `--i-opt-in` |
+| `recurspec study init/assign/list` | R-400 pair log + coin flip before either arm starts |
 | `recurspec skills install --target grok` | Install this skill to `$GROK_HOME/skills` |
 
 Optional extra `recurspec[runtime]` pins the packet-only Messages adapter. The Worker

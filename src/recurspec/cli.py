@@ -29,6 +29,7 @@ from .project_status import StatusInstrumentError, inspect_project, render_statu
 from .reconcile import ReconciliationInstrumentError, plan_reconciliation
 from .spec_runner.workers import load_merge_authorization
 from .structure_gate import check_structure
+from .study import StudyInstrumentError, assign_pair, init_pair, list_pairs
 from .technology_resolver import (
     ResolutionInstrumentError,
     audit_resolutions,
@@ -345,6 +346,45 @@ def _run_corpus_export(args: argparse.Namespace) -> int:
         return 2
     print(f"exported {count} redacted event(s)")
     return 0
+
+
+def _run_study(args: argparse.Namespace) -> int:
+    try:
+        if args.action == "init":
+            path = init_pair(
+                args.repository,
+                pair_id=args.pair_id,
+                project=str(args.project),
+                task_a=args.task_a,
+                task_b=args.task_b,
+                hours=args.hours,
+                baseline=args.baseline,
+            )
+            print(f"initialized {path.as_posix()}")
+            return 0
+        if args.action == "assign":
+            result = assign_pair(args.pair_log)
+            print(result)
+            return 0
+        pairs = list_pairs(args.repository)
+        if args.format == "json":
+            print(
+                json.dumps(
+                    [item.as_dict() for item in pairs],
+                    separators=(",", ":"),
+                    sort_keys=True,
+                )
+            )
+        elif not pairs:
+            print("no case-study pairs")
+        else:
+            for item in pairs:
+                state = "assigned" if item.assigned else "unassigned"
+                print(f"{item.pair_id}\t{state}\t{item.project}")
+        return 0
+    except StudyInstrumentError as exc:
+        print(f"[ERROR] {exc}", file=sys.stderr)
+        return 1
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -722,6 +762,65 @@ def build_parser() -> argparse.ArgumentParser:
         help="required explicit project-level opt-in (R-500)",
     )
     corpus_export.set_defaults(handler=_run_corpus_export)
+
+    study = commands.add_parser(
+        "study",
+        help="register and assign R-400–R-403 matched-pair case studies",
+        formatter_class=defaults_formatter,
+    )
+    study_actions = study.add_subparsers(dest="action", required=True)
+    study_init = study_actions.add_parser(
+        "init",
+        help="write an unassigned pair log; refuses Recurspec as the subject project",
+        formatter_class=defaults_formatter,
+    )
+    study_init.add_argument("pair_id", help="filename stem under docs/research/pairs/")
+    study_init.add_argument(
+        "--project",
+        type=Path,
+        required=True,
+        help="subject repository (must not be Recurspec itself)",
+    )
+    study_init.add_argument("--task-a", required=True, help="first matched task name")
+    study_init.add_argument("--task-b", required=True, help="second matched task name")
+    study_init.add_argument(
+        "--hours",
+        required=True,
+        help="a-priori time estimate applied to both tasks before either starts",
+    )
+    study_init.add_argument(
+        "--baseline",
+        required=True,
+        help="the project's real existing workflow, not a strawman",
+    )
+    study_init.add_argument(
+        "--repository",
+        type=Path,
+        default=Path("."),
+        help="Recurspec repository that holds the pair logs",
+    )
+    study_init.set_defaults(handler=_run_study)
+    study_assign = study_actions.add_parser(
+        "assign",
+        help="coin-flip Recurspec vs baseline and refuse to re-flip",
+        formatter_class=defaults_formatter,
+    )
+    study_assign.add_argument("pair_log", type=Path, help="pair markdown written by study init")
+    study_assign.set_defaults(handler=_run_study)
+    study_list = study_actions.add_parser(
+        "list",
+        help="list pair logs and whether they are assigned",
+        formatter_class=defaults_formatter,
+    )
+    study_list.add_argument(
+        "repository",
+        type=Path,
+        nargs="?",
+        default=Path("."),
+        help="Recurspec repository that holds the pair logs",
+    )
+    study_list.add_argument("--format", choices=("text", "json"), default="text")
+    study_list.set_defaults(handler=_run_study)
     return parser
 
 

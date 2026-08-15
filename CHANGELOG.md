@@ -20,6 +20,8 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
   The skill treats a numbered list as N nodes, not one shared context.
 - R-632: the skill close-out states what each evidence class licenses and forbids
   promoting a passing test suite to an outcome claim.
+- R-406: `recurspec study init|assign|list` writes R-400 pair logs, coin-flips
+  assignment, refuses Recurspec as a subject, and refuses a second flip.
 - Implemented the deterministic Structure Gate (ROADMAP R-300) with a standard-library
   Python AST adapter, Contract Node §6 ownership and test-surface checks, bounded
   changed-file scans, stable diagnostics, CLI exit codes, and a seeded false-negative
