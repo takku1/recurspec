@@ -1,7 +1,13 @@
 from pathlib import Path
 
 from recurspec.cli import main
-from recurspec.study import assign_pair, init_pair, is_recurspec_repository
+from recurspec.study import (
+    StudyInstrumentError,
+    assign_pair,
+    check_contamination,
+    init_pair,
+    is_recurspec_repository,
+)
 
 
 def test_is_recurspec_repository_detects_this_package():
@@ -64,6 +70,58 @@ def test_study_init_and_assign_records_a_coin_flip(tmp_path: Path):
         assert "already assigned" in str(exc)
     else:
         raise AssertionError("expected refuse re-flip")
+
+
+def test_check_contamination_is_clean_for_a_fresh_subject(tmp_path: Path):
+    subject = tmp_path / "clean"
+    subject.mkdir()
+    assert check_contamination(subject, "R-ARCH-13 do the thing", "R-ARCH-14 other thing") == []
+
+
+def test_check_contamination_finds_an_existing_strategy_handoff(tmp_path: Path):
+    subject = tmp_path / "dirty"
+    handoffs = subject / ".recurspec" / "handoffs"
+    handoffs.mkdir(parents=True)
+    (handoffs / "strategy-R-ARCH-13.md").write_text("# Strategy R-ARCH-13\n", encoding="utf-8")
+
+    findings = check_contamination(subject, "R-ARCH-13 catalog priority index", "R-ARCH-14 other")
+    assert any("R-ARCH-13" in finding and "strategy handoff" in finding for finding in findings)
+
+
+def test_check_contamination_finds_a_tracker_reference(tmp_path: Path):
+    subject = tmp_path / "dirty-tracker"
+    subject.mkdir()
+    (subject / "ROADMAP.md").write_text(
+        "| R-ARCH-13 | Catalog priority index | active (NEED_CHECKER) | |\n",
+        encoding="utf-8",
+    )
+
+    findings = check_contamination(subject, "R-ARCH-13 catalog priority index", "R-ARCH-14 other")
+    assert any("R-ARCH-13" in finding and "ROADMAP.md" in finding for finding in findings)
+
+
+def test_study_init_refuses_a_contaminated_subject(tmp_path: Path):
+    subject = tmp_path / "other"
+    handoffs = subject / ".recurspec" / "handoffs"
+    handoffs.mkdir(parents=True)
+    (handoffs / "strategy-R-ARCH-13.md").write_text("# Strategy R-ARCH-13\n", encoding="utf-8")
+    (subject / "pyproject.toml").write_text('name = "other"\n', encoding="utf-8")
+
+    try:
+        init_pair(
+            tmp_path,
+            pair_id="dirty-01",
+            project=str(subject),
+            task_a="R-ARCH-13 catalog priority index",
+            task_b="R-ARCH-14 other",
+            hours="4h",
+            baseline="existing open-work tickets",
+        )
+    except StudyInstrumentError as exc:
+        assert "R-ARCH-13" in str(exc)
+    else:
+        raise AssertionError("expected refuse contaminated subject")
+    assert not (tmp_path / "docs" / "research" / "pairs" / "dirty-01.md").exists()
 
 
 def test_study_list_cli(tmp_path: Path, capsys):

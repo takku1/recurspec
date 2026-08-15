@@ -15,6 +15,7 @@ ASSIGNED_RE = re.compile(
     re.MULTILINE,
 )
 UNASSIGNED = "unassigned"
+_TICKET_ID_RE = re.compile(r"\b[A-Z]+(?:-[A-Z]+)*-\d+\b")
 
 
 class StudyInstrumentError(RuntimeError):
@@ -100,6 +101,72 @@ def _render_log(
     )
 
 
+def _ticket_ids(*texts: str) -> list[str]:
+    ids: list[str] = []
+    for text in texts:
+        for match in _TICKET_ID_RE.finditer(text):
+            if match.group(0) not in ids:
+                ids.append(match.group(0))
+    return ids
+
+
+def _tracked_markdown(project: Path) -> list[Path]:
+    """Best-effort scan of a subject project's own incomplete-work trackers.
+
+    Not a full Contract Tree parse (the subject project may not have one) --
+    mirrors ``is_recurspec_repository``'s lightweight-scan style. Root-level
+    ``.md`` files plus everything under ``docs/`` covers the common tracker
+    locations (``ROADMAP.md``, ``docs/open-work.md``, and similar) without
+    walking the whole tree.
+    """
+    found: list[Path] = []
+    if project.is_dir():
+        found.extend(sorted(project.glob("*.md")))
+        docs = project / "docs"
+        if docs.is_dir():
+            found.extend(sorted(docs.rglob("*.md")))
+    return found
+
+
+def check_contamination(project: str | Path, task_a: str, task_b: str) -> list[str]:
+    """Return contamination findings for either task's ticket id in ``project``.
+
+    A matched pair's baseline arm must be the project's plain, pre-existing
+    workflow; a Recurspec arm's own ticket must not already have been worked
+    before the pair is assigned. Both fail the same way: an id that already
+    has Recurspec fingerprints in the subject repository. Returns one
+    human-readable finding per (id, location) hit; empty means clean.
+    """
+    subject = Path(project)
+    ids = _ticket_ids(task_a, task_b)
+    if not ids:
+        return []
+    findings: list[str] = []
+    handoffs = subject / ".recurspec" / "handoffs"
+    evidence = subject / ".recurspec" / "evidence"
+    trackers = _tracked_markdown(subject)
+    for ticket_id in ids:
+        handoff = handoffs / f"strategy-{ticket_id}.md"
+        if handoff.is_file():
+            findings.append(f"{ticket_id}: existing strategy handoff at {handoff}")
+        if evidence.is_dir():
+            for log in sorted(evidence.rglob("*.jsonl")):
+                try:
+                    if ticket_id in log.read_text(encoding="utf-8"):
+                        findings.append(f"{ticket_id}: referenced in evidence log {log}")
+                        break
+                except (OSError, UnicodeError):
+                    continue
+        for tracker in trackers:
+            try:
+                text = tracker.read_text(encoding="utf-8")
+            except (OSError, UnicodeError):
+                continue
+            if ticket_id in text:
+                findings.append(f"{ticket_id}: already referenced in {tracker}")
+    return findings
+
+
 def init_pair(
     repository: str | Path,
     *,
@@ -119,6 +186,13 @@ def init_pair(
         )
     if not pair_id or "/" in pair_id or "\\" in pair_id or ".." in pair_id:
         raise StudyInstrumentError(f"unsafe pair id: {pair_id!r}")
+    findings = check_contamination(subject, task_a, task_b)
+    if findings:
+        raise StudyInstrumentError(
+            "subject project already has Recurspec artifacts for one of these "
+            "tasks -- the baseline/Recurspec-arm comparison would be contaminated "
+            "before either arm starts: " + "; ".join(findings)
+        )
     destination = (repo / pair_dir / f"{pair_id}.md").resolve()
     if repo not in destination.parents:
         raise StudyInstrumentError("pair path escapes the repository")
