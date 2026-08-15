@@ -71,6 +71,15 @@ StalenessAuditor (review triggers).
   claim complete growth detection; files found inside that namespace but outside the seam
   SHALL re-open the resolution. (`test_resolution_audit_reopens_a_wrap_that_spreads_past_or_outgrows_its_seam`)
   - `EvidenceStage:` Sampled
+- **[Optional]** WHERE a §8 Pin declares a Reference kind (`version` | `tag` | `commit` |
+  `digest`) THE SYSTEM SHALL validate the pin against only that kind's grammar instead
+  of accepting any of the three; an unrecognized kind or a pin that does not match its
+  declared kind SHALL be reported, not silently accepted through the blended check.
+  Absent a declaration, the ecosystem-neutral blended check is unchanged.
+  (`test_resolution_audit_accepts_a_pin_matching_its_declared_reference_kind`,
+  `test_resolution_audit_rejects_a_pin_that_does_not_match_its_declared_reference_kind`,
+  `test_resolution_audit_rejects_an_unrecognized_reference_kind`)
+  - `EvidenceStage:` Sampled
 
 ## 5. Architectural Decisions (ADRs)
 
@@ -87,6 +96,12 @@ StalenessAuditor (review triggers).
   The record is what stops the same debate recurring every time someone new reads the node.
 - **ADR-005:** Prefer options speaking a standard protocol (OIDC, SMTP, S3, OTel) so the
   seam stays swappable. Proprietary APIs are permitted but must record exit cost.
+- **ADR-006:** Reference kind is opt-in, not required, and `version`/`tag` share one
+  grammar. A single regex cannot reliably separate a package version, a VCS tag, an
+  immutable commit, and a content digest — REVIEW4's own conclusion. Declaring a kind
+  narrows validation to that grammar instead of "any of the three," but a bare VCS tag
+  is not verified as actually immutable (Recurspec cannot ask the vendor); that residual
+  ambiguity is accepted, not hidden.
 
 ## 6. Leaf Execution & Test Seam
 

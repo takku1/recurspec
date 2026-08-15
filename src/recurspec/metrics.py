@@ -194,6 +194,17 @@ def _event_schema_problem(event: dict[str, Any], *, module: str | None = None) -
             f"evidence event declares module {event['module']!r} but was read from the "
             f"{module!r} evidence log"
         )
+    if event["event_type"] == "merge_authorization":
+        # The single producer (evaluate_isolated_candidate) always writes exactly
+        # {"maker_id": str, "checker_id": str}; this is the one event type worth an
+        # event-specific check beyond the common envelope, since it is the maker/checker
+        # separation audit trail and its shape is fixed, not genuinely variable like a
+        # measurement payload's metrics (R-641 follow-up).
+        metrics = event["metrics"]
+        for key in ("maker_id", "checker_id"):
+            value = metrics.get(key)
+            if not isinstance(value, str) or not value.strip():
+                return f"merge_authorization event is missing a non-empty {key!r}"
     return None
 
 

@@ -60,6 +60,14 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
   found no vulnerability in anything Recurspec itself declares; a bare `python -m
   venv` seeds a vulnerable `setuptools` from the interpreter's own bundled
   `ensurepip` regardless of this project, which the floor bump cannot fix.
+- R-643: optional §8 `Reference kind` field (`version`/`tag`/`commit`/`digest`) on a
+  Technology Resolution Pin; when declared, the Stack Resolver validates against only
+  that grammar instead of the blended ecosystem-neutral check. Undeclared pins are
+  unaffected.
+- R-646: `merge_authorization` evidence events are now validated against their one
+  fixed producer shape (non-empty `maker_id`/`checker_id`); the other event types'
+  `metrics` payload is left envelope-only because their shape is legitimately variable
+  by design.
 - Implemented the deterministic Structure Gate (ROADMAP R-300) with a standard-library
   Python AST adapter, Contract Node §6 ownership and test-surface checks, bounded
   changed-file scans, stable diagnostics, CLI exit codes, and a seeded false-negative

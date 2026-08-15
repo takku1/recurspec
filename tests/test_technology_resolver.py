@@ -181,6 +181,63 @@ def test_dependency_inventory_accepts_ecosystem_valid_exact_forms(tmp_path: Path
     assert load_dependency_inventory(inventory) == {"example-sdk": exact}
 
 
+@pytest.mark.parametrize(
+    ("kind", "pin"),
+    [
+        ("version", "1.2.3"),
+        ("tag", "v1.2.3"),
+        ("commit", "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"),
+        ("digest", "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b85"),
+    ],
+)
+def test_resolution_audit_accepts_a_pin_matching_its_declared_reference_kind(
+    tmp_path: Path, kind: str, pin: str
+):
+    resolution = _complete_resolution(pin=pin).replace(
+        f"- **Pin:** {pin}\n",
+        f"- **Pin:** {pin}\n- **Reference kind:** {kind}\n",
+    )
+    tree = _write_tree(tmp_path, resolution)
+
+    result = audit_resolutions(tmp_path, contract_root=tree, inventory={"example-sdk": pin})
+
+    assert result.valid
+
+
+@pytest.mark.parametrize(
+    ("kind", "pin"),
+    [
+        ("digest", "1.2.3"),
+        ("commit", "1.2.3"),
+        ("version", "sha256:" + "0" * 64),
+    ],
+)
+def test_resolution_audit_rejects_a_pin_that_does_not_match_its_declared_reference_kind(
+    tmp_path: Path, kind: str, pin: str
+):
+    resolution = _complete_resolution(pin=pin).replace(
+        f"- **Pin:** {pin}\n",
+        f"- **Pin:** {pin}\n- **Reference kind:** {kind}\n",
+    )
+    tree = _write_tree(tmp_path, resolution)
+
+    result = audit_resolutions(tmp_path, contract_root=tree, inventory={"example-sdk": pin})
+
+    assert [item.code for item in result.diagnostics] == ["resolution.pin.kind_mismatch"]
+
+
+def test_resolution_audit_rejects_an_unrecognized_reference_kind(tmp_path: Path):
+    resolution = _complete_resolution(pin="1.2.3").replace(
+        "- **Pin:** 1.2.3\n",
+        "- **Pin:** 1.2.3\n- **Reference kind:** banana\n",
+    )
+    tree = _write_tree(tmp_path, resolution)
+
+    result = audit_resolutions(tmp_path, contract_root=tree, inventory={"example-sdk": "1.2.3"})
+
+    assert [item.code for item in result.diagnostics] == ["resolution.pin.kind_unrecognized"]
+
+
 def test_resolution_audit_flags_a_floating_pin_even_when_the_inventory_agrees(tmp_path: Path):
     # Reproduces the review's exact scenario: an inventory and §8 Pin that both say
     # "latest" pass plain string equality, but neither is an exact, reproducible pin.

@@ -433,6 +433,44 @@ def test_read_events_raises_on_an_unparseable_timestamp(tmp_path):
         read_events("comp", log_dir)
 
 
+@pytest.mark.parametrize(
+    "metrics",
+    [
+        {},
+        {"maker_id": "worker-1"},
+        {"maker_id": "worker-1", "checker_id": ""},
+        {"maker_id": "worker-1", "checker_id": "  "},
+        {"maker_id": 1, "checker_id": "worker-2"},
+    ],
+)
+def test_read_events_raises_on_a_merge_authorization_event_missing_identities(
+    tmp_path, metrics
+):
+    """The maker/checker separation audit trail has one fixed producer and shape; a
+    merge_authorization event without both non-empty identities was never legitimately
+    written (R-641 follow-up)."""
+    from recurspec.metrics import read_events
+
+    log_dir = _write_one_event(tmp_path, event_type="merge_authorization", metrics=metrics)
+
+    with pytest.raises(EvidenceInstrumentError, match="merge_authorization"):
+        read_events("comp", log_dir)
+
+
+def test_read_events_accepts_a_well_formed_merge_authorization_event(tmp_path):
+    from recurspec.metrics import read_events
+
+    log_dir = _write_one_event(
+        tmp_path,
+        event_type="merge_authorization",
+        metrics={"maker_id": "worker-1", "checker_id": "worker-2"},
+    )
+
+    events = read_events("comp", log_dir)
+
+    assert len(events) == 1
+
+
 def test_find_baseline_raises_rather_than_silently_dropping_a_corrupt_prior_baseline(tmp_path):
     # Reproduces the review's exact scenario: the only baseline event is corrupt, and a
     # later measurement follows it - this must not read back as "no baseline yet".

@@ -118,6 +118,67 @@ _HEX_REVISION_RE = re.compile(r"^[0-9a-fA-F]{7,64}$")
 _DIGEST_RE = re.compile(r"^[A-Za-z][A-Za-z0-9]*:[0-9a-fA-F]{32,}$")
 
 
+def _is_exact_version(value: str) -> bool:
+    """A package version or VCS tag: semver-shaped, optionally v-prefixed."""
+    return bool(_SEMVER_RE.match(value))
+
+
+def _is_exact_commit(value: str) -> bool:
+    """An immutable VCS commit: a hex revision containing at least one letter, so a
+    plain numeric build number is never mistaken for one."""
+    return bool(_HEX_REVISION_RE.match(value)) and any(c in "abcdefABCDEF" for c in value)
+
+
+def _is_exact_digest(value: str) -> bool:
+    """An immutable content digest, e.g. an OCI/Docker pin 'sha256:<hex>'."""
+    return bool(_DIGEST_RE.match(value))
+
+
+# A package version and a VCS tag are syntactically indistinguishable (both are
+# typically "v1.2.3"-shaped) but a bare tag is not inherently immutable the way a commit
+# or digest is; Recurspec cannot verify that distinction without talking to the vendor,
+# so both validate against the same version grammar and the declared kind is retained
+# only for documentation/provenance, not a stronger guarantee (R-643).
+_REFERENCE_KIND_CHECKS = {
+    "version": _is_exact_version,
+    "tag": _is_exact_version,
+    "commit": _is_exact_commit,
+    "digest": _is_exact_digest,
+}
+
+
+def _pin_reference_problem(pin: str, reference_kind: str) -> tuple[str, str] | None:
+    """Validate ``pin`` against its declared §8 Reference kind grammar, or (absent a
+    declaration) fall back to the blended ecosystem-neutral ``_looks_exact`` check.
+
+    A single regex cannot reliably tell a package version, a mutable VCS tag, an
+    immutable commit, and a content digest apart (REVIEW4); a Resolver that declares
+    which one it means gets validated against only that grammar instead of "any of the
+    three" (R-643). Returns ``(code, message)`` for a problem, or ``None`` if the pin
+    passes.
+    """
+    if reference_kind:
+        checker = _REFERENCE_KIND_CHECKS.get(reference_kind)
+        if checker is None:
+            return (
+                "resolution.pin.kind_unrecognized",
+                f"§8 Reference kind {reference_kind!r} is not one of "
+                + ", ".join(sorted(_REFERENCE_KIND_CHECKS)),
+            )
+        if not checker(pin):
+            return (
+                "resolution.pin.kind_mismatch",
+                f"§8 Pin {pin!r} does not match its declared Reference kind {reference_kind!r}",
+            )
+        return None
+    if not _looks_exact(pin):
+        return (
+            "resolution.pin.not_exact",
+            f"§8 Pin {pin!r} is not an exact, reproducible version",
+        )
+    return None
+
+
 def _looks_exact(version: str) -> bool:
     """Reject known floating/range specifiers and malformed strings, while accepting
     ecosystem-valid immutable versions, v-prefixed tags, digests, and revisions, so
@@ -251,14 +312,13 @@ def audit_resolutions(
                         f"external {node_class} resolution is missing {missing}",
                     )
                 )
-            elif not standard_library and not _looks_exact(pin):
-                diagnostics.append(
-                    ResolutionDiagnostic(
-                        "resolution.pin.not_exact",
-                        display_path,
-                        f"§8 Pin {pin!r} is not an exact, reproducible version",
-                    )
+            elif not standard_library and (
+                pin_problem := _pin_reference_problem(
+                    pin, _plain(fields.get("Reference kind", "")).lower()
                 )
+            ):
+                code, message = pin_problem
+                diagnostics.append(ResolutionDiagnostic(code, display_path, message))
             elif not standard_library:
                 if inventory is None:
                     indeterminate = True
