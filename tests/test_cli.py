@@ -278,6 +278,42 @@ def test_evaluate_cli_orchestrates_the_isolated_candidate_lifecycle(tmp_path, mo
     assert received["record_baseline"] is True
 
 
+def test_evaluate_cli_bks_metrics_only_still_runs_the_full_evaluation(tmp_path, monkeypatch, capsys):
+    """Locks in current behavior: --bks-metrics-only only changes what the printed
+    BKS packet contains (metrics vs. metrics+source, per implementor_bks); it does
+    not turn `evaluate` into a print-and-exit command. The isolated candidate
+    evaluation - including its worktree lifecycle and possible merge - still runs."""
+    evaluate_calls = []
+
+    def evaluate(repo, module, branch, **kwargs):
+        evaluate_calls.append((repo, module, branch))
+        return 0, "passed"
+
+    monkeypatch.setattr(cli, "evaluate_isolated_candidate", evaluate)
+    monkeypatch.setattr(cli, "load_merge_authorization", lambda *_args: object())
+
+    code = main(
+        [
+            "evaluate",
+            "checkout",
+            "candidate/R-200",
+            "--worker-state",
+            str(tmp_path / "worker-state.json"),
+            "--authorization-id",
+            "R-200",
+            "--repo",
+            str(tmp_path),
+            "--bks-metrics-only",
+        ]
+    )
+
+    assert code == 0
+    assert len(evaluate_calls) == 1
+    packet = json.loads(capsys.readouterr().out.splitlines()[0])
+    assert packet["metrics_only"] is True
+    assert packet["source_excerpts"] == []
+
+
 def test_structure_check_cli_emits_stable_json_and_distinct_exit_codes(tmp_path, capsys):
     (tmp_path / "src").mkdir()
     (tmp_path / "docs" / "architecture").mkdir(parents=True)

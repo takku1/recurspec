@@ -188,6 +188,30 @@ def test_validate_contract_accepts_an_independently_authored_two_stage_tree():
     ]
 
 
+def test_validate_contract_ignores_an_external_link_in_section_two(tmp_path: Path):
+    """A plain URL citation in section 2 (e.g. an upstream RFC) is not a declared
+    child - it must not be resolved as a repository-relative path and flagged
+    'outside the checked tree'."""
+    tree = _tree_variant(
+        tmp_path,
+        {
+            "SYSTEM.md": (
+                "- [Transform](transform/SYSTEM.md)",
+                "- [Transform](transform/SYSTEM.md)\n"
+                "- [External spec](https://example.com/spec)",
+            )
+        },
+    )
+
+    result = validate_contract(tree)
+
+    assert result.valid
+    assert result.contracts[0]["children"] == [
+        "publish/SYSTEM.md",
+        "transform/SYSTEM.md",
+    ]
+
+
 def test_validate_contract_rejects_a_missing_child_link(tmp_path: Path):
     tree = _tree_variant(
         tmp_path,
@@ -247,6 +271,25 @@ def test_validate_contract_rejects_duplicate_child_links(tmp_path: Path):
         "contract.tree.root_count",
         "contract.tree.root_count",
     ]
+
+
+def test_validate_contract_flags_a_duplicate_section_heading(tmp_path: Path):
+    """A duplicate '## 1.' heading must be reported, not silently overwrite the
+    first occurrence's content with no diagnostic."""
+    tree = _tree_variant(
+        tmp_path,
+        {
+            "SYSTEM.md": (
+                "## 2. Sub-System Decomposition",
+                "## 1. Duplicate Intent\n\nStray duplicate heading text.\n\n"
+                "## 2. Sub-System Decomposition",
+            )
+        },
+    )
+
+    result = validate_contract(tree / "SYSTEM.md")
+
+    assert "contract.heading.duplicate" in {item.rule_code for item in result.diagnostics}
 
 
 def test_validate_contract_rejects_a_child_at_the_wrong_level(tmp_path: Path):

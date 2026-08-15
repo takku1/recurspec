@@ -148,6 +148,30 @@ def test_study_init_refuses_a_contaminated_subject(tmp_path: Path):
     assert not (tmp_path / "docs" / "research" / "pairs" / "dirty-01.md").exists()
 
 
+def test_init_pair_refuses_a_task_containing_a_pipe(tmp_path: Path):
+    """A '|' in a task/hours field would corrupt the single-line Markdown table row
+    and break every later regex-based read/rewrite of the pair log (assign_pair)."""
+    subject = tmp_path / "other"
+    subject.mkdir()
+    (subject / "pyproject.toml").write_text('name = "other"\n', encoding="utf-8")
+
+    try:
+        init_pair(
+            tmp_path,
+            pair_id="unsafe-01",
+            project=str(subject),
+            task_a="fix parser for `a|b` syntax",
+            task_b="B",
+            hours="4h",
+            baseline="existing open-work tickets",
+        )
+    except StudyInstrumentError as exc:
+        assert "task_a" in str(exc)
+    else:
+        raise AssertionError("expected refuse a table-unsafe task field")
+    assert not (tmp_path / "docs" / "research" / "pairs" / "unsafe-01.md").exists()
+
+
 def test_study_list_cli(tmp_path: Path, capsys):
     subject = tmp_path / "other"
     subject.mkdir()

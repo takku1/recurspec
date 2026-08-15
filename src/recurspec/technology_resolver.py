@@ -395,7 +395,17 @@ def audit_resolutions(
                 seam_file = root / seam
                 if not seam_file.is_file():
                     continue
-                content_lines = seam_file.read_text(encoding="utf-8").splitlines()
+                try:
+                    content_lines = seam_file.read_text(encoding="utf-8").splitlines()
+                except (OSError, UnicodeError) as exc:
+                    diagnostics.append(
+                        ResolutionDiagnostic(
+                            "resolution.wrap.seam_unreadable",
+                            display_path,
+                            f"WRAP seam {seam!r} could not be read: {exc}",
+                        )
+                    )
+                    continue
                 lines = sum(bool(line.strip()) for line in content_lines)
                 if lines > wrap_line_limit:
                     diagnostics.append(

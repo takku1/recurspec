@@ -133,6 +133,21 @@ def test_resolution_audit_reopens_a_wrap_that_spreads_past_or_outgrows_its_seam(
     }
 
 
+def test_resolution_audit_flags_an_unreadable_wrap_seam_instead_of_crashing(tmp_path: Path):
+    resolution = _complete_resolution(decision_class="WRAP")
+    tree = _write_tree(tmp_path, resolution, "src/adapter.py")
+    # Invalid UTF-8: a lone continuation byte.
+    (tmp_path / "src" / "adapter.py").write_bytes(b"\x80\x81\x82")
+
+    result = audit_resolutions(
+        tmp_path,
+        contract_root=tree,
+        inventory={"example-sdk": "1.0.0"},
+    )
+
+    assert "resolution.wrap.seam_unreadable" in {item.code for item in result.diagnostics}
+
+
 def test_dependency_inventory_normalizes_package_keys_without_altering_versions(tmp_path: Path):
     inventory = tmp_path / "inventory.json"
     inventory.write_text('{"Example_SDK":"1.0.0"}', encoding="utf-8")

@@ -86,6 +86,16 @@ def is_recurspec_repository(path: str | Path) -> bool:
     return bool(re.search(r'(?m)^name\s*=\s*"recurspec"\s*$', text))
 
 
+def _reject_table_unsafe(label: str, value: str) -> None:
+    """A ``|`` or newline in a value bound for a single-line Markdown table cell would
+    corrupt the row and break every later regex-based read/rewrite of it (``assign_pair``,
+    ``_parse_pending_tasks``) - refuse up front rather than write an unrecoverable log."""
+    if "|" in value or "\n" in value:
+        raise StudyInstrumentError(
+            f"{label} must not contain '|' or a newline (breaks the pair log table): {value!r}"
+        )
+
+
 def _render_log(
     *,
     pair_id: str,
@@ -225,6 +235,9 @@ def init_pair(
         )
     if not pair_id or "/" in pair_id or "\\" in pair_id or ".." in pair_id:
         raise StudyInstrumentError(f"unsafe pair id: {pair_id!r}")
+    _reject_table_unsafe("task_a", task_a)
+    _reject_table_unsafe("task_b", task_b)
+    _reject_table_unsafe("hours", hours)
     findings = check_contamination(subject, task_a, task_b)
     if findings:
         raise StudyInstrumentError(

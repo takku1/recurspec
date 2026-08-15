@@ -19,6 +19,10 @@ EVIDENCE_RE = re.compile(r"^\s+-\s+`EvidenceStage:`\s*(\S+)\s*$")
 INTERFACE_RE = re.compile(r"^\s*-\s+\*\*(Inputs|Outputs):\*\*\s*(.*)$", re.MULTILINE)
 PORT_RE = re.compile(r"`([^`]+)`")
 LINK_RE = re.compile(r"\[[^]]+]\(([^)]+)\)")
+# A scheme-qualified URL (http://, mailto:, etc.) in section 2 is a plain external
+# reference, not a declared child Contract Node - it must never be resolved as a
+# repository-relative path (which would misfire as "outside the checked tree").
+_EXTERNAL_LINK_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:(?://|[^/\\])")
 
 EVIDENCE_STAGES = {
     "Unknown",
@@ -229,6 +233,22 @@ def _normalize(path: Path) -> tuple[dict[str, Any] | None, list[Diagnostic]]:
         return None, diagnostics
 
     sections = _sections(text)
+    # _sections() keeps only the last occurrence of each heading number; a duplicate
+    # heading would otherwise silently discard the earlier section's content (e.g. a
+    # stray second "## 4." swallowing the real invariants block) with no diagnostic.
+    section_numbers = [match.group(1) for match in SECTION_RE.finditer(text)]
+    duplicate_numbers = sorted(
+        {number for number in section_numbers if section_numbers.count(number) > 1}
+    )
+    for number in duplicate_numbers:
+        diagnostics.append(
+            Diagnostic(
+                display_path,
+                "contract.heading.duplicate",
+                f"section {number} heading appears more than once; only the last "
+                "occurrence is used",
+            )
+        )
     atomic_leaf = _is_atomic_leaf(sections.get("2", ""))
     required_sections = ("1", "2", "3", "4", "5")
     if atomic_leaf:
@@ -248,7 +268,15 @@ def _normalize(path: Path) -> tuple[dict[str, Any] | None, list[Diagnostic]]:
         name.lower(): PORT_RE.findall(value)
         for name, value in INTERFACE_RE.findall(sections.get("3", ""))
     }
-    children = [] if atomic_leaf else LINK_RE.findall(sections.get("2", ""))
+    children = (
+        []
+        if atomic_leaf
+        else [
+            link
+            for link in LINK_RE.findall(sections.get("2", ""))
+            if not _EXTERNAL_LINK_RE.match(link)
+        ]
+    )
     if not atomic_leaf and not children:
         diagnostics.append(
             Diagnostic(

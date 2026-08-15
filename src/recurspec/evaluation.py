@@ -624,7 +624,12 @@ def evaluate_isolated_candidate(
     worktree = temp_root / "worktree"
     created = False
     try:
-        _git(repo_path, "worktree", "add", "--quiet", str(worktree), candidate_branch)
+        # Pinned to the verified oid (detached), not the branch name: a branch-name
+        # checkout re-resolves at execution time, leaving a window where a concurrent
+        # push moves the branch between the rev-parse verify above and this checkout,
+        # so evaluation would run against unauthorized code before the later oid
+        # re-check (which only guards the merge, not the evaluation already logged).
+        _git(repo_path, "worktree", "add", "--quiet", str(worktree), candidate_oid)
         created = True
         log_event(
             module,

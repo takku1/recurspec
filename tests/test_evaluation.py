@@ -686,6 +686,23 @@ def test_parse_measurement_accepts_multi_metric_after_log_noise():
     assert len(payload["metrics"]) == 2
 
 
+def test_parse_measurement_ignores_a_brace_inside_a_string_value():
+    """A '}' inside a JSON string field (e.g. a free-text note) must not be counted
+    as a structural brace by the span scanner, or it truncates the span and the
+    payload - despite being syntactically valid JSON - fails to parse."""
+    payload = {
+        "metric": "latency_p99_ms",
+        "value": 42.5,
+        "note": "see } for detail, and { too",
+    }
+    out = "[measure] starting\n" + json.dumps(payload)
+
+    parsed = parse_measurement(out)
+
+    assert parsed["metric"] == "latency_p99_ms"
+    assert parsed["value"] == 42.5
+
+
 def test_telemetry_contradiction_clean_multi_metric_payload():
     assert telemetry_contradiction(MULTI_METRIC_PAYLOAD) is None
 

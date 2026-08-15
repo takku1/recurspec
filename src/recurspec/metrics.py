@@ -391,11 +391,26 @@ def parse_measurement(stdout: str) -> dict[str, Any]:
     # payload's own nested objects (e.g. a multi-metric entry) must never be
     # mistaken for the whole payload. Tried last-to-first so a genuine
     # payload emitted after diagnostic objects wins.
+    # A brace inside a JSON string literal (e.g. a "note" field containing "}") must
+    # never be counted toward depth - it is not a structural brace. String state is
+    # tracked with escape awareness so a literal `\"` cannot prematurely end the string.
     spans: list[tuple[int, int]] = []
     depth = 0
     span_start: int | None = None
+    in_string = False
+    escaped = False
     for i, ch in enumerate(text):
-        if ch == "{":
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch == "{":
             if depth == 0:
                 span_start = i
             depth += 1
