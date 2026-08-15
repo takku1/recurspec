@@ -41,6 +41,13 @@ docs/open-work.md + .scratch/wayfinder-map/MAP.md; implement on current branch; 
 | When | Gate would have | Human did | Reason |
 |---|---|---|---|
 
+## Arm start (observed, not a-priori)
+
+- Recurspec arm started: 2026-08-15 after assignment (not accepted; NEED_CHECKER)
+- Recurspec arm work this session: `response_surface.clamp_response_to_packet_surface` drops ROUTE/ANCHORS/JSON wrappers when `estimate_tokens(response) > 1.15 * estimate_tokens(packet)`. Wired at the end of `_compile_response`. Tests in `tests/test_response_surface.py`.
+- Baseline arm started: not started
+- Accepted implementation: no. Do not fill wall-clock until an independent accept.
+
 ## Post-hoc metrics
 
 List any number reported that is not in the protocol §5 table. Label each `post-hoc`.
