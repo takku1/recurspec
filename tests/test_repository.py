@@ -54,8 +54,15 @@ def test_legacy_public_names_do_not_return():
         "docs/open-work.md",
         "skills-lock.json",
     )
+    # Case-study pair logs (docs/research/pairs/) narrate a *subject* project's own,
+    # currently-real workflow verbatim -- a subject project's actual file (e.g. its own
+    # docs/open-work.md) can legitimately share a name Recurspec retired for itself.
+    # That is the external project's current state, not Recurspec vocabulary drift.
+    pairs_dir = ROOT / "docs" / "research" / "pairs"
     offenders: list[str] = []
     for document in PUBLISHED_MARKDOWN:
+        if pairs_dir in document.parents:
+            continue
         text = document.read_text(encoding="utf-8")
         for term in banned:
             if term in text:

@@ -86,7 +86,8 @@ packet, and anything it learned is in its result.
   repeatedly to rule out flakiness); tier routing; invalid concurrency rejected;
   authorization persistence is single-writer so a later unrelated `dispatch()` cannot
   drop a prior Candidate identity
-  (`test_persisted_candidate_identity_survives_a_later_unrelated_dispatch`).
+  (`test_persisted_candidate_identity_survives_a_later_unrelated_dispatch`);
+  `tests/test_runtime.py` covers the `messages_runtime()` adapter.
 - **Runtime adapter:** `messages_runtime()` (R-204) wraps a Messages-shaped client;
   optional extra `recurspec[runtime]` pins `anthropic==0.122.0`. Tests cover the adapter
   without a network (`tests/test_runtime.py`).

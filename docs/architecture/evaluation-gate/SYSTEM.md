@@ -67,7 +67,9 @@ Empirical Feedback infrastructure: explicit Best Known State (BKS) baselines, `m
   `src/recurspec/modules_gate.py` (R-203 changed-module probes),
   `src/recurspec/evidence.py` (including R-500 corpus export).
 - **Tests:** `tests/test_evaluation.py`, `tests/test_cli.py`, `tests/test_modules.py`
-  (end-to-end coverage of every bundled `measure.sh` against `parse_measurement`).
+  (end-to-end coverage of every bundled `measure.sh` against `parse_measurement`),
+  `tests/test_modules_gate.py` (R-203 changed-module probe selection),
+  `tests/test_corpus.py` (R-500 corpus export opt-in and redaction).
 - **Lifecycle seam:** `evaluate_isolated_candidate` requires a clean checked-out baseline,
   a completed Worker Pool merge authorization, and an existing local Candidate branch. It
   evaluates the Candidate in a temporary worktree, refuses probe mutations, fast-forwards
