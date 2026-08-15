@@ -318,7 +318,7 @@ class EvidenceAudit:
 
 
 def _empty_stage_counts() -> dict[str, int]:
-    return {stage: 0 for stage in sorted(EVIDENCE_STAGES)}
+    return dict.fromkeys(sorted(EVIDENCE_STAGES), 0)
 
 
 def _contract_paths(path: str | Path) -> list[Path]:

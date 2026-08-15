@@ -125,6 +125,20 @@ Off-repo Grok sessions loaded the skill and skipped the CLI. They treated any ex
 | R-631 | A work list is not one Contract Node. `recurspec fanout` splits it into one strategy handoff per item; the skill forbids implementing 1–N in a single shared context | done | `tests/test_fanout.py`; skill work-list tests |
 | R-632 | Skill close-out states what each evidence class licenses. Tests are not outcome evidence; "no data yet" is a complete finding | done | `test_skill_states_evidence_class_licensing` |
 
+## REVIEW4 remediations (2026-08-15)
+
+Findings from an internal follow-up snapshot (`REVIEW4`, not committed — its findings
+are captured here per hard rule 1, then the note is deleted) that checked whether the
+R-600–R-639 fixes above still had gaps. Continues from R-640.
+
+| ID | Outcome | Status | Evidence |
+|---|---|---|---|
+| R-640 | Add an optional, baseline-only trusted-input manifest (`.recurspec/trusted-inputs.json`) so a project can pin probe-adjacent inputs the fixed lists cannot anticipate (a `scripts/` helper, a plugin config); also add `setup.cfg`, `tox.ini`, `sitecustomize.py`, `usercustomize.py`, and a `scripts/` tree to the fixed trusted set. A malformed manifest or an entry that escapes the repository fails closed rather than silently trusting less than declared | done | `test_isolated_candidate_evaluates_against_a_manifest_declared_trusted_helper`, `test_load_trusted_manifest_fails_closed_on_malformed_content`, `test_load_trusted_manifest_refuses_a_path_that_escapes_the_repository` in `tests/test_evaluation.py` |
+| R-641 | Validate every decoded evidence event's `event_type` against the known set this codebase actually writes, reject an unparseable `ts`, and require the event's own `module` field to agree with the log it was read from — closing the gap where a complete, well-typed but semantically bogus event (invented `event_type`, wrong `module`, garbage timestamp) previously passed the common-envelope check | done | `test_read_events_raises_on_a_module_that_disagrees_with_its_own_log`, `test_read_events_raises_on_an_unrecognized_event_type`, `test_read_events_raises_on_an_unparseable_timestamp` in `tests/test_evaluation.py` |
+| R-642 | Tighten `_looks_exact`'s semver pattern so a non-numeric core component (e.g. `1.foo`) cannot pass as an exact version; only `-prerelease`/`+build` suffixes may contain non-numeric text, matching where semver actually allows one | done | expanded `test_dependency_inventory_rejects_a_floating_version` in `tests/test_technology_resolver.py` |
+| R-643 | Store a structured reference kind (package version / VCS tag / immutable commit / content digest) per §8 Pin and validate each against its own ecosystem grammar, replacing the single source-agnostic regex | research | `_looks_exact` remains ecosystem-neutral by design after R-642: it can still accept a well-formed-looking but semantically arbitrary string for the wrong reference kind. No implementation planned this pass; see `docs/REVIEW.md` remediation history. |
+| R-644 | Enable `flake8-bandit` (`S`) and `flake8-bugbear` (`B`) in the Ruff lint config and fix or justify every finding: resolve `git`/`gh` to absolute paths instead of bare PATH lookups, document the two intentional `shell=True`/subprocess uses inline, and fix the incidental `B007`/`C420` hits the same sweep turned up | done | `pyproject.toml` `[tool.ruff.lint]`; `ruff check src tests` passes with zero suppressions outside `tests/*` (asserts and test-fixture `git` spawns) |
+
 ## Research and validation
 
 These items are required before claiming that Recurspec improves engineering outcomes.

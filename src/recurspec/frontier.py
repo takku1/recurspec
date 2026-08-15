@@ -148,14 +148,19 @@ def github_issue_publisher(runner: Callable[..., object] | None = None) -> Remot
 
     def publish(title: str, body: str) -> str:
         execute = runner
+        gh = "gh"
         if execute is None:
-            if shutil.which("gh") is None:
+            resolved = shutil.which("gh")
+            if resolved is None:
                 raise FrontierInstrumentError("gh is not on PATH; cannot publish a remote issue")
+            gh = resolved
 
             def execute(args: list[str]) -> subprocess.CompletedProcess[str]:
-                return subprocess.run(args, capture_output=True, text=True, check=False)
+                return subprocess.run(  # noqa: S603 - gh resolved to an absolute path above; no shell
+                    args, capture_output=True, text=True, check=False
+                )
 
-        result = execute(["gh", "issue", "create", "--title", title, "--body", body])
+        result = execute([gh, "issue", "create", "--title", title, "--body", body])
         if getattr(result, "returncode", 1) != 0:
             err = getattr(result, "stderr", "") or "gh issue create failed"
             raise FrontierInstrumentError(str(err).strip())

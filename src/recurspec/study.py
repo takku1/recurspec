@@ -424,7 +424,10 @@ def accept_arm(
         raise StudyInstrumentError(f"verify cwd is not a directory: {workdir}")
 
     try:
-        completed = subprocess.run(
+        # verify_command is an operator-typed CLI argument (`recurspec study accept
+        # --verify`), never Candidate- or network-controlled; shell=True is required to
+        # support compound verify commands (e.g. "pytest -q && ruff check").
+        completed = subprocess.run(  # noqa: S602
             verify_command,
             cwd=str(workdir),
             capture_output=True,

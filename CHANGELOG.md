@@ -43,6 +43,18 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 - R-501/R-502 instruments: `recurspec predict` reports Negative Pattern
   frequencies or refuses; `recurspec recommend` refuses to invent a Decision
   Class from the redacted corpus. The study outcomes remain blocked.
+- R-640: an optional `.recurspec/trusted-inputs.json` manifest lets a project pin
+  extra probe-adjacent inputs into the Candidate worktree; `setup.cfg`, `tox.ini`,
+  `sitecustomize.py`, `usercustomize.py`, and a `scripts/` tree join the fixed
+  trusted set. A malformed or path-escaping manifest fails closed.
+- R-641: evidence events now must declare a known `event_type`, a parseable `ts`,
+  and a `module` that agrees with the log they were read from; a decoded-but-bogus
+  event now raises `EvidenceInstrumentError` instead of being trusted.
+- R-642: `_looks_exact` rejects a version whose core has a non-numeric dotted
+  component (e.g. `1.foo`); only `-prerelease`/`+build` suffixes may be non-numeric.
+- R-644: `ruff check` now runs `flake8-bandit` (S) and `flake8-bugbear` (B). `git`
+  and `gh` invocations resolve to an absolute path instead of a bare PATH lookup;
+  the two intentional `subprocess`/`shell=True` uses carry inline justification.
 - Implemented the deterministic Structure Gate (ROADMAP R-300) with a standard-library
   Python AST adapter, Contract Node §6 ownership and test-surface checks, bounded
   changed-file scans, stable diagnostics, CLI exit codes, and a seeded false-negative

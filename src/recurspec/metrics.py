@@ -19,6 +19,7 @@ Measured-grade evidence out of nothing.
 
 from __future__ import annotations
 
+import datetime
 import json
 import math
 import os
@@ -126,7 +127,7 @@ def read_events(module: str, log_dir: str = ".recurspec/evidence") -> list[dict[
                 f"{path}:{index + 1}: evidence event is not a JSON object "
                 f"(got {type(obj).__name__})"
             )
-        problem = _event_schema_problem(obj)
+        problem = _event_schema_problem(obj, module=module)
         if problem is not None:
             if is_recoverable_truncation:
                 continue
@@ -135,8 +136,38 @@ def read_events(module: str, log_dir: str = ".recurspec/evidence") -> list[dict[
     return events
 
 
-def _event_schema_problem(event: dict[str, Any]) -> str | None:
-    """Return a reason the decoded object is not a usable evidence event (R-624)."""
+# The complete set of event_type values any writer in this codebase emits (evaluation.py's
+# record()/log_event calls, plus the "measurement" seed type find_baseline()/implementor_bks()
+# also accept). An event claiming any other type is not corruption to tolerate but a
+# spoofed or invented event (R-641).
+_KNOWN_EVENT_TYPES = frozenset(
+    {
+        "baseline",
+        "candidate",
+        "decision",
+        "measurement",
+        "merge_authorization",
+        "negative_pattern",
+        "signal_d",
+    }
+)
+
+
+def _is_valid_timestamp(value: str) -> bool:
+    try:
+        datetime.datetime.fromisoformat(value)
+    except ValueError:
+        return False
+    return True
+
+
+def _event_schema_problem(event: dict[str, Any], *, module: str | None = None) -> str | None:
+    """Return a reason the decoded object is not a usable evidence event (R-624, R-641).
+
+    ``module``, when given, is the log the event was read from (``<log_dir>/<module>/
+    log.jsonl``); an event whose own ``module`` field disagrees was never legitimately
+    written there and must not be silently trusted just because it decoded cleanly.
+    """
     required = {
         "ts": str,
         "event_type": str,
@@ -154,6 +185,15 @@ def _event_schema_problem(event: dict[str, Any]) -> str | None:
             return f"evidence event field {field!r} is empty"
     if event["evidence_stage"] not in EVIDENCE_STAGES:
         return "evidence event has an unrecognized Evidence Stage"
+    if event["event_type"] not in _KNOWN_EVENT_TYPES:
+        return f"evidence event has an unrecognized event_type {event['event_type']!r}"
+    if not _is_valid_timestamp(event["ts"]):
+        return f"evidence event has an unparseable timestamp {event['ts']!r}"
+    if module is not None and event["module"] != module:
+        return (
+            f"evidence event declares module {event['module']!r} but was read from the "
+            f"{module!r} evidence log"
+        )
     return None
 
 

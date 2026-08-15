@@ -78,7 +78,7 @@ def test_build_tree_index_resolves_parent_ids_from_a_relative_tree_root(
 def test_build_tree_index_refuses_an_invalid_tree(tmp_path: Path):
     (tmp_path / "SYSTEM.md").write_text("# Broken (L0)\nno contract marker\n", encoding="utf-8")
 
-    with pytest.raises(Exception):
+    with pytest.raises(ContractInstrumentError):
         build_tree_index(tmp_path)
 
 

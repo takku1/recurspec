@@ -54,6 +54,21 @@ Empirical Feedback infrastructure: explicit Best Known State (BKS) baselines, `m
   - `EvidenceStage:` Sampled
 - **[Conditional]** IF a branch reaches 5 consecutive reverts or 8 total reverts THEN THE SYSTEM SHALL return `ESCALATE` (exit code 3) instead of authorizing another automatic repair. (streak, branch-scope, total-ceiling, and runner integration coverage)
   - `EvidenceStage:` Sampled
+- **[Optional]** WHERE a baseline `.recurspec/trusted-inputs.json` manifest is present
+  THE SYSTEM SHALL pin every declared path into the Candidate worktree the same way as
+  the fixed trusted set, and SHALL refuse evaluation rather than silently trust less
+  than declared when the manifest is malformed or an entry escapes the repository.
+  (`test_isolated_candidate_evaluates_against_a_manifest_declared_trusted_helper`,
+  `test_load_trusted_manifest_fails_closed_on_malformed_content`,
+  `test_load_trusted_manifest_refuses_a_path_that_escapes_the_repository`)
+  - `EvidenceStage:` Sampled
+- **[Conditional]** IF a decoded evidence event declares an unrecognized `event_type`,
+  an unparseable `ts`, or a `module` that disagrees with the log it was read from THEN
+  THE SYSTEM SHALL raise `EvidenceInstrumentError` rather than trust it.
+  (`test_read_events_raises_on_a_module_that_disagrees_with_its_own_log`,
+  `test_read_events_raises_on_an_unrecognized_event_type`,
+  `test_read_events_raises_on_an_unparseable_timestamp`)
+  - `EvidenceStage:` Sampled
 
 ## 5. Architectural Decisions (ADRs)
 

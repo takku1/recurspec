@@ -147,6 +147,7 @@ def test_dependency_inventory_normalizes_package_keys_without_altering_versions(
         "snapshot", "nightly", "edge", "canary", "trunk", "dev",
         "1.", ".1.2", "1..2", "1.2-", "-1.2",
         "1latest",
+        "1.foo",  # R-642: a non-numeric core component is not a semver, even dotted
     ],
 )
 def test_dependency_inventory_rejects_a_floating_version(tmp_path: Path, floating):

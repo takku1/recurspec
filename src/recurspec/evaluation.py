@@ -20,6 +20,7 @@ retry an invalidated approach. Bounded retry counts escalate to human judgment.
 
 from __future__ import annotations
 
+import json
 import ntpath
 import os
 import re
@@ -94,9 +95,25 @@ def _validate_module_name(module: str) -> None:
         )
 
 
+_GIT_EXE: str | None = None
+
+
+def _git_executable() -> str:
+    """Resolve ``git`` to an absolute path once so every invocation below is immune to
+    a PATH-order hijack instead of trusting whichever ``git`` a manipulated PATH
+    resolves first."""
+    global _GIT_EXE
+    if _GIT_EXE is None:
+        resolved = shutil.which("git")
+        if resolved is None:
+            raise CandidateLifecycleError("git is not on PATH")
+        _GIT_EXE = resolved
+    return _GIT_EXE
+
+
 def _git(repo: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
-    result = subprocess.run(
-        ["git", "-C", str(repo), *args],
+    result = subprocess.run(  # noqa: S603 - git resolved to an absolute path above; args are internal, not shell-interpreted
+        [_git_executable(), "-C", str(repo), *args],
         capture_output=True,
         text=True,
     )
@@ -127,16 +144,73 @@ def _materialize_tree(root: Path, snapshot: dict[str, bytes]) -> None:
         target.write_bytes(content)
 
 
-_TRUSTED_TREES = ("tests", "modules")
-_TRUSTED_FILES = ("conftest.py", "pytest.ini", "pyproject.toml", "ruff.toml", ".ruff.toml")
+_TRUSTED_TREES = ("tests", "modules", "scripts")
+_TRUSTED_FILES = (
+    "conftest.py",
+    "pytest.ini",
+    "pyproject.toml",
+    "ruff.toml",
+    ".ruff.toml",
+    "setup.cfg",
+    "tox.ini",
+    "sitecustomize.py",
+    "usercustomize.py",
+)
+# Optional, baseline-only declaration of additional probe-adjacent inputs a project
+# needs pinned that the fixed lists above cannot anticipate (R-640): a project-specific
+# helper under scripts/, a plugin config, etc. Never read from the Candidate worktree -
+# a Candidate could otherwise grant itself trust by editing the manifest.
+_TRUSTED_MANIFEST = ".recurspec/trusted-inputs.json"
 
 
-def _pin_trusted_probe_inputs(baseline: Path, worktree: Path) -> None:
+def _validate_trusted_manifest_entry(entry: str) -> str:
+    """Reject anything but a clean repository-relative path (R-640): the same escape
+    shapes `_validate_module_name` blocks for `module` apply here to manifest entries."""
+    if not isinstance(entry, str) or not entry or entry != entry.strip():
+        raise CandidateLifecycleError(
+            f"{_TRUSTED_MANIFEST} entry {entry!r} is not a clean relative path"
+        )
+    posix = entry.replace("\\", "/")
+    if posix.startswith("/") or posix.startswith("~") or ntpath.splitdrive(entry)[0]:
+        raise CandidateLifecycleError(
+            f"{_TRUSTED_MANIFEST} entry {entry!r} must be repository-relative"
+        )
+    parts = posix.split("/")
+    if any(part in ("", ".", "..") for part in parts):
+        raise CandidateLifecycleError(
+            f"{_TRUSTED_MANIFEST} entry {entry!r} must not contain '..' or empty segments"
+        )
+    return posix
+
+
+def _load_trusted_manifest(baseline: Path) -> tuple[str, ...]:
+    """Read the optional trusted-input manifest from the baseline (R-640).
+
+    Absent is the common case and pins nothing extra. Present-but-malformed fails
+    closed - a manifest that cannot be trusted must never be silently skipped, which
+    would quietly narrow the trust boundary a project explicitly declared.
+    """
+    manifest_path = baseline / _TRUSTED_MANIFEST
+    if not manifest_path.is_file():
+        return ()
+    try:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise CandidateLifecycleError(f"could not read {_TRUSTED_MANIFEST}: {exc}") from exc
+    if not isinstance(payload, dict) or not isinstance(payload.get("paths"), list):
+        raise CandidateLifecycleError(
+            f"{_TRUSTED_MANIFEST} must be a JSON object with a 'paths' array"
+        )
+    return tuple(_validate_trusted_manifest_entry(entry) for entry in payload["paths"])
+
+
+def _pin_trusted_probe_inputs(baseline: Path, worktree: Path) -> tuple[str, ...]:
     """Copy the trusted probe environment from baseline into the Candidate worktree.
 
     checks.sh/measure.sh are not the full judge: they source helpers under modules/,
     run tests/, and honor root pytest/ruff config. A Candidate must not control any
-    of those (R-600, R-621).
+    of those (R-600, R-621, R-640). Returns the manifest paths pinned so the caller can
+    restore them the same way after evaluation.
     """
     for name in _TRUSTED_TREES:
         source = baseline / name
@@ -149,6 +223,20 @@ def _pin_trusted_probe_inputs(baseline: Path, worktree: Path) -> None:
             destination.write_bytes(source.read_bytes())
         elif destination.exists() or destination.is_symlink():
             destination.unlink()
+    manifest_paths = _load_trusted_manifest(baseline)
+    for rel in manifest_paths:
+        source = baseline / rel
+        destination = worktree / rel
+        if source.is_dir():
+            _materialize_tree(destination, _snapshot_tree(source))
+        elif source.is_file():
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(source.read_bytes())
+        elif destination.is_dir():
+            shutil.rmtree(destination)
+        elif destination.exists() or destination.is_symlink():
+            destination.unlink()
+    return manifest_paths
 
 
 def _bash(platform: str | None = None) -> str | None:
@@ -192,7 +280,7 @@ def run_script(
     try:
         env = os.environ.copy()
         env["RECURSPEC_PYTHON"] = sys.executable
-        res = subprocess.run(
+        res = subprocess.run(  # noqa: S603 - bash resolved to an absolute path above; script_path is a pre-validated file, no shell
             [bash, script_path, module],
             capture_output=True,
             text=True,
@@ -548,7 +636,7 @@ def evaluate_isolated_candidate(
         )
         # Trusted logic, Candidate source under test. Restored below so the post-eval
         # dirtiness check reflects only what the Candidate itself committed.
-        _pin_trusted_probe_inputs(repo_path, worktree)
+        manifest_paths = _pin_trusted_probe_inputs(repo_path, worktree)
         try:
             code, reason = evaluate_change(
                 module,
@@ -563,15 +651,23 @@ def evaluate_isolated_candidate(
             )
         finally:
             if worktree.exists():
-                restore = (*_TRUSTED_TREES, *_TRUSTED_FILES, checks_rel, measure_rel)
+                restore = (
+                    *_TRUSTED_TREES,
+                    *_TRUSTED_FILES,
+                    *manifest_paths,
+                    checks_rel,
+                    measure_rel,
+                )
                 _git(worktree, "checkout", "--force", "--", *restore, check=False)
-                _git(worktree, "clean", "-fd", "--", *_TRUSTED_TREES, check=False)
-                for name in _TRUSTED_FILES:
+                _git(worktree, "clean", "-fd", "--", *_TRUSTED_TREES, *manifest_paths, check=False)
+                for name in (*_TRUSTED_FILES, *manifest_paths):
                     tracked = _git(worktree, "ls-files", "--", name, check=False)
                     if not tracked.stdout.strip():
                         leftover = worktree / name
                         if leftover.is_file() or leftover.is_symlink():
                             leftover.unlink()
+                        elif leftover.is_dir():
+                            shutil.rmtree(leftover, ignore_errors=True)
         if code != KEEP:
             return code, reason
         if _git(worktree, "status", "--porcelain").stdout.strip():

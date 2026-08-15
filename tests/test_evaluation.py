@@ -385,6 +385,54 @@ def test_read_events_raises_on_an_empty_object(tmp_path):
         read_events("comp", log_dir)
 
 
+def _write_one_event(tmp_path: Path, **overrides) -> str:
+    event = {
+        "ts": "2026-01-01T00:00:00+00:00",
+        "event_type": "baseline",
+        "module": "comp",
+        "branch": "main",
+        "evidence_stage": "Measured",
+        "metrics": {},
+    }
+    event.update(overrides)
+    log_dir = str(tmp_path)
+    comp_dir = tmp_path / "comp"
+    comp_dir.mkdir()
+    (comp_dir / "log.jsonl").write_text(json.dumps(event) + "\n", encoding="utf-8")
+    return log_dir
+
+
+def test_read_events_raises_on_a_module_that_disagrees_with_its_own_log(tmp_path):
+    """An event whose ``module`` field names a different module than the log it lives
+    in was never legitimately written there (R-641)."""
+    from recurspec.metrics import read_events
+
+    log_dir = _write_one_event(tmp_path, module="a-different-module")
+
+    with pytest.raises(EvidenceInstrumentError, match="module"):
+        read_events("comp", log_dir)
+
+
+def test_read_events_raises_on_an_unrecognized_event_type(tmp_path):
+    """A made-up event_type is a spoofed or invented event, not corruption to forgive
+    (R-641)."""
+    from recurspec.metrics import read_events
+
+    log_dir = _write_one_event(tmp_path, event_type="made_up_event")
+
+    with pytest.raises(EvidenceInstrumentError, match="event_type"):
+        read_events("comp", log_dir)
+
+
+def test_read_events_raises_on_an_unparseable_timestamp(tmp_path):
+    from recurspec.metrics import read_events
+
+    log_dir = _write_one_event(tmp_path, ts="not-a-timestamp")
+
+    with pytest.raises(EvidenceInstrumentError, match="timestamp"):
+        read_events("comp", log_dir)
+
+
 def test_find_baseline_raises_rather_than_silently_dropping_a_corrupt_prior_baseline(tmp_path):
     # Reproduces the review's exact scenario: the only baseline event is corrupt, and a
     # later measurement follows it - this must not read back as "no baseline yet".
@@ -1050,6 +1098,99 @@ def test_isolated_candidate_evaluates_against_trusted_module_helpers_not_the_can
 
     assert code == gate.REVERT
     assert "checks.sh failed" in reason
+
+
+def test_isolated_candidate_evaluates_against_a_manifest_declared_trusted_helper(
+    tmp_path: Path,
+):
+    """A project can pin a probe-adjacent helper the fixed lists cannot anticipate (e.g.
+    a plugin config or a scripts/ tree outside the hard-coded set) via
+    .recurspec/trusted-inputs.json; a Candidate must not be able to weaken it either
+    (R-640)."""
+    if gate._bash() is None:
+        pytest.skip("no POSIX shell available to run real probes")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-b", "main", str(repo)], check=True, capture_output=True)
+    _git(repo, "config", "user.email", "tests@example.invalid")
+    _git(repo, "config", "user.name", "Recurspec Tests")
+    (repo / "state.txt").write_text("baseline\n", encoding="utf-8")
+    (repo / ".recurspec").mkdir()
+    (repo / ".recurspec" / "trusted-inputs.json").write_text(
+        json.dumps({"paths": ["helpers"]}), encoding="utf-8"
+    )
+    helpers = repo / "helpers"
+    helpers.mkdir()
+    (helpers / "lib.sh").write_text(
+        "if grep -q broken \"${DIR}/state.txt\" 2>/dev/null; then\n"
+        '  echo "state is broken" >&2\n'
+        "  exit 1\n"
+        "fi\n"
+        "exit 0\n",
+        encoding="utf-8",
+    )
+    modules = repo / "modules" / "checkout"
+    modules.mkdir(parents=True)
+    (modules / "checks.sh").write_text(
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        'DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"\n'
+        'source "${DIR}/helpers/lib.sh"\n',
+        encoding="utf-8",
+    )
+    (modules / "measure.sh").write_text(_TRUSTED_MEASURE_SH, encoding="utf-8")
+    _git(repo, "add", "state.txt", "modules", "helpers", ".recurspec")
+    _git(repo, "commit", "-m", "baseline")
+    _git(repo, "switch", "-c", "candidate/R-200")
+    (repo / "state.txt").write_text("broken\n", encoding="utf-8")
+    (helpers / "lib.sh").write_text("exit 0\n", encoding="utf-8")
+    _git(repo, "add", "state.txt", "helpers")
+    _git(repo, "commit", "-m", "break state and weaken the manifest-trusted helper")
+    _git(repo, "switch", "main")
+
+    code, reason = gate.evaluate_isolated_candidate(
+        repo, "checkout", "candidate/R-200", authorization=_independent_review(repo)
+    )
+
+    assert code == gate.REVERT
+    assert "checks.sh failed" in reason
+
+
+def test_load_trusted_manifest_is_absent_by_default(tmp_path: Path):
+    assert gate._load_trusted_manifest(tmp_path) == ()
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        "not json",
+        "{}",
+        '{"paths": "helpers"}',
+        '{"paths": [1]}',
+    ],
+)
+def test_load_trusted_manifest_fails_closed_on_malformed_content(tmp_path: Path, payload: str):
+    (tmp_path / ".recurspec").mkdir()
+    (tmp_path / ".recurspec" / "trusted-inputs.json").write_text(payload, encoding="utf-8")
+
+    with pytest.raises(gate.CandidateLifecycleError):
+        gate._load_trusted_manifest(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "entry",
+    ["../outside", "/etc/passwd", "C:\\Windows", "a/../b", "", "  helpers", "~/x"],
+)
+def test_load_trusted_manifest_refuses_a_path_that_escapes_the_repository(
+    tmp_path: Path, entry: str
+):
+    (tmp_path / ".recurspec").mkdir()
+    (tmp_path / ".recurspec" / "trusted-inputs.json").write_text(
+        json.dumps({"paths": [entry]}), encoding="utf-8"
+    )
+
+    with pytest.raises(gate.CandidateLifecycleError):
+        gate._load_trusted_manifest(tmp_path)
 
 
 def test_isolated_candidate_refuses_a_module_without_trusted_baseline_probes(tmp_path: Path):

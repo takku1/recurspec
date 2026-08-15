@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from recurspec.contract import ContractInstrumentError
 from recurspec.spec_runner.store import JobStore
 
 FIXTURES = Path(__file__).parent / "fixtures" / "contracts"
@@ -197,7 +198,7 @@ def test_rebuild_refuses_an_invalid_tree_rather_than_guess(tmp_path: Path):
     invalid_tree.mkdir()
     (invalid_tree / "SYSTEM.md").write_text("# Broken (L0)\nno contract marker\n", encoding="utf-8")
 
-    with pytest.raises(Exception):
+    with pytest.raises(ContractInstrumentError):
         store.rebuild_from_tree(invalid_tree)
 
 

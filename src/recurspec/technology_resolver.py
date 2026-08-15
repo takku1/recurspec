@@ -105,9 +105,12 @@ _FLOATING_MARKERS = {
     "dev",
 }
 _RANGE_OPERATOR_RE = re.compile(r"[<>=~^!,\s]")
-# Semver-shaped (optionally v-prefixed) exact version: "1.2.3", "v1.2.3", "1.2.3-rc.1".
-# The first component is digits only so "1latest" cannot pass as a version (R-622).
-_SEMVER_RE = re.compile(r"^v?[0-9]+(?:[.+_-][0-9A-Za-z]+)*$")
+# Semver-shaped (optionally v-prefixed) exact version: "1.2.3", "v1.2.3", "1.2.3-rc.1",
+# "1.2.3+build.5". The numeric core is digits-only and dot-separated (so "1latest" and
+# "1.foo" cannot pass as a version); a non-numeric component is only permitted inside an
+# explicit "-prerelease" or "+build" suffix, matching where semver actually allows one
+# (R-622, R-642).
+_SEMVER_RE = re.compile(r"^v?[0-9]+(?:\.[0-9]+){0,2}(?:-[0-9A-Za-z.]+)?(?:\+[0-9A-Za-z.]+)?$")
 # An immutable git/VCS revision - short or full hex SHA. Must contain a letter so a
 # plain numeric version (e.g. a build number) is never mistaken for one.
 _HEX_REVISION_RE = re.compile(r"^[0-9a-fA-F]{7,64}$")
@@ -185,7 +188,7 @@ def audit_resolutions(
     populated_slots = 0
     indeterminate = False
 
-    for node_id, node in sorted(index.items()):
+    for _node_id, node in sorted(index.items()):
         if not node["atomic_leaf"]:
             continue
         contract_path = Path(node["path"])
