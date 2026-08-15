@@ -22,6 +22,15 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
   promoting a passing test suite to an outcome claim.
 - R-406: `recurspec study init|assign|list` writes R-400 pair logs, coin-flips
   assignment, refuses Recurspec as a subject, and refuses a second flip.
+- R-633: `study init` refuses a subject project that already has Recurspec
+  fingerprints (strategy handoff, evidence log, or tracker mention) for either
+  task id.
+- R-634: `recurspec study accept` records an independent arm accept only after
+  a named verify command is executed and exits 0. Maker and checker identities
+  must differ; a failing command leaves the pair log untouched.
+- R-637: `recurspec contract evidence` reports Evidence Stage counts and
+  Sampled/Measured/Proved invariants that name no check. The report never
+  fails a valid Contract Tree.
 - Implemented the deterministic Structure Gate (ROADMAP R-300) with a standard-library
   Python AST adapter, Contract Node §6 ownership and test-surface checks, bounded
   changed-file scans, stable diagnostics, CLI exit codes, and a seeded false-negative

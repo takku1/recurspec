@@ -134,5 +134,9 @@ rows in [ROADMAP.md](../../ROADMAP.md), regardless of whether it favors Recurspe
 
 ## Amendments
 
-None yet. Any change to §2–§10 made after data collection begins must be added here with
-a date and reason, per the Registered Reports precedent this protocol follows.
+- 2026-08-15: Accept-time verification. A first-accepted-implementation timestamp
+  may be recorded only after `recurspec study accept` runs a named verify command
+  to exit 0, with maker ≠ checker. Reason: graphgraph-01's Recurspec-arm accept
+  used a narrow test file and missed 31 full-suite failures. This does not change
+  §5 measures; it constrains how the secondary wall-clock source is produced.
+  Prior pair-log accepts remain hand-recorded observations and are not rewritten.

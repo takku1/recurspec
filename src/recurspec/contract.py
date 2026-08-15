@@ -281,26 +281,115 @@ def _normalize(path: Path) -> tuple[dict[str, Any] | None, list[Diagnostic]]:
     return contract, diagnostics
 
 
+CHECK_CITE_RE = re.compile(
+    r"(?:`?test_[A-Za-z0-9_]+`?|`?(?:checks|measure)\.sh`?)"
+)
+LICENSED_STAGES = frozenset({"Sampled", "Measured", "Proved"})
+
+
+@dataclass(frozen=True, order=True)
+class EvidenceFinding:
+    path: str
+    invariant_index: int
+    stage: str
+    issue: str
+
+    def as_dict(self) -> dict[str, str | int]:
+        return {
+            "invariant_index": self.invariant_index,
+            "issue": self.issue,
+            "path": self.path,
+            "stage": self.stage,
+        }
+
+
+@dataclass(frozen=True)
+class EvidenceAudit:
+    counts: dict[str, int]
+    unlicensed: tuple[EvidenceFinding, ...]
+    unknowns: tuple[EvidenceFinding, ...]
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "counts": dict(self.counts),
+            "unlicensed": [item.as_dict() for item in self.unlicensed],
+            "unknowns": [item.as_dict() for item in self.unknowns],
+        }
+
+
+def _empty_stage_counts() -> dict[str, int]:
+    return {stage: 0 for stage in sorted(EVIDENCE_STAGES)}
+
+
+def _contract_paths(path: str | Path) -> list[Path]:
+    requested = Path(path)
+    if requested.is_dir():
+        return sorted(requested.rglob("SYSTEM.md"), key=lambda item: item.as_posix())
+    if requested.is_file():
+        return [requested]
+    raise ContractInstrumentError(f"contract path does not exist: {requested}")
+
+
+def audit_evidence_stages(path: str | Path) -> EvidenceAudit:
+    """Count Evidence Stages and list claims that name no check.
+
+    Observation only: this never adds diagnostics to ``validate_contract``.
+    A Sampled/Measured/Proved invariant is unlicensed when its statement does
+    not name ``test_*``, ``checks.sh``, or ``measure.sh``.
+    """
+    counts = _empty_stage_counts()
+    unlicensed: list[EvidenceFinding] = []
+    unknowns: list[EvidenceFinding] = []
+    for contract_path in _contract_paths(path):
+        contract, _diagnostics = _normalize(contract_path)
+        if contract is None:
+            continue
+        display = contract_path.as_posix()
+        for index, invariant in enumerate(contract.get("invariants") or [], start=1):
+            stage = invariant["evidence_stage"]
+            counts[stage] = counts.get(stage, 0) + 1
+            if stage == "Unknown":
+                unknowns.append(
+                    EvidenceFinding(
+                        path=display,
+                        invariant_index=index,
+                        stage=stage,
+                        issue="Unknown",
+                    )
+                )
+            elif stage in LICENSED_STAGES and not CHECK_CITE_RE.search(
+                invariant["statement"]
+            ):
+                unlicensed.append(
+                    EvidenceFinding(
+                        path=display,
+                        invariant_index=index,
+                        stage=stage,
+                        issue=f"{stage} names no check",
+                    )
+                )
+    return EvidenceAudit(
+        counts=counts,
+        unlicensed=tuple(sorted(unlicensed)),
+        unknowns=tuple(sorted(unknowns)),
+    )
+
+
 def validate_contract(path: str | Path) -> ValidationResult:
     """Validate one SYSTEM.md or every recursively discovered SYSTEM.md in a directory."""
     requested = Path(path)
-    if requested.is_dir():
-        paths = sorted(requested.rglob("SYSTEM.md"), key=lambda item: item.as_posix())
-        if not paths:
-            return ValidationResult(
-                (),
-                (
-                    Diagnostic(
-                        requested.as_posix(),
-                        "contract.discovery.empty",
-                        "directory contains no recursively discovered SYSTEM.md files",
-                    ),
+    paths = _contract_paths(requested)
+    if requested.is_dir() and not paths:
+        return ValidationResult(
+            (),
+            (
+                Diagnostic(
+                    requested.as_posix(),
+                    "contract.discovery.empty",
+                    "directory contains no recursively discovered SYSTEM.md files",
                 ),
-            )
-    elif requested.is_file():
-        paths = [requested]
-    else:
-        raise ContractInstrumentError(f"contract path does not exist: {requested}")
+            ),
+        )
 
     contracts: list[dict[str, Any]] = []
     diagnostics: list[Diagnostic] = []

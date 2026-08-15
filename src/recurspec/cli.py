@@ -14,7 +14,7 @@ from importlib.resources import files
 from pathlib import Path
 
 from . import __version__
-from .contract import ContractInstrumentError, validate_contract
+from .contract import ContractInstrumentError, audit_evidence_stages, validate_contract
 from .evaluation import ERROR, evaluate_isolated_candidate
 from .evidence import export_decision_corpus
 from .fanout import FanoutInstrumentError, plan_fanout, render_fanout, write_fanout
@@ -29,7 +29,7 @@ from .project_status import StatusInstrumentError, inspect_project, render_statu
 from .reconcile import ReconciliationInstrumentError, plan_reconciliation
 from .spec_runner.workers import load_merge_authorization
 from .structure_gate import check_structure
-from .study import StudyInstrumentError, assign_pair, init_pair, list_pairs
+from .study import StudyInstrumentError, accept_arm, assign_pair, init_pair, list_pairs
 from .technology_resolver import (
     ResolutionInstrumentError,
     audit_resolutions,
@@ -144,6 +144,27 @@ def _run_contract_check(args: argparse.Namespace) -> int:
         for diagnostic in result.diagnostics:
             print(f"{diagnostic.path}: {diagnostic.rule_code}: {diagnostic.message}")
     return int(not result.valid)
+
+
+def _run_contract_evidence(args: argparse.Namespace) -> int:
+    try:
+        audit = audit_evidence_stages(args.path)
+    except ContractInstrumentError as exc:
+        print(f"[ERROR] contract evidence instrument failed: {exc}", file=sys.stderr)
+        return 2
+
+    if args.format == "json":
+        print(json.dumps(audit.as_dict(), separators=(",", ":"), sort_keys=True))
+        return 0
+    counts = " ".join(f"{stage}={audit.counts[stage]}" for stage in sorted(audit.counts))
+    print(f"evidence: {counts}")
+    print(f"unlicensed: {len(audit.unlicensed)}")
+    for item in audit.unlicensed:
+        print(f"{item.path}: invariant {item.invariant_index}: {item.issue}")
+    print(f"unknown: {len(audit.unknowns)}")
+    for item in audit.unknowns:
+        print(f"{item.path}: invariant {item.invariant_index}: Unknown")
+    return 0
 
 
 def _run_structure_check(args: argparse.Namespace) -> int:
@@ -366,6 +387,20 @@ def _run_study(args: argparse.Namespace) -> int:
             result = assign_pair(args.pair_log)
             print(result)
             return 0
+        if args.action == "accept":
+            result = accept_arm(
+                args.pair_log,
+                arm=args.arm,
+                checker=args.checker,
+                maker=args.maker,
+                verify_command=args.verify,
+                cwd=args.cwd,
+            )
+            print(
+                f"accepted {result.arm} arm on {Path(args.pair_log).stem} "
+                f"(exit {result.exit_code})"
+            )
+            return 0
         pairs = list_pairs(args.repository)
         if args.format == "json":
             print(
@@ -570,6 +605,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="text prints diagnostics; json prints a stable machine-readable payload",
     )
     check.set_defaults(handler=_run_contract_check)
+    evidence = contract_actions.add_parser(
+        "evidence",
+        help="report Evidence Stage counts and unlicensed Sampled/Measured/Proved claims",
+        formatter_class=defaults_formatter,
+    )
+    evidence.add_argument(
+        "path", type=Path, help="a SYSTEM.md file, or a directory checked recursively for them"
+    )
+    evidence.add_argument(
+        "--format",
+        choices=("text", "json"),
+        default="text",
+        help="text prints a summary; json prints a stable machine-readable payload",
+    )
+    evidence.set_defaults(handler=_run_contract_evidence)
 
     structure = commands.add_parser(
         "structure",
@@ -821,6 +871,40 @@ def build_parser() -> argparse.ArgumentParser:
     )
     study_list.add_argument("--format", choices=("text", "json"), default="text")
     study_list.set_defaults(handler=_run_study)
+    study_accept = study_actions.add_parser(
+        "accept",
+        help="record an independent arm accept after a verify command exits 0",
+        formatter_class=defaults_formatter,
+    )
+    study_accept.add_argument("pair_log", type=Path, help="assigned pair markdown")
+    study_accept.add_argument(
+        "--arm",
+        required=True,
+        choices=("recurspec", "baseline"),
+        help="which assigned arm is being accepted",
+    )
+    study_accept.add_argument(
+        "--checker",
+        required=True,
+        help="identity of the independent checker (must differ from --maker)",
+    )
+    study_accept.add_argument(
+        "--maker",
+        required=True,
+        help="identity of the implementor",
+    )
+    study_accept.add_argument(
+        "--verify",
+        required=True,
+        help="shell command that must exit 0 before the pair log is updated",
+    )
+    study_accept.add_argument(
+        "--cwd",
+        type=Path,
+        default=Path("."),
+        help="working directory for the verify command",
+    )
+    study_accept.set_defaults(handler=_run_study)
     return parser
 
 

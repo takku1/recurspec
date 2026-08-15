@@ -4,8 +4,10 @@ from pathlib import Path
 
 import pytest
 
+from recurspec.cli import main
 from recurspec.contract import (
     ContractInstrumentError,
+    audit_evidence_stages,
     build_tree_index,
     decision_class,
     resolve_child_path,
@@ -357,7 +359,11 @@ def test_validate_contract_accepts_wrapped_invariants_from_the_contract_engine_s
         ),
         "evidence_stage": "Sampled",
     }
-    assert len(result.contracts[0]["invariants"]) == 8
+    assert len(result.contracts[0]["invariants"]) == 9
+    assert result.contracts[0]["invariants"][-1]["ears_pattern"] == "Event-driven"
+    assert "test_evidence_audit_lists_unlicensed_sampled_and_counts_unknown" in (
+        result.contracts[0]["invariants"][-1]["statement"]
+    )
 
 
 def test_recurspecs_own_architecture_tree_passes_its_own_contract_engine():
@@ -560,3 +566,80 @@ Fixture node.
 
     with pytest.raises(ContractInstrumentError):
         build_tree_index(tree)
+
+
+def test_evidence_audit_lists_unlicensed_sampled_and_counts_unknown(tmp_path: Path):
+    contract = tmp_path / "SYSTEM.md"
+    contract.write_text(
+        """# Evidence Audit Leaf (L2)
+
+<!-- recurspec-contract: 1.0 -->
+
+## 1. System Intent & Responsibility
+
+Audit fixture.
+
+## 2. Sub-System Decomposition
+
+Atomic leaf.
+
+## 3. Interface Contracts
+
+- **Inputs:** Markdown.
+- **Outputs:** Diagnostics.
+
+## 4. Invariants (EARS + Epistemic Stage)
+
+- **[Ubiquitous]** THE SYSTEM SHALL emit deterministic diagnostics. (`test_foo`)
+  - `EvidenceStage:` Sampled
+- **[Event-driven]** WHEN validation begins THE SYSTEM SHALL load the bundled schema.
+  - `EvidenceStage:` Sampled
+- **[State-driven]** WHILE a directory is checked THE SYSTEM SHALL inspect every Contract Node.
+  - `EvidenceStage:` Unknown
+
+## 5. Architectural Decisions (ADRs)
+
+- **ADR-001:** Use a public validation seam.
+
+## 6. Leaf Execution & Test Seam
+
+- **Implementation Files:** `src/example.py`.
+- **Test Surface Seam:** `tests/test_example.py`.
+
+## 7. Measurement Seams
+
+- **Primary Metric:** valid fixture acceptance rate.
+
+## 8. Technology Resolution
+
+- **Decision class:** BUILD
+- **Selected:** Python.
+""",
+        encoding="utf-8",
+    )
+
+    audit = audit_evidence_stages(contract)
+
+    assert audit.counts["Sampled"] == 2
+    assert audit.counts["Unknown"] == 1
+    assert audit.counts["Measured"] == 0
+    assert len(audit.unlicensed) == 1
+    assert audit.unlicensed[0].stage == "Sampled"
+    assert "names no check" in audit.unlicensed[0].issue
+    assert len(audit.unknowns) == 1
+    assert audit.unknowns[0].stage == "Unknown"
+    assert validate_contract(contract).valid
+
+
+def test_contract_evidence_cli_is_observation_only(tmp_path: Path, capsys):
+    import json
+
+    source = Path("tests/fixtures/contracts/valid/SYSTEM.md")
+    copy = tmp_path / "SYSTEM.md"
+    copy.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+
+    assert main(["contract", "evidence", str(copy), "--format", "json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["unlicensed"]
+    assert payload["counts"]["Sampled"] >= 1
+    assert validate_contract(copy).valid

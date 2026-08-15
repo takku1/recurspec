@@ -138,6 +138,7 @@ parallel scripts.
 | `recurspec status REPO` | First action: classify `missing` / `not_recurspec` / `invalid` / `valid` |
 | `recurspec fanout --item ...` | Split a work list into one strategy handoff per item |
 | `recurspec contract check PATH` | Validate one node or a Contract Tree |
+| `recurspec contract evidence PATH` | Count Evidence Stages; list Sampled/Measured/Proved claims that name no check. Observation only |
 | `recurspec structure check REPO` | Detect uncontracted symbols and §6 drift |
 | `recurspec stack check REPO` | Audit §8 fields and pins |
 | `recurspec reconcile plan REPO` | Draft-only Structural Feedback actions |
@@ -147,6 +148,7 @@ parallel scripts.
 | `recurspec frontier check REPO` | Verify every ticket still points at a Contract Node |
 | `recurspec corpus export --output FILE --i-opt-in` | Redacted decision corpus; refuses without `--i-opt-in` |
 | `recurspec study init/assign/list` | R-400 pair log + coin flip before either arm starts |
+| `recurspec study accept` | Record an independent arm accept after a verify command exits 0; refuses maker = checker |
 | `recurspec skills install --target grok` | Install this skill to `$GROK_HOME/skills` |
 
 Optional extra `recurspec[runtime]` pins the packet-only Messages adapter. The Worker

@@ -1,13 +1,37 @@
+import sys
 from pathlib import Path
 
 from recurspec.cli import main
 from recurspec.study import (
     StudyInstrumentError,
+    accept_arm,
     assign_pair,
     check_contamination,
     init_pair,
     is_recurspec_repository,
 )
+
+
+def _assigned_pair(tmp_path: Path, pair_id: str = "locus-01") -> Path:
+    subject = tmp_path / "other"
+    if not subject.exists():
+        subject.mkdir()
+        (subject / "pyproject.toml").write_text('name = "other"\n', encoding="utf-8")
+    log = init_pair(
+        tmp_path,
+        pair_id=pair_id,
+        project=str(subject),
+        task_a="Task A",
+        task_b="Task B",
+        hours="4h",
+        baseline="existing open-work tickets",
+    )
+    assign_pair(log)
+    return log
+
+
+def _verify(code: str) -> str:
+    return f'"{sys.executable}" -c "{code}"'
 
 
 def test_is_recurspec_repository_detects_this_package():
@@ -140,3 +164,115 @@ def test_study_list_cli(tmp_path: Path, capsys):
     output = capsys.readouterr().out
     assert "gg-01" in output
     assert "unassigned" in output
+
+
+def test_init_pair_includes_an_arm_start_section(tmp_path: Path):
+    subject = tmp_path / "other"
+    subject.mkdir()
+    log = init_pair(
+        tmp_path,
+        pair_id="fresh-01",
+        project=str(subject),
+        task_a="A",
+        task_b="B",
+        hours="2h",
+        baseline="tickets",
+    )
+    text = log.read_text(encoding="utf-8")
+    assert "## Arm start (observed, not a-priori)" in text
+    assert "Accepted implementation: no." in text
+
+
+def test_accept_arm_records_a_passing_verify_command(tmp_path: Path):
+    log = _assigned_pair(tmp_path)
+    result = accept_arm(
+        log,
+        arm="recurspec",
+        checker="alice@example.com",
+        maker="bob@example.com",
+        verify_command=_verify("raise SystemExit(0)"),
+        cwd=tmp_path,
+    )
+
+    assert result.exit_code == 0
+    assert result.arm == "recurspec"
+    assert result.checker == "alice@example.com"
+    assert result.maker == "bob@example.com"
+    text = log.read_text(encoding="utf-8")
+    assert "alice@example.com" in text
+    assert "bob@example.com" in text
+    assert "Accepted Recurspec arm:" in text
+    assert "exit: 0" in text
+    assert "Accepted implementation: yes (Recurspec arm," in text
+
+
+def test_accept_arm_refuses_a_failing_verify_and_leaves_the_log(tmp_path: Path):
+    log = _assigned_pair(tmp_path)
+    before = log.read_text(encoding="utf-8")
+
+    try:
+        accept_arm(
+            log,
+            arm="baseline",
+            checker="alice",
+            maker="bob",
+            verify_command=_verify("raise SystemExit(1)"),
+            cwd=tmp_path,
+        )
+    except StudyInstrumentError as exc:
+        assert "exit 1" in str(exc)
+    else:
+        raise AssertionError("expected refuse failing verify")
+    assert log.read_text(encoding="utf-8") == before
+
+
+def test_accept_arm_refuses_same_identity_before_running_verify(tmp_path: Path):
+    log = _assigned_pair(tmp_path)
+    marker = tmp_path / "ran"
+    before = log.read_text(encoding="utf-8")
+
+    try:
+        accept_arm(
+            log,
+            arm="recurspec",
+            checker="same-person",
+            maker="same-person",
+            verify_command=_verify(
+                f"from pathlib import Path; Path(r'{marker}').write_text('ran')"
+            ),
+            cwd=tmp_path,
+        )
+    except StudyInstrumentError as exc:
+        assert "must differ" in str(exc)
+    else:
+        raise AssertionError("expected refuse self-accept")
+    assert not marker.exists()
+    assert log.read_text(encoding="utf-8") == before
+
+
+def test_study_accept_cli(tmp_path: Path, capsys):
+    log = _assigned_pair(tmp_path, pair_id="cli-01")
+    code = main(
+        [
+            "study",
+            "accept",
+            str(log),
+            "--arm",
+            "baseline",
+            "--checker",
+            "checker",
+            "--maker",
+            "maker",
+            "--verify",
+            _verify("raise SystemExit(0)"),
+            "--cwd",
+            str(tmp_path),
+        ]
+    )
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "cli-01" in output
+    assert "baseline" in output
+    text = log.read_text(encoding="utf-8")
+    assert "Accepted Baseline arm:" in text

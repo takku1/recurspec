@@ -25,8 +25,11 @@ seam and cannot fail independently from a user's perspective.
   on `**Inputs:**` and `**Outputs:**` lines. Descriptive prose remains human context but
   does not create a port.
 - **CLI:** `recurspec contract check PATH [--format text|json]`;
+  `recurspec contract evidence PATH [--format text|json]`;
   `recurspec status REPO` classifies a repository using this engine plus filesystem facts.
 - **Exit status:** `0` valid, `1` contract invalid, `2` validation instrument failed.
+  `contract evidence` exits `0` after a successful report and `2` if the instrument
+  failed; unlicensed stages are not a validity failure.
   `status` exits `0` after a successful inspection and `2` if the repository cannot be
   read; missing probes change `route`, not the process exit.
 
@@ -54,6 +57,11 @@ seam and cannot fail independently from a user's perspective.
   - `EvidenceStage:` Sampled
 - **[Conditional]** IF a parent declares an output port THEN THE SYSTEM SHALL require that
   port to be available after child interface composition reaches a fixed point.
+  - `EvidenceStage:` Sampled
+- **[Event-driven]** WHEN the evidence report runs THE SYSTEM SHALL count every
+  recognized Evidence Stage and SHALL list Sampled, Measured, and Proved
+  invariants that name no check, without treating those listings as validity
+  failures. (`test_evidence_audit_lists_unlicensed_sampled_and_counts_unknown`)
   - `EvidenceStage:` Sampled
 
 ## 5. Architectural Decisions (ADRs)

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import re
 import secrets
+import subprocess
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +18,17 @@ ASSIGNED_RE = re.compile(
 )
 UNASSIGNED = "unassigned"
 _TICKET_ID_RE = re.compile(r"\b[A-Z]+(?:-[A-Z]+)*-\d+\b")
+_ARM_START_SECTION = re.compile(
+    r"(?P<heading>^## Arm start[^\n]*\n)(?P<body>.*?)(?=^## |\Z)",
+    re.MULTILINE | re.DOTALL,
+)
+_ARM_LABEL = {"recurspec": "Recurspec arm", "baseline": "Baseline arm"}
+VERIFY_TIMEOUT_SECONDS = 1800
+OUTPUT_TAIL_CHARS = 2000
+_ACCEPTED_NO_RE = re.compile(
+    r"^- Accepted implementation: no\.[^\n]*$",
+    re.MULTILINE,
+)
 
 
 class StudyInstrumentError(RuntimeError):
@@ -37,6 +50,28 @@ class StudyPair:
             "pair_id": self.pair_id,
             "path": self.path,
             "project": self.project,
+        }
+
+
+@dataclass(frozen=True)
+class AcceptResult:
+    arm: str
+    checker: str
+    maker: str
+    verify_command: str
+    exit_code: int
+    timestamp: str
+    output_tail: str
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "arm": self.arm,
+            "checker": self.checker,
+            "exit_code": self.exit_code,
+            "maker": self.maker,
+            "output_tail": self.output_tail,
+            "timestamp": self.timestamp,
+            "verify_command": self.verify_command,
         }
 
 
@@ -95,6 +130,10 @@ def _render_log(
         "## Manual Evaluation Gate overrides\n\n"
         "| When | Gate would have | Human did | Reason |\n"
         "|---|---|---|---|\n\n"
+        "## Arm start (observed, not a-priori)\n\n"
+        "- Recurspec arm started: not started\n"
+        "- Baseline arm started: not started\n"
+        "- Accepted implementation: no. Do not fill wall-clock until an independent accept.\n\n"
         "## Post-hoc metrics\n\n"
         "List any number reported that is not in the protocol §5 table. "
         "Label each `post-hoc`.\n"
@@ -301,3 +340,129 @@ def list_pairs(repository: str | Path, *, pair_dir: str = DEFAULT_PAIR_DIR) -> l
             )
         )
     return pairs
+
+
+def _output_tail(completed: subprocess.CompletedProcess[str]) -> str:
+    blob = ((completed.stdout or "") + (completed.stderr or "")).replace("\r\n", "\n")
+    blob = blob.strip()
+    if len(blob) > OUTPUT_TAIL_CHARS:
+        blob = blob[-OUTPUT_TAIL_CHARS:]
+    return blob.replace("```", "'''")
+
+
+def _format_accept_record(result: AcceptResult) -> str:
+    label = _ARM_LABEL[result.arm]
+    tail = result.output_tail or "(empty)"
+    tail_lines = "\n".join(f"    {line}" for line in tail.splitlines()) or "    (empty)"
+    return (
+        f"- Accepted {label}: {result.timestamp}\n"
+        f"  - checker: {result.checker}\n"
+        f"  - maker: {result.maker}\n"
+        f"  - verify: `{result.verify_command}`\n"
+        f"  - exit: {result.exit_code}\n"
+        f"  - output tail:\n{tail_lines}"
+    )
+
+
+def _append_arm_start_record(text: str, *, arm: str, timestamp: str, record: str) -> str:
+    label = _ARM_LABEL[arm]
+    text = _ACCEPTED_NO_RE.sub(
+        f"- Accepted implementation: yes ({label}, {timestamp})",
+        text,
+        count=1,
+    )
+    match = _ARM_START_SECTION.search(text)
+    if match:
+        body = match.group("body").rstrip() + "\n" + record + "\n"
+        return text[: match.start()] + match.group("heading") + body + text[match.end() :]
+    section = f"## Arm start (observed, not a-priori)\n\n{record}\n"
+    marker = "## Post-hoc metrics"
+    idx = text.find(marker)
+    if idx != -1:
+        return text[:idx] + section + "\n" + text[idx:]
+    return text.rstrip() + "\n\n" + section
+
+
+def accept_arm(
+    path: str | Path,
+    *,
+    arm: str,
+    checker: str,
+    maker: str,
+    verify_command: str,
+    cwd: str | Path | None = None,
+) -> AcceptResult:
+    if arm not in _ARM_LABEL:
+        raise StudyInstrumentError(
+            f"arm must be one of {', '.join(sorted(_ARM_LABEL))}"
+        )
+    checker = checker.strip()
+    maker = maker.strip()
+    if not checker or not maker:
+        raise StudyInstrumentError("checker and maker identities are required")
+    if checker == maker:
+        raise StudyInstrumentError("maker and checker must differ; refusing self-accept")
+    if not verify_command or not str(verify_command).strip():
+        raise StudyInstrumentError("verify command is required")
+
+    log = Path(path)
+    try:
+        text = log.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        raise StudyInstrumentError(f"could not read pair log: {exc}") from exc
+    assigned_match = ASSIGNED_RE.search(text)
+    if assigned_match is None:
+        raise StudyInstrumentError("pair log is missing the assignment field")
+    current = assigned_match.group(1).strip()
+    if not current or current == UNASSIGNED:
+        raise StudyInstrumentError(
+            "pair is unassigned; refuse to accept before a coin flip"
+        )
+
+    workdir = Path(cwd) if cwd is not None else Path.cwd()
+    if not workdir.is_dir():
+        raise StudyInstrumentError(f"verify cwd is not a directory: {workdir}")
+
+    try:
+        completed = subprocess.run(
+            verify_command,
+            cwd=str(workdir),
+            capture_output=True,
+            text=True,
+            shell=True,
+            timeout=VERIFY_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise StudyInstrumentError(
+            f"verify command timed out after {VERIFY_TIMEOUT_SECONDS}s"
+        ) from exc
+    except OSError as exc:
+        raise StudyInstrumentError(f"could not run verify command: {exc}") from exc
+
+    tail = _output_tail(completed)
+    if completed.returncode != 0:
+        detail = f": {tail}" if tail else ""
+        raise StudyInstrumentError(
+            f"verify command failed (exit {completed.returncode}); pair log not updated{detail}"
+        )
+
+    timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    result = AcceptResult(
+        arm=arm,
+        checker=checker,
+        maker=maker,
+        verify_command=verify_command,
+        exit_code=completed.returncode,
+        timestamp=timestamp,
+        output_tail=tail,
+    )
+    log.write_text(
+        _append_arm_start_record(
+            text,
+            arm=arm,
+            timestamp=timestamp,
+            record=_format_accept_record(result),
+        ),
+        encoding="utf-8",
+    )
+    return result

@@ -23,6 +23,9 @@ def test_parser_exposes_the_public_commands():
     )
     skills = parser.parse_args(["skills", "check", "--target", "grok"])
     contract = parser.parse_args(["contract", "check", "docs"])
+    contract_evidence = parser.parse_args(
+        ["contract", "evidence", "docs", "--format", "json"]
+    )
     structure = parser.parse_args(["structure", "check", ".", "--format", "json"])
     reconcile = parser.parse_args(["reconcile", "plan", ".", "--format", "json"])
     stack = parser.parse_args(["stack", "check", ".", "--format", "json"])
@@ -36,6 +39,21 @@ def test_parser_exposes_the_public_commands():
     )
     corpus = parser.parse_args(
         ["corpus", "export", "--output", "corpus.jsonl", "--i-opt-in"]
+    )
+    study_accept = parser.parse_args(
+        [
+            "study",
+            "accept",
+            "pair.md",
+            "--arm",
+            "recurspec",
+            "--checker",
+            "alice",
+            "--maker",
+            "bob",
+            "--verify",
+            "pytest",
+        ]
     )
 
     assert evaluate.module == "checkout"
@@ -59,6 +77,14 @@ def test_parser_exposes_the_public_commands():
     assert corpus.action == "export"
     assert corpus.i_opt_in is True
     assert contract.path == Path("docs")
+    assert contract_evidence.action == "evidence"
+    assert contract_evidence.path == Path("docs")
+    assert contract_evidence.format == "json"
+    assert study_accept.action == "accept"
+    assert study_accept.arm == "recurspec"
+    assert study_accept.checker == "alice"
+    assert study_accept.maker == "bob"
+    assert study_accept.verify == "pytest"
 
 
 @pytest.mark.parametrize("bad_tolerance", ["nan", "inf", "-1"])
@@ -94,6 +120,7 @@ def test_every_cli_argument_documents_itself():
     fanout = parser._subparsers._group_actions[0].choices["fanout"]
     contract = parser._subparsers._group_actions[0].choices["contract"]
     check = contract._subparsers._group_actions[0].choices["check"]
+    contract_evidence = contract._subparsers._group_actions[0].choices["evidence"]
     modules_check = (
         parser._subparsers._group_actions[0]
         .choices["modules"]
@@ -106,6 +133,12 @@ def test_every_cli_argument_documents_itself():
         ._subparsers._group_actions[0]
         .choices["export"]
     )
+    study_accept = (
+        parser._subparsers._group_actions[0]
+        .choices["study"]
+        ._subparsers._group_actions[0]
+        .choices["accept"]
+    )
 
     for subparser in (
         evaluate,
@@ -113,8 +146,10 @@ def test_every_cli_argument_documents_itself():
         status,
         fanout,
         check,
+        contract_evidence,
         modules_check,
         corpus_export,
+        study_accept,
     ):
         for action in actions(subparser):
             assert action.help, f"{subparser.prog} {action.dest} is missing help text"
