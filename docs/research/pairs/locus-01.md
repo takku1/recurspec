@@ -27,7 +27,7 @@ Locus ROADMAP + docs/open-work.md alias; implement on main; cargo test / cargo c
 
 | Measure | Recurspec arm | Baseline arm | Source |
 |---|---|---|---|
-| Wall-clock to first accepted implementation | unknown | unknown | |
+| Wall-clock to first accepted implementation | ~27 min (2026-08-15 01:06 first edit -> 01:33 accept) | unknown | mtime of `records.rs` -> checker accept, this session |
 | Review round-trips | unknown | unknown | |
 | Reverted or redone work | unknown | unknown | |
 | Structure-Gate diagnostics caught before merge | unknown | n/a | |
@@ -45,9 +45,11 @@ Locus ROADMAP + docs/open-work.md alias; implement on main; cargo test / cargo c
 
 - Recurspec arm started: 2026-08-15 after assignment (not accepted; NEED_CHECKER)
 - Recurspec arm work this session: added catalog rule `numerical.one_minus_exp` (`1-exp(x) ≡ -expm1(x)`) plus `one_minus_exp_is_a_catalog_hit` (7 catalog_hit lib tests passed). Horner/expm1/conjugate/hypot were already in RULES_ACCURACY.
-- Baseline arm started: not started
-- Accepted implementation: no. Do not fill wall-clock until an independent accept.
+- Baseline arm started: contaminated, not validly started (see Post-hoc metrics). Do not run R-ARCH-13 as this pair's baseline arm without a checker decision.
+- Accepted implementation: yes. Recurspec arm accepted 2026-08-15 ~01:33 by checker dillon.c.carney@gmail.com (independent of implementor session). Committed `3de12f6` (4 files: `catalog_hit.rs`, `rules/mod.rs`, `rules/records.rs`, `rules/registry.rs` only — Locus main carries ~230 unrelated uncommitted paths from prior work, left untouched). Tests: `cargo test -p locus-engine rules::catalog_hit` (8 passed).
 
 ## Post-hoc metrics
 
 List any number reported that is not in the protocol §5 table. Label each `post-hoc`.
+
+- post-hoc: **Baseline-arm contamination discovered 2026-08-15.** Locus's own `ROADMAP.md:32` already lists R-ARCH-13 as `active (2026-08-15: CatalogIndex genome lookup ...; NEED_CHECKER)`, and `.recurspec/handoffs/strategy-R-ARCH-13.md` exists (a Recurspec fanout/strategy artifact, KEEP gate NEED_CHECKER, target `docs/architecture/search/catalog-rules/SYSTEM.md`). The `CatalogIndex`/`CatalogPriority` code that *is* R-ARCH-13's exit gate ("catalog priority index for N2") is the same `catalog_hit.rs` that shipped as scaffolding for the R-U-02 Recurspec-arm tests above. R-ARCH-13 was therefore (a) already substantially implemented before this pair's baseline arm could start, and (b) implemented via Recurspec-style artifacts (Contract Tree doc target, strategy handoff, KEEP gate) rather than the pre-registered "plain workflow" baseline condition. This pair's baseline arm cannot honestly be run as originally assigned — needs a checker decision: void pair locus-01's baseline leg, substitute a fresh unstarted Locus ticket as the baseline arm, or document R-ARCH-13 as a disqualified/contaminated observation.
