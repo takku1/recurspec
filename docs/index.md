@@ -10,7 +10,7 @@ layer of detail; the bundled skill loads them only when its current route requir
 2. [Project fit and progressive adoption](./adoption.md)
 3. [Canonical language](../CONTEXT.md)
 4. [Contract design](./process/contract-design.md)
-5. [Worked identity design](./examples/identity-design.md)
+5. [Published Contract Tree example](./examples/log-archive/SYSTEM.md)
 6. [Evidence cycle and adaptive planning](./process/evidence-cycle.md)
 
 ## Design process
@@ -25,12 +25,14 @@ layer of detail; the bundled skill loads them only when its current route requir
 ## Architecture
 
 The recursive architecture starts at [architecture/SYSTEM.md](./architecture/SYSTEM.md).
-Each directory contains one `SYSTEM.md` Contract Node. These documents describe intended
-modules and clearly label work that has not yet been implemented.
+Each directory contains one `SYSTEM.md` Contract Node. Implementation and test seams are
+declared in §6; incomplete work is recorded only in `ROADMAP.md`.
 
 ## Evidence and project status
 
 - [Research foundations](./research/foundations.md) contains source-backed rationale.
+- [Constrained-creativity survey](./research/constrained-creativity.md) bounds what the
+  supporting literature does and does not license.
 - [Evaluation protocol](./research/evaluation-protocol.md) is the pre-registered plan for
   R-400–R-403; it commits to metrics and analysis before any outcome data exists.
 - [Case-study log](./research/case-study-log.md) is the empty apparatus for those studies.

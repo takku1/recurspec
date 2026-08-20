@@ -1,4 +1,4 @@
-"""Publish Research Frontiers to a local markdown tracker (R-303).
+"""Publish Research Frontiers to a local markdown tracker.
 
 Incomplete product work stays in ROADMAP.md. This adapter writes claimable
 Research Frontier tickets linked to a Contract Node. It does not invent a

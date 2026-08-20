@@ -36,27 +36,34 @@ seam and cannot fail independently from a user's perspective.
 ## 4. Invariants (EARS + Epistemic Stage)
 
 - **[Ubiquitous]** The Contract Engine SHALL validate normalized Contract Nodes against
-  JSON Schema Draft 2020-12.
+  JSON Schema Draft 2020-12. (`test_validate_contract_accepts_a_complete_versioned_atomic_leaf`)
   - `EvidenceStage:` Sampled
 - **[Ubiquitous]** The Contract Engine SHALL report diagnostics in byte-stable order.
+  (`test_contract_diagnostics_are_stable_across_repeated_validation`)
   - `EvidenceStage:` Sampled
 - **[Conditional]** IF a Contract Node is an Atomic Leaf THEN THE SYSTEM SHALL require
   Sections 6, 7, and 8.
+  (`test_validate_contract_rejects_an_atomic_leaf_missing_execution_sections`)
   - `EvidenceStage:` Sampled
 - **[Conditional]** IF an invariant lacks a recognized EARS pattern or Evidence Stage
   THEN THE SYSTEM SHALL reject the Contract Node.
+  (`test_contract_check_cli_uses_distinct_valid_invalid_and_instrument_exit_codes`)
   - `EvidenceStage:` Sampled
 - **[Conditional]** IF a directory is checked THEN THE SYSTEM SHALL validate every
   recursively discovered `SYSTEM.md` file.
+  (`test_validate_contract_accepts_an_independently_authored_two_stage_tree`)
   - `EvidenceStage:` Sampled
 - **[Conditional]** IF a non-Atomic Contract Node links children THEN THE SYSTEM SHALL
   require every link to resolve within the checked tree at exactly the next level.
+  (`test_validate_contract_rejects_a_child_at_the_wrong_level`)
   - `EvidenceStage:` Sampled
 - **[Conditional]** IF a child declares an input port THEN THE SYSTEM SHALL require that
   port to be supplied by the parent input boundary or an already satisfiable sibling.
+  (`test_validate_contract_reports_each_input_without_an_available_producer`)
   - `EvidenceStage:` Sampled
 - **[Conditional]** IF a parent declares an output port THEN THE SYSTEM SHALL require that
   port to be available after child interface composition reaches a fixed point.
+  (`test_validate_contract_rejects_an_interface_dependency_cycle`)
   - `EvidenceStage:` Sampled
 - **[Event-driven]** WHEN the evidence report runs THE SYSTEM SHALL count every
   recognized Evidence Stage and SHALL list Sampled, Measured, and Proved

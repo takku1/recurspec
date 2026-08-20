@@ -17,6 +17,8 @@ def _tracked_published_markdown() -> list[Path]:
         if not relative.endswith(".md"):
             continue
         path = ROOT / relative
+        if not path.is_file():
+            continue
         if (
             path.parent == ROOT
             or ROOT.joinpath("docs") in path.parents
@@ -69,6 +71,76 @@ def test_legacy_public_names_do_not_return():
                 offenders.append(f"{document.relative_to(ROOT)}: {term}")
 
     assert offenders == []
+
+
+def test_current_docs_do_not_reintroduce_retired_workflow_surfaces():
+    """Current documentation is one interface; history and subject-study logs are not."""
+    retired = (
+        ".scratch/wayfinder-map",
+        "Type A/B",
+        "Type B",
+        "OW candidate",
+        "docs/archive/",
+        "None of the three exist yet",
+    )
+    excluded = {
+        ROOT / "CHANGELOG.md",
+        ROOT / "CONTEXT.md",  # Names retired terms in its explicit Avoid list.
+    }
+    pairs_dir = ROOT / "docs" / "research" / "pairs"
+    offenders: list[str] = []
+    for document in PUBLISHED_MARKDOWN:
+        if document in excluded or pairs_dir in document.parents:
+            continue
+        text = document.read_text(encoding="utf-8")
+        for term in retired:
+            if term in text:
+                offenders.append(f"{document.relative_to(ROOT)}: {term}")
+
+    assert offenders == []
+
+
+def test_top_level_docs_are_reachable_from_the_index():
+    index = (ROOT / "docs" / "index.md").read_text(encoding="utf-8")
+    unindexed = [
+        path.name
+        for path in sorted((ROOT / "docs").glob("*.md"))
+        if path.name != "index.md" and f"./{path.name}" not in index
+    ]
+
+    assert unindexed == []
+
+
+def test_roadmap_references_and_blockers_name_open_items():
+    roadmap = (ROOT / "ROADMAP.md").read_text(encoding="utf-8")
+    open_ids = set(re.findall(r"^\| (R-\d{3}) \|", roadmap, flags=re.MULTILINE))
+    stale: list[str] = []
+
+    for document in PUBLISHED_MARKDOWN:
+        if document.name == "CHANGELOG.md" or "pairs" in document.parts:
+            continue
+        for line_number, line in enumerate(
+            document.read_text(encoding="utf-8").splitlines(), start=1
+        ):
+            if "ROADMAP" not in line:
+                continue
+            for ticket in re.findall(r"(?<!AD)R-\d{3}", line):
+                if ticket not in open_ids:
+                    stale.append(
+                        f"{document.relative_to(ROOT)}:{line_number}: {ticket}"
+                    )
+
+    for line_number, line in enumerate(roadmap.splitlines(), start=1):
+        if not line.startswith("| R-"):
+            continue
+        fields = [field.strip() for field in line.strip("|").split("|")]
+        if len(fields) < 4 or fields[2] != "blocked":
+            continue
+        for blocker in re.findall(r"(?<!AD)R-\d{3}", fields[3]):
+            if blocker not in open_ids:
+                stale.append(f"ROADMAP.md:{line_number}: blocker {blocker}")
+
+    assert stale == []
 
 
 def test_local_scratch_state_is_never_committed():

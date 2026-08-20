@@ -79,3 +79,27 @@ def test_bundled_probes_never_invoke_a_bare_python_command():
                 offenders.append(f"{script.relative_to(REPO_ROOT)}: {stripped}")
 
     assert offenders == []
+
+
+def test_measurement_template_refuses_to_invent_a_default_metric():
+    if gate._bash() is None:
+        pytest.skip("no POSIX shell available to run the probe template")
+
+    template = REPO_ROOT / "examples" / "module" / "measure.sh"
+    code, out, err = gate.run_script(str(template), "example", cwd=REPO_ROOT, timeout=30)
+
+    assert code == 2
+    assert '"value"' not in out
+    assert "replace" in err.lower()
+
+
+def test_correctness_template_refuses_to_pass_without_assertions():
+    if gate._bash() is None:
+        pytest.skip("no POSIX shell available to run the probe template")
+
+    template = REPO_ROOT / "examples" / "module" / "checks.sh"
+    code, out, err = gate.run_script(str(template), "example", cwd=REPO_ROOT, timeout=30)
+
+    assert code == 2
+    assert "pass" not in out.lower()
+    assert "replace" in err.lower()

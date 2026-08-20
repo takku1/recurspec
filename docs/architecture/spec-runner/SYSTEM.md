@@ -24,16 +24,12 @@ lines (contract-design §4):
 | Child | Class | Responsibility |
 |-------|-------|----------------|
 | [job-store](./job-store/SYSTEM.md) | ADOPT | Durable node state, work queue, content hashes, survey cache |
-| [worker-pool](./worker-pool/SYSTEM.md) | ADOPT | Isolated agent execution of one node's loop turn |
+| [worker-pool](./worker-pool/SYSTEM.md) | BUILD | Bounded dispatch policy over an injected runtime adapter |
 | [context-packer](./context-packer/SYSTEM.md) | BUILD | Assemble the minimal packet a node needs; enforce the budget |
 
-Two are procured and terminate immediately; only the packer is custom, because only the
-packer encodes Recurspec's own §-structure. That ratio is the point.
-
-None of the three exist yet. When built, all three share one `src/recurspec/spec_runner/`
-subpackage rather than three unrelated top-level packages — the grouping in this table is
-the code layout, not just the doc layout, so the tree and the source cannot silently
-drift apart on this point.
+The Job Store adopts SQLite. Worker Pool and Context Packer remain custom because they
+encode Recurspec's dispatch and contract-packet policies. All three share the
+`src/recurspec/spec_runner/` subpackage, preserving the parent seam in the code layout.
 
 **Distinct failure modes** (depth guard 3): store corrupt → resume impossible; worker
 fails → node never specified; packer wrong → bad spec or blown budget. Independent.
@@ -106,8 +102,8 @@ fails → node never specified; packer wrong → bad spec or blown budget. Indep
 - **ADR-006: Parallelism buys latency, not tokens.** Worker fan-out is a wall-clock
   optimization and mildly *increases* token spend (each cold worker re-reads its packet).
   Recorded explicitly so the swarm is never mistaken for the cost lever.
-- **ADR-007: Workers get a contract card, not the skill essay.** The card is generated from `src/recurspec/skill/references/design.md`
-  is ~200 lines written for an architect. A worker needs the phase checklist and the §8
+- **ADR-007: Workers get a contract card, not the skill essay.** The design reference is
+  written for an architect. A worker needs the phase checklist and the §8
   field list. Shipping the full essay to every node is the largest avoidable repeated cost
   in the system, and the card is a stable prefix that caches well across workers.
 - **ADR-008: Procurement pruning is the primary cost control, and it already exists.** The
@@ -131,5 +127,4 @@ Ranked by savings, largest first. Only the last two are new machinery:
 
 - **Package implementation glue:** `src/recurspec/spec_runner/__init__.py`.
 
-Not an atomic leaf. Its child modules are tracked by ROADMAP R-104, R-201, R-202, and
-R-204.
+Not an atomic leaf. Each child owns its implementation, tests, and measurement probes.

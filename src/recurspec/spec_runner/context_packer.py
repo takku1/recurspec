@@ -2,7 +2,7 @@
 
 Implements docs/architecture/spec-runner/context-packer/SYSTEM.md. Operates on nodes
 that already exist as a ``SYSTEM.md`` file (even a draft); framing a genuinely new node
-that has no file yet is Runner-level orchestration (R-200), not this leaf's job.
+that has no file yet is Runner-level orchestration, not this leaf's job.
 """
 
 from __future__ import annotations

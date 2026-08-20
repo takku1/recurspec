@@ -1,4 +1,4 @@
-"""Map changed files to measurable modules and run their probes (R-203).
+"""Map changed files to measurable modules and run their probes.
 
 This is CI-side evaluation of already-merged or in-branch module probes. It is
 not isolated Candidate evaluation and does not issue KEEP/REVERT.

@@ -3,7 +3,7 @@
 Implements docs/architecture/spec-runner/worker-pool/SYSTEM.md. This module owns the
 policy - budget enforcement, phase-to-tier routing, maker != checker, and the
 concurrency cap - not a concrete agent-runtime integration. The production adapter is
-``messages_runtime`` in ``runtime.py`` (R-204): a WRAP over an official Messages API
+``messages_runtime`` in ``runtime.py``: a WRAP over an official Messages API
 client. Claude Agent SDK was surveyed and rejected because it exposes Read/Write/Bash
 by default. Callers still inject a ``RuntimeCall``; tests use a fake one.
 """
@@ -126,7 +126,7 @@ class WorkerPool:
         # Bumped on every PRODUCE so an in-flight CHECK can tell, at commit time,
         # whether the node it reviewed is still the one currently registered - a
         # produce racing a long-running CHECK call must invalidate that CHECK's
-        # approval rather than let it authorize content the checker never saw (R-601).
+        # approval rather than let it authorize content the checker never saw.
         self._generation_of: dict[str, int] = {}
         self._checker_of: dict[str, str] = {}
         self._checked_candidate: dict[str, tuple[str, str]] = {}
@@ -205,7 +205,7 @@ class WorkerPool:
                 maker = self._maker_of.get(node_id)
                 expected_generation = self._generation_of.get(node_id, 0)
             # No producer yet, or the producer reviewing itself: refuse before ever
-            # calling the runtime (R-601).
+            # calling the runtime.
             if maker is None or maker == worker_id:
                 return WorkerResult(outcome="refused", body=None, tokens_in=0, tokens_out=0, ms=0.0)
 
@@ -235,7 +235,7 @@ class WorkerPool:
                 self._generation_of[node_id] = self._generation_of.get(node_id, 0) + 1
                 # A fresh produce supersedes any prior review of this node: an approval
                 # of the old content must not authorize a merge of the new content
-                # (R-601 - "keep the maker immutable for the reviewed Candidate").
+                # (keep the maker immutable for the reviewed Candidate).
                 self._checker_of.pop(node_id, None)
                 self._checked_candidate.pop(node_id, None)
             if phase in CHECK_PHASES:
@@ -244,7 +244,7 @@ class WorkerPool:
                 # re-produced under the *same* maker, which the identity check alone
                 # cannot see - while this call was in flight. The generation counter
                 # catches both: any produce since this CHECK started means it reviewed
-                # a node this pool no longer stands behind (R-601).
+                # a node this pool no longer stands behind.
                 current_maker = self._maker_of.get(node_id)
                 approved = (
                     isinstance(response.body, Mapping) and response.body.get("approved") is True

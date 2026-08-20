@@ -6,6 +6,16 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ### Changed
 
+- Completed the repository-wide consolidation pass: removed the orphaned review snapshot
+  and obsolete identity example, aligned every active architecture contract with shipped
+  modules, removed completed-ticket and nonexistent-archive references, and indexed the
+  retained research surfaces.
+- Probe templates now refuse with exit 2 until real assertions and measurements replace
+  them; placeholders can no longer authorize KEEP or emit a fabricated numeric default.
+- Repository integrity tests now reject retired workflow vocabulary, unindexed top-level
+  documentation, stale ROADMAP references, and blockers that are no longer open.
+- Every `Sampled` architecture invariant now names an executable test. The remaining
+  `Unknown` findings are intentional claim boundaries, not missing licenses.
 - R-700-02: condensed the bundled skill into a small controller around
   `DISCOVER -> RESOLVE -> EXECUTE -> CHECK -> RECONCILE`; detailed design, resolution,
   and reconciliation rules remain lazy-loaded references.

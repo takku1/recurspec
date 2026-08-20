@@ -241,8 +241,8 @@ Claude Agent SDK, PyPI `claude-agent-sdk==0.2.138` (verified 2026-08-14 on
 
 **Why Claude Agent SDK over OpenAI Agents SDK (close second):**
 
-- Worker Pool source comments already named this product as the intended runtime
-  pending a live pin (`workers.py` module docstring). This survey supplies that pin.
+- The earlier Worker Pool design named this product as the intended runtime. This survey
+  supplied the live pin used by the implemented adapter.
 - First-party structured outputs *after* a multi-turn tool loop
   ([docs](https://code.claude.com/docs/en/agent-sdk/structured-outputs)) match
   Worker Pool ADR-003 (structured results, not prose).

@@ -57,15 +57,15 @@ class RecommendationError(RuntimeError):
 def recommend_decision_class(
     corpus_path: str | os.PathLike[str] | None = None,
 ) -> list[dict[str, Any]]:
-    """Refuse to recommend a Decision Class (R-502).
+    """Refuse to recommend a Decision Class without comparable outcome data.
 
-    R-500's corpus redacts reason, branch, metric values, and has no Decision
-    Class field. Comparable-outcome recommendations stay blocked until R-401
-    data exists in a corpus that actually carries those fields.
+    The redacted corpus omits reason, branch, metric values, and Decision Class.
+    Comparable-outcome recommendations stay blocked until the roadmap studies
+    produce a corpus that actually carries the required fields.
     """
     del corpus_path
     raise RecommendationError(
-        "R-500 corpus redacts Decision Class, reasons, and metric values; "
+        "the corpus redacts Decision Class, reasons, and metric values; "
         "refusing to invent a recommendation"
     )
 
@@ -78,8 +78,8 @@ def export_decision_corpus(
 ) -> int:
     """Write a redacted decision corpus. Refuses unless ``opt_in`` is true.
 
-    Drops source, prompts, secrets, branch names, reasons, and metric values
-    (ROADMAP R-500). Does not invent rows when a log is missing.
+    Drops source, prompts, secrets, branch names, reasons, and metric values.
+    Does not invent rows when a log is missing.
     """
     if not opt_in:
         raise ValueError("decision-corpus export requires explicit project-level opt-in")

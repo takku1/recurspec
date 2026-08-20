@@ -3,8 +3,7 @@
 How a one-line goal becomes a tree of fully-specified, buildable leaves.
 
 Module contract: [architecture/stack-resolver/SYSTEM.md](../architecture/stack-resolver/SYSTEM.md) ·
-Resolution criteria: [stack-resolution.md](./stack-resolution.md) ·
-Worked example: [examples/identity-design.md](../examples/identity-design.md)
+Resolution criteria: [stack-resolution.md](./stack-resolution.md)
 
 ---
 
@@ -208,8 +207,8 @@ One flat line became seven terminal nodes. **Five are procured or adopted; two a
 genuinely custom** — and the two custom ones are precisely the parts that encode your
 product, not the parts that encode "what is a password".
 
-Full version with §8 stacks, alternatives, exit costs, and EARS invariants:
-[examples/identity-design.md](../examples/identity-design.md).
+For a complete, executable Contract Tree with §8 decisions and EARS invariants, see the
+[log-archive example](../examples/log-archive/SYSTEM.md).
 
 ---
 

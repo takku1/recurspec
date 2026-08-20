@@ -97,9 +97,10 @@ cp examples/module/checks.sh modules/checkout/checks.sh
 cp examples/module/measure.sh modules/checkout/measure.sh
 ```
 
-`checks.sh` provides correctness backpressure. `measure.sh` writes one JSON object to
-standard output; diagnostics belong on standard error. Declare metric direction whenever
-the name is ambiguous.
+Both templates exit 2 until replaced: a placeholder must never authorize KEEP or invent a
+measurement. Make `checks.sh` provide real correctness backpressure; make `measure.sh`
+write one JSON object to standard output, with diagnostics on standard error. Declare
+metric direction whenever the name is ambiguous.
 
 Evaluate an isolated candidate:
 

@@ -122,7 +122,10 @@ The ACM SIGSOFT Empirical Standards catalog supplies a community-maintained chec
 
 **What this does not support:** neither source shows that pre-registration itself causally improves study validity; Ernst and Baldassarre describe what RRs *can prevent*, not a measured effect. The SIGSOFT standards are a task-force consensus checklist, not an empirical result, and treat a published protocol as rare rather than required for a case study specifically.
 
-**Recurspec design inference:** R-405's "public protocol before collecting outcome data" should start from the SIGSOFT Experiment standard's fields and target a Registered Reports track, or an equivalent public pre-registration (e.g. OSF), if venue submission is out of scope. Citing this precedent does not itself satisfy R-405 — the protocol still has to be written and published before any outcome data is collected.
+**Recurspec design inference:** The completed [evaluation protocol](./evaluation-protocol.md)
+starts from the SIGSOFT Experiment standard's fields. A Registered Reports track or an
+equivalent public pre-registration remains the publication route if outcome studies
+proceed; citing this precedent does not itself validate Recurspec.
 
 ## 10. A disclosed-methodology human-baseline precedent
 
@@ -154,7 +157,10 @@ The Model Context Protocol's security-practices document gives guidance for loca
 
 **What this does not support:** neither source is a ratified ISO/IEEE/IETF standard, and neither describes or validates a worktree-per-Candidate isolation model like Recurspec's Worker Pool specifically. Both are vendor/consortium technical documentation current as of their publication date, not an evaluated security result.
 
-**Recurspec design inference:** R-204's adapter should document its own boundary in the same shape these sources use — what the adapter's control plane guarantees, what falls to the sandbox/worktree, and what it explicitly cannot verify (for example, supply-chain integrity of a worker's runtime image) — rather than presenting isolation as complete. This is a documentation and design-boundary precedent, not a drop-in implementation.
+**Recurspec design inference:** The runtime adapter documents the control-plane guarantees,
+what falls to the sandbox/worktree, and what it cannot verify (for example, supply-chain
+integrity of a worker runtime image). This is a documentation and design-seam precedent,
+not a drop-in implementation.
 
 ## 13. Claim boundary for Recurspec
 

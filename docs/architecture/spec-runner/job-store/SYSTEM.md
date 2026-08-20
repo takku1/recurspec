@@ -78,7 +78,6 @@ node's *contract surface*. Editing §5 prose does not dirty anything downstream.
   present in the tree; a rebuild is one transaction (one connection, and a mid-rebuild
   failure leaves the prior store unchanged); `nodes.status` is indexed for
   `claim_next_ready()`.
-- **Roadmap:** none for this leaf.
 
 ## 7. Measurement Seams
 

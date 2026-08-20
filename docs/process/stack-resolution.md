@@ -4,8 +4,7 @@ Every Contract Node passes this gate before it is specified or decomposed
 further. It assigns a **decision class** and, for procured nodes, a concrete product.
 
 Loop context: [contract-design.md](./contract-design.md) §3 ·
-Module contract: [architecture/stack-resolver/SYSTEM.md](../architecture/stack-resolver/SYSTEM.md) ·
-Worked example: [examples/identity-design.md](../examples/identity-design.md)
+Module contract: [architecture/stack-resolver/SYSTEM.md](../architecture/stack-resolver/SYSTEM.md)
 
 ---
 

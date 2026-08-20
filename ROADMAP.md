@@ -22,8 +22,8 @@ whole.
 
 | ID | Outcome | Status | Blocked by |
 |---|---|---|---|
-| R-501 | Learn reusable failure predictors from Negative Patterns | blocked | R-400, R-402, R-500 |
-| R-502 | Recommend Decision Classes from comparable outcomes | blocked | R-401, R-500 |
+| R-501 | Learn reusable failure predictors from Negative Patterns | blocked | R-400, R-402 |
+| R-502 | Recommend Decision Classes from comparable outcomes | blocked | R-401 |
 
 ## Intentionally out of scope
 

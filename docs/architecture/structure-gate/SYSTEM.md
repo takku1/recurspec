@@ -2,7 +2,6 @@
 
 <!-- recurspec-contract: 1.0 -->
 
-> Reference archive: `docs/archive/2026-08-02-pre-redesign/architecture/architecture/AST_GATEKEEPER/SYSTEM.md`
 > Research: SDB / dual-state verification — [research/foundations.md](../../research/foundations.md) §2–§3, §5 (L2 rule/schema)
 
 ## 1. System Intent & Responsibility
@@ -38,6 +37,7 @@ without structural verification.
   test seam. (`test_structure_gate_uses_explicit_exports_and_requires_their_test_surface`)
   - `EvidenceStage:` Sampled
 - **[Conditional]** IF un-specced code drift is detected under active policy THEN THE SYSTEM SHALL exit non-zero.
+  (`test_structure_gate_reports_each_public_symbol_in_an_uncontracted_source_file`)
   - `EvidenceStage:` Sampled
 - **[Ubiquitous]** The Gatekeeper SHALL NOT use L4 model-judge scores as a substitute for L1/L2 results. ([research foundation](../../research/foundations.md) §5)
   - `EvidenceStage:` Unknown
@@ -61,7 +61,6 @@ without structural verification.
 
 - **Implementation:** `src/recurspec/structure_gate.py`; public seam `check_structure()`.
 - **Tests:** `tests/test_structure_gate.py` plus CLI coverage in `tests/test_cli.py`.
-- **Roadmap:** R-300.
 
 ## 7. Measurement Seams
 
@@ -97,4 +96,4 @@ without structural verification.
 - **Operational owner:** us.
 - **Failure mode:** a false negative lets un-specced drift land; measured directly by the
   primary metric above. A missing rust extra skips `*.rs` instead of failing closed.
-- **Open questions:** none outside ROADMAP R-636.
+- **Open questions:** none.

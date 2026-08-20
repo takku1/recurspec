@@ -5,5 +5,5 @@ channel. Until one is configured, do not publish exploit details. Contact the re
 owner through their GitHub profile and request a private reporting channel.
 
 Never include credentials, proprietary source, prompts, or local evidence logs in a
-report. The long-horizon decision corpus described in the roadmap is opt-in by design and
-is not implemented in this release.
+report. Decision-corpus export requires explicit project-level opt-in; prediction and
+recommendation remain blocked until the studies in `ROADMAP.md` produce suitable data.

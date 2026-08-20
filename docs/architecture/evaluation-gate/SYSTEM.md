@@ -2,7 +2,6 @@
 
 <!-- recurspec-contract: 1.0 -->
 
-> Reference archive: `docs/archive/2026-08-02-pre-redesign/architecture/architecture/MEASUREMENT_HARNESS/SYSTEM.md`
 > Process: [evidence-cycle.md](../../process/evidence-cycle.md)
 > Research: branching / autoresearch / verification ladder — [research/foundations.md](../../research/foundations.md) §4–§5
 
@@ -22,7 +21,7 @@ Empirical Feedback infrastructure: explicit Best Known State (BKS) baselines, `m
 
 ## 4. Invariants (EARS + Epistemic Stage)
 
-- **[Ubiquitous]** The Evaluation Gate SHALL compare a candidate against the trunk BKS and SHALL promote a new baseline only through explicit `--record-baseline` after merge. (`find_baseline`, baseline-promotion, and isolated-lifecycle coverage)
+- **[Ubiquitous]** The Evaluation Gate SHALL compare a candidate against the trunk BKS and SHALL promote a new baseline only through explicit `--record-baseline` after merge. (`test_evaluation_gate_promotes_baseline_only_when_explicitly_requested`)
   - `EvidenceStage:` Sampled
 - **[Optional]** WHERE `--bks-metrics-only` is set THE SYSTEM SHALL give the Implementor
   the BKS metric vector and SHALL NOT include prior implementation source.
@@ -30,7 +29,7 @@ Empirical Feedback infrastructure: explicit Best Known State (BKS) baselines, `m
   - `EvidenceStage:` Sampled
 - **[Event-driven]** WHEN `checks.sh` fails THE SYSTEM SHALL block keep regardless of primary metric improvement. (`test_runner_logs_negative_patterns_and_enforces_total_attempt_ceiling`)
   - `EvidenceStage:` Sampled
-- **[Conditional]** IF telemetry self-contradiction is detected THEN THE SYSTEM SHALL flag the instrument broken and halt Empirical Feedback Contract Tree updates. (legacy and multi-metric contradiction tests)
+- **[Conditional]** IF telemetry self-contradiction is detected THEN THE SYSTEM SHALL flag the instrument broken and halt Empirical Feedback Contract Tree updates. (`test_telemetry_contradiction_multi_metric_missing_value`)
   - `EvidenceStage:` Sampled
 - **[State-driven]** WHILE a Candidate branch is active THE SYSTEM SHALL isolate mutations from the baseline branch. (`test_isolated_candidate_keep_fast_forwards_baseline_and_disposes_worktree`; research: BranchBench / autoresearch branch–mutate–evaluate, [foundation](../../research/foundations.md) §4)
   - `EvidenceStage:` Sampled
@@ -48,11 +47,11 @@ Empirical Feedback infrastructure: explicit Best Known State (BKS) baselines, `m
   (`test_isolated_candidate_refuses_worker_authorization_for_another_candidate` and
   exact-tip lifecycle coverage)
   - `EvidenceStage:` Sampled
-- **[Conditional]** IF a metric omits `tier` THEN THE SYSTEM SHALL treat it as `hard_gate`; `hard_gate`, `target`, and `optimization` regressions or unknown comparisons SHALL block keep, while `observation` SHALL never block. (`resolve_tier` / `evaluate_candidate` unit coverage)
+- **[Conditional]** IF a metric omits `tier` THEN THE SYSTEM SHALL treat it as `hard_gate`; `hard_gate`, `target`, and `optimization` regressions or unknown comparisons SHALL block keep, while `observation` SHALL never block. (`test_resolve_tier_defaults_to_hard_gate`, `test_evaluate_candidate_observation_never_blocks`)
   - `EvidenceStage:` Sampled
-- **[Event-driven]** WHEN any candidate is reverted THE SYSTEM SHALL append one branch-scoped Negative Pattern and SHALL surface prior patterns before the next repair pass. (runner integration coverage)
+- **[Event-driven]** WHEN any candidate is reverted THE SYSTEM SHALL append one branch-scoped Negative Pattern and SHALL surface prior patterns before the next repair pass. (`test_evaluation_gate_logs_negative_patterns_and_enforces_total_attempt_ceiling`)
   - `EvidenceStage:` Sampled
-- **[Conditional]** IF a branch reaches 5 consecutive reverts or 8 total reverts THEN THE SYSTEM SHALL return `ESCALATE` (exit code 3) instead of authorizing another automatic repair. (streak, branch-scope, total-ceiling, and runner integration coverage)
+- **[Conditional]** IF a branch reaches 5 consecutive reverts or 8 total reverts THEN THE SYSTEM SHALL return `ESCALATE` (exit code 3) instead of authorizing another automatic repair. (`test_evaluation_gate_logs_negative_patterns_and_enforces_total_attempt_ceiling`)
   - `EvidenceStage:` Sampled
 - **[Optional]** WHERE a baseline `.recurspec/trusted-inputs.json` manifest is present
   THE SYSTEM SHALL pin every declared path into the Candidate worktree the same way as
@@ -83,12 +82,12 @@ Empirical Feedback infrastructure: explicit Best Known State (BKS) baselines, `m
 
 - **Current prototype:** `src/recurspec/metrics.py`, `src/recurspec/evaluation.py`, `src/recurspec/evidence.py`
 - **Current implementation:** `src/recurspec/evaluation.py`,
-  `src/recurspec/modules_gate.py` (R-203 changed-module probes),
-  `src/recurspec/evidence.py` (including R-500 corpus export).
+  `src/recurspec/modules_gate.py` (changed-module probes),
+  `src/recurspec/evidence.py` (including opt-in corpus export).
 - **Tests:** `tests/test_evaluation.py`, `tests/test_cli.py`, `tests/test_modules.py`
   (end-to-end coverage of every bundled `measure.sh` against `parse_measurement`),
-  `tests/test_modules_gate.py` (R-203 changed-module probe selection),
-  `tests/test_corpus.py` (R-500 corpus export opt-in and redaction).
+  `tests/test_modules_gate.py` (changed-module probe selection),
+  `tests/test_corpus.py` (corpus-export opt-in and redaction).
 - **Lifecycle seam:** `evaluate_isolated_candidate` requires a clean checked-out baseline,
   a completed Worker Pool merge authorization, and an existing local Candidate branch. It
   evaluates the Candidate in a temporary worktree, refuses probe mutations, fast-forwards

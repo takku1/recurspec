@@ -109,6 +109,26 @@ def test_validate_contract_accepts_a_complete_versioned_atomic_leaf():
     assert result.contracts[0]["atomic_leaf"] is True
 
 
+def test_validate_contract_rejects_an_atomic_leaf_missing_execution_sections():
+    result = validate_contract(FIXTURES / "invalid-atomic-leaf")
+
+    assert not result.valid
+    assert any(
+        diagnostic.rule_code == "contract.heading.missing"
+        and "section 8" in diagnostic.message
+        for diagnostic in result.diagnostics
+    )
+
+
+def test_contract_diagnostics_are_stable_across_repeated_validation():
+    contract = FIXTURES / "invalid-invariant"
+
+    first = validate_contract(contract).diagnostics
+    second = validate_contract(contract).diagnostics
+
+    assert first == second
+
+
 def test_validate_contract_recognizes_a_genuinely_combined_complex_ears_pattern():
     result = validate_contract(FIXTURES / "valid" / "SYSTEM.md")
 
@@ -396,10 +416,11 @@ def test_validate_contract_accepts_wrapped_invariants_from_the_contract_engine_s
     assert result.diagnostics == ()
     assert result.contracts[0]["invariants"][0] == {
         "ears_pattern": "Ubiquitous",
-        "statement": (
-            "The Contract Engine SHALL validate normalized Contract Nodes against "
-            "JSON Schema Draft 2020-12."
-        ),
+            "statement": (
+                "The Contract Engine SHALL validate normalized Contract Nodes against "
+                "JSON Schema Draft 2020-12. "
+                "(`test_validate_contract_accepts_a_complete_versioned_atomic_leaf`)"
+            ),
         "evidence_stage": "Sampled",
     }
     assert len(result.contracts[0]["invariants"]) == 9

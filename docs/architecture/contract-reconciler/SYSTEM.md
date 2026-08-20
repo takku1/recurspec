@@ -2,7 +2,6 @@
 
 <!-- recurspec-contract: 1.0 -->
 
-> Reference archive: `docs/archive/2026-08-02-pre-redesign/architecture/architecture/RECONCILER/SYSTEM.md`
 > Process detail: [contract-reconciliation.md](../../process/contract-reconciliation.md)
 
 ## 1. System Intent & Responsibility
@@ -34,8 +33,10 @@ Feedback).
   (`test_reconciler_proposes_split_for_four_explicit_separable_responsibilities`)
   - `EvidenceStage:` Sampled
 - **[State-driven]** WHILE scanning source trees IF a file is unlinked in `docs/architecture` THE SYSTEM SHALL generate a draft leaf with Epistemic Stage `Unknown`.
+  (`test_reconciler_turns_uncontracted_source_into_an_unknown_draft_without_writing`)
   - `EvidenceStage:` Sampled
 - **[Ubiquitous]** The Contract Reconciler SHALL NOT invent product requirements beyond structural drafts.
+  (`test_reconciler_turns_uncontracted_source_into_an_unknown_draft_without_writing`)
   - `EvidenceStage:` Sampled
 - **[Conditional]** IF a test file is absent from Contract Node §6 declarations THEN THE
   SYSTEM SHALL emit a test-seam-review action. (`test_reconciler_proposes_review_for_bloat_and_uncontracted_test_seams`)
@@ -52,7 +53,6 @@ Feedback).
 
 - **Implementation:** `src/recurspec/reconcile.py`; public seam `plan_reconciliation()`.
 - **Tests:** `tests/test_reconcile.py`, plus CLI coverage in `tests/test_cli.py`.
-- **Roadmap:** R-301.
 
 ## 7. Measurement Seams
 

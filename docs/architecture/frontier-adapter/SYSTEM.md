@@ -2,7 +2,6 @@
 
 <!-- recurspec-contract: 1.0 -->
 
-> Reference archive: `docs/archive/2026-08-02-pre-redesign/architecture/architecture/WAYFINDER_CONNECTOR/SYSTEM.md`
 
 ## 1. System Intent & Responsibility
 
@@ -42,7 +41,6 @@ remote behind the same publish seam.
 
 - **Implementation:** `src/recurspec/frontier.py`; CLI `recurspec frontier publish|check`.
 - **Tests:** `tests/test_frontier.py`.
-- **Roadmap:** R-303.
 
 ## 7. Measurement Seams
 
@@ -67,8 +65,8 @@ remote behind the same publish seam.
   | GitHub Issues as the only tracker | Forces every consumer repo onto GitHub and loses offline/local-first ticket creation before a remote exists. |
   | A dedicated issue-tracking library | The write path is one markdown file per ticket; a library adds weight for no real fit gap it closes. |
 
-- **Fit gap:** trackers do not know what a `SYSTEM.md` URI or a Type A/B ticket
-  distinction is; the adapter owns that mapping.
+- **Fit gap:** generic trackers do not know `SYSTEM.md` links or Research Frontier
+  semantics; the adapter owns that mapping.
 - **Seam:** `src/recurspec/frontier.py`.
 - **Exit cost:** LOW — the local markdown format is the source of truth; a remote adapter
   is additive, not a migration.

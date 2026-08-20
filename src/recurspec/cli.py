@@ -929,7 +929,7 @@ def build_parser() -> argparse.ArgumentParser:
     corpus_export.add_argument(
         "--i-opt-in",
         action="store_true",
-        help="required explicit project-level opt-in (R-500)",
+        help="required explicit project-level opt-in",
     )
     corpus_export.set_defaults(handler=_run_corpus_export)
 

@@ -27,8 +27,8 @@ decompose tool-use loops, retry backoff, or streaming.
   [context-packer/SYSTEM.md](../context-packer/SYSTEM.md) §3); `max_tokens_per_node` and
   `concurrency` come from Spec Runner's own input boundary (see
   [spec-runner/SYSTEM.md](../SYSTEM.md) §3). The structured result has no declared
-  consumer elsewhere in the tree yet, so it stays prose rather than a port — the Runner's
-  own write-back into job-store is real but not yet specified at that level of detail.
+  public named-port consumer, so Runner-to-Job-Store persistence remains an internal
+  relationship rather than a machine-checkable port.
 
 Workers are **stateless between nodes**. Anything a worker needed to know is in its
 packet, and anything it learned is in its result.
@@ -88,7 +88,7 @@ packet, and anything it learned is in its result.
   drop a prior Candidate identity
   (`test_persisted_candidate_identity_survives_a_later_unrelated_dispatch`);
   `tests/test_runtime.py` covers the `messages_runtime()` adapter.
-- **Runtime adapter:** `messages_runtime()` (R-204) wraps a Messages-shaped client;
+- **Runtime adapter:** `messages_runtime()` wraps a Messages-shaped client;
   optional extra `recurspec[runtime]` pins `anthropic==0.122.0`. Tests cover the adapter
   without a network (`tests/test_runtime.py`).
 - **Authorization seam:** `WorkerPool` persists maker/checker state only after successful

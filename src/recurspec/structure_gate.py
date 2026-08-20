@@ -77,7 +77,7 @@ def _relative_path(value: str) -> str:
 
 
 def _is_contained(declared: str, repository: Path | None = None) -> bool:
-    """True iff a §6-declared path stays inside the repository (R-608, R-623).
+    """True iff a §6-declared path stays inside the repository.
 
     A declaration is untrusted contract-author text, not code: a leading ``/``, a
     Windows drive letter, or a ``..`` segment must never be joined onto the repository
@@ -117,7 +117,7 @@ def declared_paths(
     adapters: Sequence[LanguageAdapter] | None = None,
 ) -> tuple[set[str], set[str], set[str]]:
     """Return repository-relative implementation and test paths declared in §6, plus
-    any declared path that fails repository containment (R-608, R-623)."""
+    any declared path that fails repository containment."""
     contract = Path(contract)
     text = contract.read_text(encoding="utf-8")
     section = _SECTION_SIX.search(text)
@@ -373,7 +373,7 @@ def check_structure(
     declared_tests: set[str] = set()
 
     # Reject a root override that escapes the repository before any relative_to(root)
-    # call downstream can raise uncaught (R-608).
+    # call downstream can raise uncaught.
     for label, declared, resolved in (
         ("source_root", source_root, source),
         ("contract_root", contract_root, contracts),

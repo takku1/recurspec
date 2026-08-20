@@ -18,6 +18,9 @@ dist/
 graphify-out/
 .graphgraph/
 
+# Tool-local settings
+.claude/settings.local.json
+
 # OS
 Thumbs.db
 .DS_Store

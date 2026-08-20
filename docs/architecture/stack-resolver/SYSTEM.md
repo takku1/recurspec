@@ -3,8 +3,7 @@
 <!-- recurspec-contract: 1.0 -->
 
 > Process detail: [stack-resolution.md](../../process/stack-resolution.md) ·
-> [contract-design.md](../../process/contract-design.md) ·
-> Worked example: [examples/identity-design.md](../../examples/identity-design.md)
+> [contract-design.md](../../process/contract-design.md)
 
 ## 1. System Intent & Responsibility
 
@@ -14,7 +13,7 @@ the third-party-first bias and the **stopping rule** for recursive decomposition
 resolved to BUY or ADOPT is terminal.
 
 **Does not own:** the decomposition itself (Contract Engine), ticket publication (Frontier
-Connector), or runtime dependency installation. It produces decisions and their evidence,
+Adapter), or runtime dependency installation. It produces decisions and their evidence,
 not lockfiles.
 
 ## 2. Sub-System Decomposition
@@ -108,7 +107,6 @@ StalenessAuditor (review triggers).
 - **Implementation:** `src/recurspec/technology_resolver.py`; public seam
   `audit_resolutions()`.
 - **Tests:** `tests/test_technology_resolver.py`, plus CLI coverage in `tests/test_cli.py`.
-- **Roadmap:** dependency staleness is R-103; procurement-seam growth is R-302.
 
 ## 7. Measurement Seams
 

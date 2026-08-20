@@ -65,7 +65,7 @@ _RUNTIME_STATE_RE = re.compile(
 
 def _is_ignorable_runtime_state(status_line: str) -> bool:
     """True iff a ``git status --porcelain`` line is Recurspec's own untracked,
-    generated runtime state - never a tracked file, no matter where it lives (R-604).
+    generated runtime state - never a tracked file, no matter where it lives.
 
     A blanket ``:(exclude).recurspec/`` pathspec would also hide a *tracked* dirty
     file a project deliberately committed under ``.recurspec/`` (e.g. a checked-in
@@ -83,7 +83,7 @@ def _is_ignorable_runtime_state(status_line: str) -> bool:
 
 
 def _validate_module_name(module: str) -> None:
-    """Reject anything but a single safe path segment (R-608).
+    """Reject anything but a single safe path segment.
 
     ``module`` is interpolated straight into probe and evidence paths; a value
     containing ``/``, ``\\``, ``..``, or an absolute path could point those reads and
@@ -209,7 +209,7 @@ def _pin_trusted_probe_inputs(baseline: Path, worktree: Path) -> tuple[str, ...]
 
     checks.sh/measure.sh are not the full judge: they source helpers under modules/,
     run tests/, and honor root pytest/ruff config. A Candidate must not control any
-    of those (R-600, R-621, R-640). Returns the manifest paths pinned so the caller can
+    of those. Returns the manifest paths pinned so the caller can
     restore them the same way after evaluation.
     """
     for name in _TRUSTED_TREES:
@@ -567,7 +567,7 @@ def evaluate_isolated_candidate(
     # lives under .recurspec/ in the checked-out worktree. A correctly generated
     # prerequisite - e.g. the documented --worker-state path - must never itself block
     # the documented workflow just because a project's .gitignore hasn't caught up
-    # (R-604). Filter it out line by line rather than pathspec-excluding the whole
+    # Filter it out line by line rather than pathspec-excluding the whole
     # .recurspec/ directory: a blanket exclude would also hide a *tracked* dirty file a
     # project deliberately committed there, which must still block evaluation.
     # --untracked-files=all: without it, git collapses a wholly-untracked directory into
@@ -606,7 +606,7 @@ def evaluate_isolated_candidate(
 
     # Probe definitions decide keep/revert, so a Candidate must never be able to supply
     # its own checks.sh/measure.sh: the trusted baseline's copies are pinned into the
-    # worktree below (R-600). Refuse rather than fall back to trusting the Candidate.
+    # worktree below. Refuse rather than fall back to trusting the Candidate.
     checks_rel = os.path.join("modules", module, "checks.sh")
     measure_rel = os.path.join("modules", module, "measure.sh")
     trusted_checks = repo_path / checks_rel

@@ -184,7 +184,7 @@ def _looks_exact(version: str) -> bool:
     ecosystem-valid immutable versions, v-prefixed tags, digests, and revisions, so
     'exact-version' inventories and pins cannot both float to the same string and read
     as a reproducible pin - nor be rejected merely for using a real exact form the
-    original digit-only pattern did not recognize (R-607)."""
+    original digit-only pattern did not recognize."""
     value = version.strip()
     if not value:
         return False

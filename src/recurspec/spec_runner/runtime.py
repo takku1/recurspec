@@ -1,6 +1,6 @@
 """Packet-only Messages-API adapter for ``WorkerPool``'s ``RuntimeCall``.
 
-R-204. This module does not open files, does not take a tree root, and does not
+This module does not open files, does not take a tree root, and does not
 register tools. Claude Agent SDK was surveyed and rejected because it exposes
 Read/Write/Bash by default (see docs/research/r-204-runtime-survey.md).
 """
