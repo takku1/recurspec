@@ -10,6 +10,18 @@ from recurspec.cli import _skill_targets, build_parser, main, sync_skill
 def test_parser_exposes_the_public_commands():
     parser = build_parser()
 
+    common_check = parser.parse_args(
+        [
+            "check",
+            ".",
+            "--only",
+            "contract,structure",
+            "--only",
+            "frontier",
+            "--changed-file",
+            "src/example.py",
+        ]
+    )
     evaluate = parser.parse_args(
         [
             "evaluate",
@@ -59,6 +71,9 @@ def test_parser_exposes_the_public_commands():
     )
 
     assert evaluate.module == "checkout"
+    assert common_check.repository == Path(".")
+    assert common_check.only == ["contract", "structure", "frontier"]
+    assert common_check.changed_file == ["src/example.py"]
     assert evaluate.candidate_branch == "candidate/42"
     assert evaluate.worker_state == Path("worker-state.json")
     assert evaluate.authorization_id == "node-42"
@@ -120,6 +135,7 @@ def test_every_cli_argument_documents_itself():
         return [action for action in subparser._actions if action.dest != "help"]
 
     evaluate = parser._subparsers._group_actions[0].choices["evaluate"]
+    common_check = parser._subparsers._group_actions[0].choices["check"]
     predict = parser._subparsers._group_actions[0].choices["predict"]
     recommend = parser._subparsers._group_actions[0].choices["recommend"]
     skills = parser._subparsers._group_actions[0].choices["skills"]
@@ -149,6 +165,7 @@ def test_every_cli_argument_documents_itself():
 
     for subparser in (
         evaluate,
+        common_check,
         predict,
         recommend,
         skills,

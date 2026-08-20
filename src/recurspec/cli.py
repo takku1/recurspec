@@ -24,6 +24,7 @@ from .frontier import (
     github_issue_publisher,
     publish_frontiers,
 )
+from .inspection import CHECKERS, check_project
 from .metrics import PredictorError, implementor_bks, predict_from_negative_patterns
 from .modules_gate import evaluate_changed_modules
 from .project_status import StatusInstrumentError, inspect_project, render_status
@@ -45,6 +46,18 @@ def _finite_nonneg(value: str) -> float:
             f"must be a finite, non-negative number: {value!r}"
         )
     return parsed
+
+
+def _checker_selection(value: str) -> tuple[str, ...]:
+    selected = tuple(item.strip() for item in value.split(",") if item.strip())
+    if not selected:
+        raise argparse.ArgumentTypeError("must name at least one checker")
+    unknown = set(selected) - set(CHECKERS)
+    if unknown:
+        raise argparse.ArgumentTypeError(
+            "unknown checker(s): " + ", ".join(sorted(unknown))
+        )
+    return selected
 
 
 def _skill_source() -> Path:
@@ -354,6 +367,22 @@ def _run_status(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_check(args: argparse.Namespace) -> int:
+    report = check_project(
+        args.repository,
+        checks=tuple(args.only) if args.only else None,
+        changed_files=set(args.changed_file) if args.changed_file else None,
+    )
+    if args.format == "json":
+        print(json.dumps(report.as_dict(), separators=(",", ":"), sort_keys=True))
+    elif report.valid:
+        print(f"PASS: {len(report.checks)} selected check(s) completed")
+    else:
+        for finding in report.findings:
+            print(f"{finding.checker}: {finding.code}: {finding.message}")
+    return report.exit_code
+
+
 def _run_fanout(args: argparse.Namespace) -> int:
     raw_items = list(args.item)
     if args.list_file is not None:
@@ -475,6 +504,39 @@ def build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
 
     defaults_formatter = argparse.ArgumentDefaultsHelpFormatter
+
+    common_check = commands.add_parser(
+        "check",
+        help="run selected read-only project checks",
+        formatter_class=defaults_formatter,
+    )
+    common_check.add_argument(
+        "repository",
+        type=Path,
+        nargs="?",
+        default=Path("."),
+        help="repository root to inspect",
+    )
+    common_check.add_argument(
+        "--only",
+        action="extend",
+        type=_checker_selection,
+        metavar="CHECKER[,CHECKER...]",
+        help="comma-separated checker names; repeat to select more",
+    )
+    common_check.add_argument(
+        "--changed-file",
+        action="append",
+        default=[],
+        help="repository-relative path to inspect in the structure checker; repeat as needed",
+    )
+    common_check.add_argument(
+        "--format",
+        choices=("text", "json"),
+        default="text",
+        help="report output format",
+    )
+    common_check.set_defaults(handler=_run_check)
 
     evaluate = commands.add_parser(
         "evaluate",
