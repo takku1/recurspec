@@ -103,6 +103,28 @@ def test_check_cli_combines_comma_separated_and_repeated_only_values(capsys):
     assert payload["checks"] == ["contract", "evidence", "frontier"]
 
 
+def test_check_cli_text_reports_nonblocking_findings_and_pass_summary(
+    tmp_path: Path, capsys
+):
+    source = ROOT / "tests" / "fixtures" / "contracts" / "valid" / "SYSTEM.md"
+    contract = tmp_path / "docs" / "architecture" / "SYSTEM.md"
+    contract.parent.mkdir(parents=True)
+    contract.write_text(
+        source.read_text(encoding="utf-8").replace(
+            "`EvidenceStage:` Sampled", "`EvidenceStage:` Unknown", 1
+        ),
+        encoding="utf-8",
+    )
+
+    code = main(["check", str(tmp_path), "--only", "evidence"])
+
+    output = capsys.readouterr().out
+    assert code == 0
+    assert "evidence: evidence.claim.unlicensed:" in output
+    assert "evidence: evidence.stage.unknown:" in output
+    assert output.rstrip().endswith("PASS: 1 selected check(s) completed")
+
+
 def test_check_project_preserves_evidence_licenses_in_an_immutable_report(tmp_path: Path):
     source = ROOT / "tests" / "fixtures" / "contracts" / "valid" / "SYSTEM.md"
     contract = tmp_path / "docs" / "architecture" / "SYSTEM.md"

@@ -375,11 +375,11 @@ def _run_check(args: argparse.Namespace) -> int:
     )
     if args.format == "json":
         print(json.dumps(report.as_dict(), separators=(",", ":"), sort_keys=True))
-    elif report.valid:
-        print(f"PASS: {len(report.checks)} selected check(s) completed")
     else:
         for finding in report.findings:
             print(f"{finding.checker}: {finding.code}: {finding.message}")
+        if report.valid:
+            print(f"PASS: {len(report.checks)} selected check(s) completed")
     return report.exit_code
 
 
