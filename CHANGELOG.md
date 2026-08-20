@@ -17,6 +17,10 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ### Added
 
+- R-700-01: one immutable `check_project()` report and `recurspec check` command combine
+  contract, Evidence Stage, structure, Technology Resolution, and Research Frontier
+  checks without changing project state. Typed Findings preserve evidence licenses;
+  narrow commands remain compatible.
 - R-627: `recurspec status` classifies a repository as `missing`, `not_recurspec`,
   `invalid`, or `valid` before design. The bundled skill must run it first and treats
   unmarked `SYSTEM.md` files as source material, not Recurspec contracts. Rival

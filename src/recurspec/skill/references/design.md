@@ -180,7 +180,7 @@ unverified claim.
 
 Maintain **one** checklist: `ROADMAP.md` (`ready` | `blocked` | `deferred` |
 `research`). Completed history belongs in release notes and git. Do not create parallel
-readiness or fog lists. A DEFER node
+readiness or uncertainty lists. A DEFER node
 becomes a Research Frontier entry there — an uncertainty that must be resolved before
 the node can be completed.
 

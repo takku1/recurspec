@@ -37,7 +37,7 @@ Research: [research/foundations.md](../research/foundations.md).
 - **Common CLI:** `recurspec status`, `recurspec check`, `recurspec evaluate`,
   `recurspec reconcile plan`, and `recurspec skills`. Specialized command families remain
   compatibility and research interfaces rather than the onboarding vocabulary.
-- **Interface syntax:** these three ports are declared this level down because a real child already consumes each by that exact name: `contract_path` by Contract Engine (see [contract-engine/SYSTEM.md](./contract-engine/SYSTEM.md) §3), `max_tokens_per_node` and `concurrency` by Spec Runner and its own children (see [spec-runner/SYSTEM.md](./spec-runner/SYSTEM.md) §3). The other L1 modules (Stack Resolver, Contract Reconciler, Frontier Adapter, Structure Gate, Evaluation Gate) are independently-invoked CLI gates with no cross-sibling data flow to formalize as ports — see R-105 in [ROADMAP.md](../../ROADMAP.md) for that finding.
+- **Interface syntax:** these three ports are declared this level down because a real child already consumes each by that exact name: `contract_path` by Contract Engine (see [contract-engine/SYSTEM.md](./contract-engine/SYSTEM.md) §3), `max_tokens_per_node` and `concurrency` by Spec Runner and its own children (see [spec-runner/SYSTEM.md](./spec-runner/SYSTEM.md) §3). The other L1 modules (Stack Resolver, Contract Reconciler, Frontier Adapter, Structure Gate, Evaluation Gate) are independently invoked CLI gates with no cross-sibling data flow to formalize as ports; the historical R-105 finding remains in [CHANGELOG.md](../../CHANGELOG.md) and git.
 
 ## 4. Invariants (EARS + Epistemic Stage)
 

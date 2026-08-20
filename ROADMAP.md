@@ -5,12 +5,6 @@ This is the sole incomplete-work registry. Completed work belongs in
 
 Statuses: `ready`, `blocked`, `research`, `deferred`.
 
-## Consolidation
-
-| ID | Outcome | Status | Contract |
-|---|---|---|---|
-| R-700-01 | Add one read-only `recurspec check` report over the existing deterministic checkers while preserving typed evidence and all narrow command compatibility | ready | [Recurspec Engine](./docs/architecture/SYSTEM.md) |
-
 ## Outcome validation
 
 These studies are required before claiming that Recurspec improves engineering outcomes.
