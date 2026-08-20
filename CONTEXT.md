@@ -3,6 +3,12 @@
 Recurspec describes how a software goal becomes a finite, evidence-backed design and how
 implementation feedback changes that design without erasing intent.
 
+Its internal control law is:
+
+`DISCOVER -> RESOLVE -> EXECUTE -> CHECK -> RECONCILE`
+
+These verbs organize the implementation; they are not additional public product names.
+
 ## Language
 
 **Contract Tree**:
@@ -70,3 +76,22 @@ _Avoid_: Confidence level
 **Research Frontier**:
 An uncertainty that must be resolved before a Contract Node can be completed.
 _Avoid_: Type B ticket, fog
+
+**Coverage Review**:
+A bounded discovery pass that looks vertically for missing children, horizontally for
+missing interfaces, and across relevant sibling pairs for high-impact interactions. Its
+outputs are reviewable `Unknown` or `Inferred` proposals, never automatic Contract Tree
+mutations.
+_Avoid_: Feature brainstorming, exhaustive combination search
+
+**Finding**:
+A common report envelope for one checker result. It identifies the checker, subject,
+code, message, Evidence Stage, evidence class, and typed details without making different
+evidence classes interchangeable.
+_Avoid_: Generic proof, untyped observation
+
+**Relationship Index**:
+A regenerable projection of dependencies and cross-node interfaces. It may help discovery
+and ordering, but it never adds a second parent to a Contract Node or replaces the
+Contract Tree or `ROADMAP.md`.
+_Avoid_: Canonical project graph, second source of truth

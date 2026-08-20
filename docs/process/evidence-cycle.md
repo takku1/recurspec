@@ -1,166 +1,99 @@
-# Evidence Cycle
+# Evidence cycle
 
-Operational process for Recurspec. Incomplete phases are tracked only in [ROADMAP.md](../../ROADMAP.md). Research citations live in [research/foundations.md](../research/foundations.md).
+Recurspec advances a project through one internal control law:
 
----
-
-## Problem
-
-Test-green-only agent loops fail in three ways:
-
-| Failure | Symptom | Cause |
-|---------|---------|--------|
-| Verification debt | “Done” but wrong on untested inputs | No measurement beyond the test seam |
-| Authority drift | Contracts weakened so tests pass | Implementor grades own work |
-| Comprehension rot | Contract Tree diverges from behavior | Contract updated only on structural drift |
-
-Fix: Structural and Empirical Feedback, maker-checker separation, branching measurement, and an SDB gate (see research foundations).
-
----
-
-## Architecture
-
-```mermaid
-graph TB
-    subgraph Forward["Forward (Spec → Execution)"]
-        Vision["Vision"] --> L0["L0 SYSTEM.md"]
-        L0 --> Recursive["/recurspec"]
-        Recursive --> WF["Wayfinder Map"]
-        WF --> Packet["Strategy Packet"]
-        Packet --> Inner["Inner: /tdd"]
-    end
-
-    subgraph BackA["Structural Feedback: Structural"]
-        Inner --> Code["Code + Tests"]
-        Code --> Contract Reconciler["Contract Reconciler"]
-        Contract Reconciler --> SpecUpdate["SYSTEM.md + ADRs"]
-        SpecUpdate --> L0
-    end
-
-    subgraph BackB["Empirical Feedback: Empirical"]
-        Inner --> Measure["Branching Measure"]
-        Measure --> Metrics["Metrics + Telemetry"]
-        Metrics --> Graybox["/graybox + /sherloc"]
-        Graybox --> Inv["EARS + baselines"]
-        Inv --> L0
-    end
-
-    subgraph Verify["Independent Verification"]
-        Code --> AST["Structure Gate"]
-        Metrics --> Auditor["Auditor"]
-        AST --> Gate{"SDB Gate"}
-        Auditor --> Gate
-        Gate -- PASS --> WF
-        Gate -- FAIL --> Repair["Propose-Check-Repair"]
-        Repair --> Packet
-    end
+```text
+DISCOVER -> RESOLVE -> EXECUTE -> CHECK -> RECONCILE -> repeat
 ```
 
----
+This is evidence-driven adaptive planning: select the smallest coherent transition,
+learn from it, and replan. It borrows Agile's preference for feedback without requiring
+a framework, ceremony, role, calendar sprint, or fixed batch size. A cycle ends when its
+question has enough evidence to route safely.
 
-## Structural Feedback — Structural
+## Operations
 
-**Direction:** artifacts → Contract Tree. **Skills:** `/recurspec`, Structure Gate.
+| Operation | Question | Result |
+|---|---|---|
+| Discover | What capability, gap, interface, or uncertainty matters now? | Contract or reviewable proposal |
+| Resolve | Is the next seam `BUY`, `ADOPT`, `WRAP`, `BUILD`, or `DEFER`? | Technology Resolution or Research Frontier |
+| Execute | What is the next bounded, independently failing change? | Isolated Candidate |
+| Check | What do deterministic checks and measurements establish? | Typed findings and Candidate evidence |
+| Reconcile | Which representation must change: code, contract, assumption, instrument, or work order? | Reviewable draft and updated route |
 
-| Signal | Trigger | Action |
-|--------|---------|--------|
-| Code Drift | `/src` file without parent spec | Draft leaf `SYSTEM.md` |
-| Line Bloat | Spec > ~150 lines or > 3 responsibilities | File → folder recursive split |
-| Test Seam | New mock/adapter in TDD | Update parent interfaces |
+Recursive specification is lazy. Coarse future branches remain coarse until a decision
+needs them; a `BUILD` or `WRAP` branch decomposes only to one-session Atomic Leaves.
+`BUY` and `ADOPT` terminate at the Procurement Seam. Cheap experiments may resolve an
+uncertainty sooner than speculative architecture prose, but their measurements apply
+only to their stated workload and environment.
 
-*Does the Contract Tree describe what exists?*
+## Authority
 
-Detail: [contract-reconciliation.md](./contract-reconciliation.md).
+The Architect owns contracts, handoffs, final decisions, and reconciliation. The
+Implementor owns source and tests on an isolated Candidate. A different checker executes
+the trusted gate and supplies typed approval bound to the exact Candidate commit.
 
----
-
-## Empirical Feedback — Empirical
-
-**Direction:** measured behavior → Contract Tree. **Skills:** measure Evaluation Gate,
-`/graybox`, `/sherloc`.
-
-| Signal | Trigger | Action |
-|--------|---------|--------|
-| Invariant Violation | Measure contradicts EARS | Refine/split invariant; ADR |
-| Performance Regression | Metric > baseline + tolerance | Performance EARS clause or ticket |
-| Telemetry Contradiction | Self-metrics disagree (graybox red) | Flag instrument; block merge |
-| Unknown Boundary | Behavior unclear | Type B research/prototype ticket |
-
-*Does the Contract Tree describe how it behaves?*
-
-**Rule:** Implementor self-assessment is non-authoritative. Auditor runs measurement on an isolated branch.
-
----
-
-## Branching measurement
-
-Per atomic leaf, `SYSTEM.md` §7:
-
-- Primary metric + target + `measure.sh` — one metric (legacy) or a tiered `"metrics"` list (`hard_gate` / `target` / `optimization` / `observation`; untagged defaults to `hard_gate`)
-- Correctness backpressure: `checks.sh` must pass before keep
-- Telemetry surface: structured diagnostics for Auditor without trusting source narrative
-- Worktree candidate; keep iff checks pass ∧ no `hard_gate`/`target`/`optimization` metric regresses beyond tolerance ∧ no telemetry contradiction (`src/recurspec/metrics.py:evaluate_candidate`)
-- Every revert writes a **Negative Pattern** to `.recurspec/evidence/<module>/log.jsonl`; a repair pass must read it before proposing another change
-- **Escalation boundary:** 5 consecutive reverts on one Candidate branch (stagnation) or 8 total (attempt ceiling) stops automatic repair and hands the ticket to a human (`evaluation.py` exit code 3) — see [Recurspec](../../src/recurspec/skill/SKILL.md)
-
-The **trunk baseline** (`find_baseline`, promoted only via `--record-baseline` after merge) is Recurspec's Best Known State: the metric vector every future candidate is judged against. A kept candidate does not automatically become BKS — promotion is the Outer Loop's explicit act, not the keep/revert gate's.
-
-```
-OUTER (Architect/Auditor)
-  baseline → strategy packet → hand Inner worktree
-  on done: checks → measure → graybox → keep|revert
-  update Contract Tree via A/B → Wayfinder
-
-INNER (Implementor)
-  strategy packet only · /tdd · no authoritative merge · no parent contract edits
+```text
+Contract Tree + ROADMAP
+          |
+          v
+   bounded handoff
+          |
+          v
+isolated Candidate -- maker
+          |
+          v
+checks + measures -- checker
+          |
+    +-----+------+
+    |            |
+ KEEP/REVERT   ESCALATE
+    |            |
+    +------> reconcile -> status
 ```
 
----
+`NEED_CHECKER` is a routing state, not a fourth Evaluation Gate outcome. Instrument
+failure is also not an outcome; ambiguous, malformed, contradictory, or missing evidence
+returns an error.
 
-## Seven-stage master loop
+## Evidence licenses
 
-| Stage | Role | Skills | Verification |
-|-------|------|--------|--------------|
-| 1 SPEC | Architect | `/recurspec`, `/wayfinder`, domain modeling | EARS + ROADMAP gate |
-| 2 PLAN | Architect | bounded strategy handoffs | Handoff completeness |
-| 3 EXECUTE | Implementor (Inner) | `/tdd`, `/implement` | Self-check only |
-| 4 MEASURE | Auditor (Outer) | measure, graybox, sherloc | L1 metrics + L3 fixtures |
-| 5 RECONCILE-A | Contract Reconciler | `/recurspec`, AST | L2 schema/drift |
-| 6 RECONCILE-B | Auditor | baselines, metamorphic | L1 + instrument honesty |
-| 7 VERIFY | Independent Auditor | graph tools, review | Maker ≠ checker; SDB |
+| Evidence class | Licenses | Does not license |
+|---|---|---|
+| Executed behavior | Exercised cases satisfied their oracles | General correctness or product outcome |
+| Static structure | Inspected artifacts satisfied the named rules | Runtime behavior |
+| Empirical measurement | This workload in this environment | Another workload or scale |
+| Model judgment | The named model and rubric produced a proposal | Ground truth or merge authority |
+| Human decision | An accountable person accepted residual risk | Proof that the decision was correct |
 
-```mermaid
-graph LR
-    S1[1 SPEC] --> S2[2 PLAN] --> S3[3 EXECUTE] --> S4[4 MEASURE]
-    S4 --> S5[5 RECONCILE-A]
-    S4 --> S6[6 RECONCILE-B]
-    S5 --> S7[7 VERIFY]
-    S6 --> S7
-    S7 -->|fail/drift| S1
-    S7 -->|pass| S1
-```
+Passing tests are `Sampled`; runtime measurements are `Measured`; only formal proof is
+`Proved`. A common Finding envelope preserves these distinctions—it does not flatten
+them.
 
----
+## Candidate evaluation
 
-## Orthogonal axes
+Each measurable Atomic Leaf names `modules/<name>/checks.sh` and `measure.sh` in §7.
+Checks must pass before metrics are considered. Metrics use one of four tiers:
 
-| Axis | Meaning |
-|------|---------|
-| Dual-Loop | Who executes vs who verifies |
-| Dual Feedback | What updates the Contract Tree (structure vs behavior) |
-| Branching Measurement | How empirical truth is isolated |
+| Tier | Rule |
+|---|---|
+| `hard_gate` | Unknown or regression blocks |
+| `target` / `optimization` | Regression beyond tolerance blocks; neutral keeps |
+| `observation` | Record only; never blocks |
 
----
+The gate evaluates with baseline-owned probes and trusted inputs in a disposable
+worktree. Every `REVERT` records a Negative Pattern. Five consecutive or eight total
+reverts on one Candidate branch escalate. `KEEP` may fast-forward the verified baseline
+branch, but Best Known State promotion is a separate explicit post-merge evaluation.
 
-## Session flow (example: R-200 / ticket 200)
+## Replanning
 
-1. Claim ticket on Wayfinder map
-2. Load `docs/architecture/contract-engine/SYSTEM.md`
-3. Outer: strategy packet + measure scaffold
-4. Baseline `measure.sh`
-5. Inner: implement via `/tdd`
-6. Outer: checks → measure → graybox
-7. Reconcile-A / Reconcile-B
-8. SDB verify; close ticket; update `ROADMAP.md`
+After each accepted, reverted, or deferred transition, run `recurspec status` again.
+Reconciliation may delete future work when evidence proves it unnecessary; it must not
+only add tasks. `ROADMAP.md` remains the sole authority for incomplete intent, while job
+state, handoffs, Research Frontier tickets, and relationship indexes remain regenerable
+views.
 
-Incomplete infrastructure for this flow: [ROADMAP.md](../../ROADMAP.md).
+The system stops at `PASS`, `DEFER`, `ESCALATE`, `NEED_CHECKER`, or a decision requiring
+the user. Until R-400–R-403 produce outcome data, Recurspec is research-informed rather
+than research-validated.

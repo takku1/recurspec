@@ -57,8 +57,7 @@ def test_skill_requires_status_before_design_and_names_not_recurspec():
     skill = (skill_root / "SKILL.md").read_text(encoding="utf-8")
     design = (skill_root / "references" / "design.md").read_text(encoding="utf-8")
 
-    assert skill.index("recurspec status") < skill.index("Raw goal or missing contract tree")
-    assert "| `recurspec status REPO` |" in skill
+    assert skill.index("recurspec status") < skill.index("design")
     assert "`not_recurspec`" in skill
     assert "NEED_CHECKER" in skill
     assert "source material" in design
@@ -74,7 +73,6 @@ def test_skill_requires_status_on_paper_and_research_asks():
         encoding="utf-8"
     )
 
-    assert "skill install" in skill
     assert "*subject* repository" in skill
     assert "missing_probes" in skill
     assert ".recurspec/contracts" in skill
@@ -90,9 +88,8 @@ def test_skill_requires_work_lists_to_fan_out():
         encoding="utf-8"
     )
 
-    assert "## Work lists fan out" in skill
-    assert "| `recurspec fanout --item ...` |" in skill
-    assert "Do not implement 1–N" in skill or "Do not implement 1-N" in skill
+    assert "recurspec fanout" in skill
+    assert "one Candidate" in skill
     assert "not one FRAME" in design
     assert "fanout" in design
 
@@ -105,8 +102,8 @@ def test_skill_states_evidence_class_licensing():
         encoding="utf-8"
     )
 
-    assert "Executed behavior" in skill
-    assert "Does not license" in skill
+    assert "Tests license" in skill
+    assert "measurements license" in skill
     assert "research-informed" in skill
     assert "research-validated" in skill
     assert "oracles" in design
@@ -118,20 +115,31 @@ def test_skill_states_escalate_is_the_wrong_space_path():
         encoding="utf-8"
     )
 
-    assert "search space" in skill
-    assert "fourth gate outcome" in skill
+    assert "Contract Node or search space" in skill
+    assert "KEEP`, `REVERT`, or `ESCALATE" in skill
     assert "`ESCALATE`" in skill
 
 
-def test_skill_cli_surface_names_the_current_commands():
+def test_skill_is_a_compact_controller_not_a_duplicate_cli_manual():
     skill = Path(str(files("recurspec").joinpath("skill/SKILL.md"))).read_text(
         encoding="utf-8"
     )
 
-    assert "| `recurspec contract evidence PATH` |" in skill
-    assert "| `recurspec study accept` |" in skill
-    assert "| `recurspec predict MODULE` |" in skill
-    assert "| `recurspec recommend` |" in skill
-    assert "--bks-metrics-only" in skill
-    assert "recurspec[rust]" in skill
-    assert "contaminated" in skill
+    assert "DISCOVER -> RESOLVE -> EXECUTE -> CHECK -> RECONCILE" in skill
+    assert "references/design.md" in skill
+    assert "references/resolve.md" in skill
+    assert "references/reconcile.md" in skill
+    assert len(skill.splitlines()) <= 90
+
+
+def test_design_reference_defines_bounded_coverage_review():
+    design = Path(str(files("recurspec").joinpath("skill/references/design.md"))).read_text(
+        encoding="utf-8"
+    )
+
+    assert "Coverage Review" in design
+    assert "vertically" in design
+    assert "horizontally" in design
+    assert "sibling pairs" in design
+    assert "Unknown" in design
+    assert "automatic Contract Tree" in design

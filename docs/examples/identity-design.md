@@ -140,7 +140,7 @@ bounded it to an adapter.
 - Operational owner: us
 - Failure mode: token invalid/expired -> treat as anonymous, redirect to sign-in.
                 Never fail open to a partially-authenticated state.
-- Open questions: refresh-token rotation strategy -> Wayfinder Type B
+- Open questions: refresh-token rotation strategy -> ROADMAP Research Frontier
 ```
 
 **Terminal because atomic build.** One session, one test seam. Watch it for growth: an

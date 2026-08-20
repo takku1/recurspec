@@ -34,7 +34,7 @@ The flat list fails in three specific ways:
 | **Reinvention by omission** | Nobody asked "does this exist already?", so a `users` table with hand-rolled password hashing gets written — the single most solved, highest-liability module in the list |
 | **Unbuildable leaves** | "Login" names a topic, not a contract. An implementing agent must invent the tech stack, and each one invents a different stack |
 
-The loop below fixes all three by forcing every node through the same five phases, and
+The loop below fixes all three by forcing every node through the same six phases, and
 by tying *when to stop* to *what you decided to use*.
 
 An existing `SYSTEM.md` without `<!-- recurspec-contract: 1.0 -->` is not this loop. Run
@@ -46,19 +46,20 @@ author real Contract Nodes. Do not keep Recurspec incomplete work only in
 
 ## The loop
 
-Run this for **every** node, starting at L0. It is the same five phases at every depth.
+Run this only as deep as the next safe decision requires.
 
 ```mermaid
 graph TD
-    Frame[1 FRAME<br/>what is this responsible for] --> Research[2 RESEARCH<br/>does this already exist]
-    Research --> Resolve[3 RESOLVE<br/>BUY ADOPT WRAP BUILD DEFER]
-    Resolve --> Test{4 UNIFORM?<br/>one class for<br/>the whole node}
+    Frame[1 FRAME<br/>what is this responsible for] --> Cover[2 COVERAGE REVIEW<br/>what is missing]
+    Cover --> Research[3 RESEARCH<br/>does this already exist]
+    Research --> Resolve[4 RESOLVE<br/>BUY ADOPT WRAP BUILD DEFER]
+    Resolve --> Test{5 UNIFORM?<br/>one class for<br/>the whole node}
     Test -->|No - mixed classes| Split[SPLIT at the fault line]
     Test -->|Yes - procured| Terminal[TERMINAL NODE]
     Test -->|Yes - one session| Terminal
     Test -->|Yes - too big| Split
     Split --> Frame
-    Terminal --> Spec[5 SPECIFY<br/>full SYSTEM.md incl. section 8]
+    Terminal --> Spec[6 SPECIFY<br/>full SYSTEM.md incl. section 8]
 ```
 
 ### 1. FRAME
@@ -73,7 +74,18 @@ Frame in terms of the **capability**, not the implementation: "prove a visitor i
 they claim to be", not "users table". Naming the implementation this early is what
 pre-commits you to building it.
 
-### 2. RESEARCH
+### 2. COVERAGE REVIEW
+
+Treat the initial frame as a hypothesis. Look vertically for missing children and
+failure modes, horizontally for missing sibling interfaces, and across relevant sibling
+pairs for high-impact interaction seams. Cap the search; higher-order combinations need
+an explicit risk justification.
+
+Every proposal begins `Unknown` or `Inferred`, states the evidence that would confirm it,
+and requires Architect review. Coverage Review never mutates the Contract Tree or turns
+comparison research into feature soup.
+
+### 3. RESEARCH
 
 Before any decomposition, answer: **has this already been solved, and by whom?**
 
@@ -81,15 +93,15 @@ Survey managed services, OSS libraries, and framework-native features. Capture a
 two real alternatives with versions/pricing, and record what each does *not* cover — the
 fit gap is usually where the node's real children live.
 
-This is a genuine research obligation, not a gut call. Use `/research` for anything
-unfamiliar; the output is a citable comparison, not a recollection. A node whose survey
-cannot be completed is `DEFER` (below), not a guess.
+This is a genuine research obligation, not a gut call. Use current primary sources for
+anything unfamiliar; the output is a citable comparison, not a recollection. A node
+whose survey cannot be completed is `DEFER` (below), not a guess.
 
 > **Recency rule.** Library and pricing facts age badly. Verify against current docs
 > rather than recalling — a stack chosen from stale memory is how a project adopts a
 > deprecated SDK on day one.
 
-### 3. RESOLVE
+### 4. RESOLVE
 
 Assign the node exactly one **decision class**:
 
@@ -106,7 +118,7 @@ Criteria, scoring, and the anti-lock-in rules are in
 class you must justify**, not the default. A node is only BUILD when it encodes something
 specific to your product that no vendor can know.
 
-### 4. TEST: is the resolution uniform?
+### 5. TEST: is the resolution uniform?
 
 This is the stopping rule, and it is the load-bearing part of the loop.
 
@@ -121,7 +133,7 @@ A node is **TERMINAL** when one of these holds:
 |------------------|-----------|---------------|
 | **Procured** | Resolved BUY or ADOPT, uniformly | The *seam* — config, contract, failure modes. **Not** the vendor's internals |
 | **Atomic build** | Resolved BUILD or WRAP, and one engineer/agent can implement it in one TDD session against one test seam | Full leaf: §6 test seam, §7 measurement seam, §8 stack |
-| **Deferred** | Resolved DEFER | A Type B Wayfinder ticket. Decomposition of this subtree resumes when the ticket closes |
+| **Deferred** | Resolved DEFER | A Research Frontier linked from `ROADMAP.md`; decomposition resumes when it closes |
 
 A node **MUST decompose** when either:
 
@@ -135,7 +147,7 @@ owns that. Stopping here is what keeps the tree finite and honest — the depth 
 subtree measures *how much you are building*, which is exactly the number you want
 visible.
 
-### 5. SPECIFY
+### 6. SPECIFY
 
 Terminal nodes get a complete `SYSTEM.md` including **§8 Technology Resolution** — the
 section that replaces the two-line summary with a real, actionable stack. Non-terminal
@@ -153,8 +165,9 @@ Recursion needs brakes. Unbounded "break it down further" produces a tree nobody
    siblings, it is not a module — it is a step in a procedure. Do not give it a node.
 4. **Two-child minimum.** A node with exactly one child is a rename, not a decomposition.
    Collapse it.
-5. **No speculative children.** Decompose what the current destination requires. Fog goes
-   to the Wayfinder map's *Not yet specified* section, not into invented nodes.
+5. **No speculative children.** Decompose what the current transition requires.
+   Unresolved uncertainty goes to a Research Frontier in `ROADMAP.md`, not into invented
+   nodes.
 
 The natural shape that results: **shallow where the world has already solved it, deep
 where you are actually building something.** A tree that is uniformly deep means the
@@ -166,10 +179,10 @@ research phase is being skipped.
 
 | Artifact | Where |
 |----------|-------|
-| Fractal contract tree | `docs/architecture/**/SYSTEM.md` |
+| Contract Tree | `docs/architecture/**/SYSTEM.md` |
 | Per-leaf technology decision | §8 of each terminal node |
 | Rejected alternatives + why | §8 of each terminal node (kept — this is the record that stops re-litigation) |
-| Unresolved boundaries | Type B tickets on `.scratch/wayfinder-map/MAP.md` |
+| Unresolved boundaries | Research Frontiers linked from `ROADMAP.md` |
 | Process incompleteness | [ROADMAP.md](../../ROADMAP.md) |
 
 ---
@@ -205,7 +218,7 @@ Full version with §8 stacks, alternatives, exit costs, and EARS invariants:
 | This loop | Feeds |
 |-----------|-------|
 | Terminal leaves + §6/§7 seams | `/recurspec` strategy packets |
-| DEFER nodes | Wayfinder Type B research tickets |
+| DEFER nodes | Research Frontiers linked from `ROADMAP.md` |
 | §8 decisions | Structural Feedback: a dependency that drifts from its spec is code drift |
 | Alternatives + exit cost | ADR history when a vendor is later swapped |
 

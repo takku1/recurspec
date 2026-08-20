@@ -9,11 +9,12 @@ recurspec skills install
 recurspec skills check
 ```
 
-`skills install` copies one self-contained `recurspec` skill to Claude Code, Codex, and
-Grok. Use `--target claude`, `--target codex`, or `--target grok` to install only one.
-The installer honors `CLAUDE_SKILLS_DIR`, `CODEX_SKILLS_DIR`, `CODEX_HOME`, and
-`GROK_HOME` (Grok's documented config-directory override; skills land in
-`$GROK_HOME/skills`, default `~/.grok/skills`).
+`skills install` copies one self-contained `recurspec` skill to Claude Code, Codex, Grok,
+and Antigravity. Use `--target claude|codex|grok|antigravity` to select one. Antigravity
+also accepts the compatibility aliases `agy` and `gemini`; `AGY_SKILLS_DIR` overrides
+the [documented user-scope directory](https://docs.cloud.google.com/application-design-center/docs/design-deploy-antigravity-cli),
+`~/.gemini/config/skills`. `GEMINI_HOME` is retained as a Recurspec compatibility
+override, not represented as an Antigravity environment variable.
 
 Invoke `/recurspec` in Claude Code or Grok. In Codex, select it through `/skills` or
 invoke `$recurspec`.
@@ -49,9 +50,20 @@ Then start with a goal:
 /recurspec design a booking system for independent music teachers
 ```
 
-The skill frames capabilities, researches existing solutions, assigns a decision class,
-and splits only where ownership or failure modes differ. Terminal nodes include their
-test seam, measurement seam, and technology resolution.
+The skill frames capabilities, performs a bounded Coverage Review, researches existing
+solutions, assigns a Decision Class, and splits only where ownership or failure modes
+differ. Coverage findings begin as `Unknown` or `Inferred`; they never mutate the tree
+automatically. Terminal nodes include their test seam, measurement seam, and Technology
+Resolution.
+
+Run the common read-only checks together:
+
+```bash
+recurspec check .
+recurspec check . --only contract,evidence,structure,resolution,frontier
+```
+
+Narrow command families remain available for compatibility and focused diagnostics.
 
 ## Add an evaluation probe
 

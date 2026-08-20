@@ -13,7 +13,7 @@ concrete technology for procured nodes, and emit the §8 Technology Resolution b
 the third-party-first bias and the **stopping rule** for recursive decomposition: a node
 resolved to BUY or ADOPT is terminal.
 
-**Does not own:** the decomposition itself (Contract Engine), ticket publication (Wayfinder
+**Does not own:** the decomposition itself (Contract Engine), ticket publication (Frontier
 Connector), or runtime dependency installation. It produces decisions and their evidence,
 not lockfiles.
 

@@ -1,5 +1,9 @@
 # Recurspec documentation
 
+Recurspec's internal control law is
+`DISCOVER -> RESOLVE -> EXECUTE -> CHECK -> RECONCILE`. The documents below each own one
+layer of detail; the bundled skill loads them only when its current route requires them.
+
 ## Start here
 
 1. [Getting started](./getting-started.md)
@@ -7,7 +11,7 @@
 3. [Canonical language](../CONTEXT.md)
 4. [Contract design](./process/contract-design.md)
 5. [Worked identity design](./examples/identity-design.md)
-6. [Evidence cycle](./process/evidence-cycle.md)
+6. [Evidence cycle and adaptive planning](./process/evidence-cycle.md)
 
 ## Design process
 
@@ -15,8 +19,8 @@
 |---|---|
 | [Contract design](./process/contract-design.md) | Goal to finite Contract Tree |
 | [Stack resolution](./process/stack-resolution.md) | `BUY / ADOPT / WRAP / BUILD / DEFER` gate |
-| [Evidence cycle](./process/evidence-cycle.md) | Candidate implementation, evaluation, and repair |
-| [Contract reconciliation](./process/contract-reconciliation.md) | Structural and Empirical Feedback into contracts |
+| [Evidence cycle](./process/evidence-cycle.md) | Adaptive planning, Candidate authority, evaluation, and repair |
+| [Contract reconciliation](./process/contract-reconciliation.md) | Typed findings into reviewable code/contract/work proposals |
 
 ## Architecture
 
@@ -35,9 +39,9 @@ modules and clearly label work that has not yet been implemented.
 - [R-204 runtime survey](./research/r-204-runtime-survey.md) is the primary-source
   resolution behind the Worker Pool adapter.
 
-Project orientation: `recurspec status`. Changed-module probes:
-`recurspec modules check`. Research Frontiers: `recurspec frontier publish|check`.
-Decision corpus: `recurspec corpus export --i-opt-in`.
+Project orientation: `recurspec status`. Common read-only inspection: `recurspec check`.
+Specialized probes and research interfaces remain discoverable through
+`recurspec --help`.
 - [ROADMAP.md](../ROADMAP.md) is the only incomplete-work registry.
 - Historical drafts were removed from the published tree and remain recoverable from git
   history.

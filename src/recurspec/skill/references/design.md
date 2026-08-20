@@ -35,7 +35,7 @@ behavior: it licenses "the exercised cases satisfied their oracles," not "the sy
 achieves its goal." Do not promote Sampled tests to an outcome claim. If no
 comparative study exists, write the claim boundary instead of a performance sentence.
 
-## The loop — run for every node, at every depth
+## The discovery loop — run only as deep as the next safe decision requires
 
 ### 1. FRAME
 
@@ -49,7 +49,23 @@ One sentence of responsibility, plus explicit non-goals.
   fanout`) and run this loop on each item with only that item's packet. Sibling items
   stay out of the implementor context.
 
-### 2. RESEARCH — before decomposing, ask if it already exists
+### 2. COVERAGE REVIEW — look for what the first frame missed
+
+Treat the current decomposition as a hypothesis, not a complete inventory.
+
+- Look **vertically** for missing children, requirements, failure modes, measurements,
+  and research inside the node.
+- Look **horizontally** for missing or contradictory interfaces between siblings.
+- Inspect only relevant **sibling pairs** for high-impact behavior that emerges at an
+  interaction seam. Higher-order combinations require an explicit risk justification.
+- Classify every proposal `Unknown` or `Inferred`, state why it matters, and identify the
+  evidence that would confirm it. Do not make prevalence claims without a real corpus.
+
+Coverage Review produces proposals for Architect review, never an automatic Contract Tree
+mutation. Irrelevant, optional, or weakly supported features are discarded; unresolved
+high-impact uncertainty becomes a Research Frontier in `ROADMAP.md`.
+
+### 3. RESEARCH — before decomposing, ask if it already exists
 
 Survey managed services, OSS libraries, and framework-native features. Produce **at least
 two real alternatives** with versions or plan tiers, plus what each does *not* cover.
@@ -59,7 +75,7 @@ two real alternatives** with versions or plan tiers, plus what each does *not* c
   adopts a deprecated SDK on day one.
 - Never invent a vendor, version, or price. A survey you cannot complete resolves `DEFER`.
 
-### 3. RESOLVE — assign exactly one decision class
+### 4. RESOLVE — assign exactly one decision class
 
 | Class | Meaning |
 |-------|---------|
@@ -83,7 +99,7 @@ Two questions settle most nodes:
 Prefer options that speak a **standard** (OIDC, SMTP, S3, OpenTelemetry, SQL) and put the
 WRAP adapter on the standard, not on proprietary extensions.
 
-### 4. TEST — terminal, or split?
+### 5. TEST — terminal, or split?
 
 **Split where the decision class stops being uniform.** If part of the node would be
 bought and part built, that boundary *is* the seam — you cannot refactor across a
@@ -104,7 +120,7 @@ too large for one session.
 managed IdP, you do not then spec OIDC, JWT signing, and RSA. That is the termination
 guarantee — and subtree depth then honestly measures how much you are building.
 
-### 5. SPECIFY
+### 6. SPECIFY
 
 Terminal nodes get the full template below **including §8**. Non-terminal nodes get
 §1–§5 plus a child index.
@@ -163,7 +179,8 @@ unverified claim.
 ## Incomplete-work gate
 
 Maintain **one** checklist: `ROADMAP.md` (`ready` | `blocked` | `deferred` |
-`research` | `done`). Do not create parallel readiness or fog lists. A DEFER node
+`research`). Completed history belongs in release notes and git. Do not create parallel
+readiness or fog lists. A DEFER node
 becomes a Research Frontier entry there — an uncertainty that must be resolved before
 the node can be completed.
 

@@ -161,7 +161,7 @@ Every terminal node carries this. It is what replaces `- Login and user accounts
 - **Liability transferred:** <compliance/security obligations moved to the vendor>
 - **Operational owner:** vendor | us
 - **Failure mode:** <what happens when it is down, and the fallback>
-- **Open questions:** <R-nnn / Wayfinder ticket, or "none">
+- **Open questions:** <ROADMAP R-nnn / Research Frontier, or "none">
 ```
 
 **Fit gap is the field that drives recursion.** What the vendor does not cover is

@@ -64,6 +64,14 @@ def _skill_targets(target: str) -> list[tuple[str, Path]]:
     if target in {"grok", "all"}:
         grok_home = Path(os.environ.get("GROK_HOME", home / ".grok"))
         targets.append(("Grok", grok_home / "skills"))
+    if target in {"antigravity", "agy", "gemini", "all"}:
+        gemini_home = Path(os.environ.get("GEMINI_HOME", home / ".gemini"))
+        targets.append(
+            (
+                "Antigravity",
+                Path(os.environ.get("AGY_SKILLS_DIR", gemini_home / "config/skills")),
+            )
+        )
     return targets
 
 
@@ -557,7 +565,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     skills.add_argument(
         "--target",
-        choices=("claude", "codex", "grok", "all"),
+        choices=("claude", "codex", "grok", "antigravity", "agy", "gemini", "all"),
         default="all",
         help="which tool's skill directory to target",
     )

@@ -1,38 +1,22 @@
 # Recurspec
 
-Recurspec is an evidence-gated system design toolkit for AI-assisted software
-engineering. It turns a goal into a finite tree of buildable contracts, resolves
-technology before decomposition, evaluates candidate changes against correctness and
-measurement gates, and reconciles reality back into the design.
+Recurspec turns software intent into a finite Contract Tree, resolves what should be
+bought or adopted before custom work is decomposed, evaluates isolated Candidates, and
+reconciles what implementation teaches back into the design.
 
-The project ships two public interfaces:
+Its internal control law is deliberately small:
 
-- `recurspec`, a cross-platform Python CLI for contract validation, Candidate evaluation,
-  structural/reconciliation/stack audits, and skill setup.
-- `/recurspec`, one self-contained agent skill for design, resolution, implementation,
-  evaluation, repair, and reconciliation.
+```text
+DISCOVER -> RESOLVE -> EXECUTE -> CHECK -> RECONCILE
+```
 
-Recurspec is alpha software. Its contracts, decision logic, and isolated Candidate
-lifecycle are tested; broader validation and remaining modules are tracked in
+The mechanisms remain strict: `ROADMAP.md` is the only incomplete-work registry,
+Candidates cannot authorize themselves, missing evidence is never guessed, and tests or
+measurements are never mislabeled as proof.
+
+Recurspec is alpha software. Its deterministic gates and Candidate lifecycle are tested;
+project-level outcome validation remains explicitly unfinished in
 [ROADMAP.md](./ROADMAP.md).
-
-## Why Recurspec
-
-Flat plans hide radically different work behind equally sized bullets. Recurspec asks
-what implements each capability before asking for its parts, assigning one decision:
-
-| Decision | Meaning |
-|---|---|
-| `BUY` | Use a managed service |
-| `ADOPT` | Use an open-source library or framework feature |
-| `WRAP` | Build a narrow adapter around `BUY` or `ADOPT` |
-| `BUILD` | Implement genuinely differentiating behavior |
-| `DEFER` | Stop until research resolves the uncertainty |
-
-`BUY` and `ADOPT` terminate recursion at a procurement seam. `BUILD` and `WRAP` stop
-when one module can be implemented in one test-driven session. This makes the contract
-tree shallow where the ecosystem has solved the problem and deep only where custom work
-is justified.
 
 ## Install
 
@@ -41,7 +25,12 @@ python -m pip install git+https://github.com/takku1/recurspec.git
 recurspec skills install
 ```
 
-For local development:
+The installer supports Claude Code, Codex, Grok, and Antigravity. Use
+`recurspec skills check` for a read-only drift check or `--target NAME` to select one.
+The core package needs only Python 3.10+ and `jsonschema`; runtime and Rust adapters are
+optional extras.
+
+For development:
 
 ```bash
 git clone https://github.com/takku1/recurspec.git
@@ -50,125 +39,69 @@ python -m pip install -e ".[dev]"
 pytest
 ```
 
-The skill installer targets Claude Code, Codex, and Grok by default. Verify installation
-without writing with `recurspec skills check`. Use `--target grok` to install only to
-`$GROK_HOME/skills` (default `~/.grok/skills`).
+## Start
 
-Optional extra `recurspec[runtime]` pins `anthropic==0.122.0` for the packet-only
-Messages adapter behind the Worker Pool. The core package does not require it.
-
-## Use the agent skill
-
-Start with the single public skill:
+Invoke the bundled `recurspec` skill with a goal, or orient any repository directly:
 
 ```text
 /recurspec design a booking system for independent music teachers
 ```
 
-In Codex, select `recurspec` through `/skills` or invoke `$recurspec`. The skill's first
-action is `recurspec status .`, which classifies whether existing `SYSTEM.md` files are
-Recurspec contracts. It then loads only the internal phase reference it needs.
+```bash
+recurspec status .
+```
 
-## Evaluate a candidate
-
-Validate one versioned Contract Node or a complete Contract Tree first:
+`status` classifies the Contract Tree and prints the next safe route. The common CLI path
+is:
 
 ```bash
-recurspec contract check docs/architecture
-recurspec contract check docs/architecture --format json
+recurspec status .
+recurspec check .
+recurspec evaluate MODULE candidate/TICKET --worker-state STATE --authorization-id ID
+recurspec reconcile plan .
+recurspec skills check
 ```
 
-Contract Nodes opt in with `<!-- recurspec-contract: 1.0 -->`. The validator checks the
-bundled Draft 2020-12 schema, canonical EARS patterns, Evidence Stages, and Atomic Leaf
-Sections 6–8. Exit `0` is valid, `1` is invalid, and `2` means the validation instrument
-failed.
+`check` is read-only. `evaluate` is the explicit authority-bearing gate and returns
+`KEEP`, `REVERT`, or `ESCALATE`; a kept Candidate does not silently promote the Best
+Known State. Reconciliation produces drafts for review rather than editing contracts.
+Narrow compatibility and research commands remain discoverable through
+`recurspec --help`.
 
-Each measurable module owns two scripts:
+## Why resolve first
 
-```text
-modules/<name>/checks.sh
-modules/<name>/measure.sh
-```
+Every Contract Node receives one Decision Class:
 
-Evaluate an existing local Candidate branch while the clean baseline branch is checked
-out:
+| Decision | Meaning |
+|---|---|
+| `BUY` | Use a managed service |
+| `ADOPT` | Use an existing library or framework capability |
+| `WRAP` | Own only the Fit Gap behind a narrow adapter |
+| `BUILD` | Implement differentiating behavior |
+| `DEFER` | Stop at a Research Frontier until uncertainty resolves |
 
-```bash
-recurspec evaluate <module> candidate/<ticket-id> \
-  --worker-state .recurspec/worker-authorizations.json \
-  --authorization-id <completed-node-id> \
-  [--record-baseline]
-```
-
-Exit codes are stable: `0` keep, `1` revert, `2` evaluation error, `3` escalate. Evidence
-is appended under `.recurspec/evidence/<module>/log.jsonl`, including maker/checker
-identities loaded from completed Worker Pool state. The gate evaluates in a temporary
-worktree, rejects probe mutations, fast-forwards the baseline only on KEEP, and prunes
-the disposable worktree registration on every exit path. `--record-baseline` performs a
-second evaluation after merge and explicitly
-promotes that trunk measurement; a kept candidate never silently becomes the reference.
-
-Check source ownership and declared test surfaces against the Contract Tree:
-
-```bash
-recurspec structure check . [--changed-file src/recurspec/example.py] [--format json]
-```
-
-The Structure Gate returns `0` for a clean tree, `1` for detected drift, and `2` when
-the deterministic instrument cannot inspect its inputs.
-
-Turn those diagnostics into reviewable proposals without changing repository files:
-
-```bash
-recurspec reconcile plan . [--evidence-log .recurspec/evidence/<module>/log.jsonl] \
-  [--format json]
-```
-
-Draft leaves remain `Unknown`; Signal D stays with the Evaluation Gate. Exit `1` means
-reviewable actions were proposed, while exit `2` means the evidence instrument failed.
-
-Audit Technology Resolution completeness, exact pins, and WRAP seam growth:
-
-```bash
-recurspec stack check . [--inventory dependency-inventory.json] [--format json]
-```
-
-External pins without an authoritative inventory return indeterminate exit `2`; Recurspec
-never substitutes an installed or remembered version.
-
-The gate refuses to guess. Missing or contradictory telemetry, a non-numeric reading, or
-an unresolved metric direction reverts the candidate instead of manufacturing evidence.
-
-## Start only as deep as needed
-
-Recurspec is deliberately progressive:
-
-1. **Check only:** validate Contract Nodes and tree interfaces with `contract check`.
-2. **Check + evaluate:** add measurement gates for risky or performance-sensitive work.
-3. **Full loop:** use isolated Candidates, maker/checker separation, repair memory, and
-   reconciliation for long-lived systems with costly failures.
-
-Small, short-lived, or low-risk projects may not need Recurspec at all. See the
-[project-fit and adoption guide](./docs/adoption.md) before introducing process overhead.
+`BUY` and `ADOPT` terminate at the Procurement Seam. `WRAP` and `BUILD` decompose only
+until one independently failing seam fits one test-driven session. Coverage Review may
+propose missing children or cross-node interfaces, but those proposals begin as
+`Unknown` or `Inferred` and require review.
 
 ## Repository map
 
 ```text
-src/recurspec/             Python package and bundled agent skill
-tests/                     Behavioral tests at the package interfaces
-modules/evaluation-gate/   Recurspec's own checks and measurement probe
-modules/contract-engine/   Contract validation checks and fixture metric
-examples/module/           Templates for consumer modules
-docs/architecture/         Recursive SYSTEM.md contract tree
-docs/process/              Design and evidence-cycle details
-docs/research/             Primary-source grounding
-CONTEXT.md                 Canonical domain language
-ROADMAP.md                 Single incomplete-work registry
+src/recurspec/      installable package and bundled skill
+tests/              interface-level behavior tests
+modules/            checks and measurement probes
+docs/architecture/  recursive Contract Tree
+docs/process/       detailed policies loaded when needed
+docs/research/      evidence and outcome-study apparatus
+CONTEXT.md          canonical domain language
+ROADMAP.md          incomplete work only
 ```
 
-Start with [the documentation index](./docs/index.md), then read the
-[adoption guide](./docs/adoption.md), [contract-design loop](./docs/process/contract-design.md), and the
-[worked identity example](./docs/examples/identity-design.md).
+Read the [documentation index](./docs/index.md) or the
+[getting-started guide](./docs/getting-started.md). Small or low-risk projects may need
+only the validators—or may not need Recurspec at all; see the
+[adoption guide](./docs/adoption.md).
 
 ## License
 

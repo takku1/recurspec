@@ -4,7 +4,11 @@
 
 ## 1. System Intent & Responsibility
 
-Recurspec is a research-informed contract and evaluation system for AI-assisted software engineering. It maintains a Contract Tree of machine-usable `SYSTEM.md` nodes, executes work through Research Frontiers, and reconciles Structural and Empirical Feedback under a deterministic verification gate. This is the tree root.
+Recurspec is a research-informed contract and evaluation system for AI-assisted software
+engineering. It advances one finite, evidence-backed transition through an internal
+`DISCOVER -> RESOLVE -> EXECUTE -> CHECK -> RECONCILE` loop. It keeps the Contract Tree,
+implementation evidence, and `ROADMAP.md` consistent without allowing derived state to
+replace any of them. This is the tree root.
 
 **Does not own:** product application code of consumer repos; those *use* Recurspec process and may mirror this tree shape.
 
@@ -27,7 +31,12 @@ Research: [research/foundations.md](../research/foundations.md).
 ## 3. Interface Contracts
 
 - **Inputs:** `contract_path`; `max_tokens_per_node`; `concurrency`; product vision / NL scope; git diffs; existing code ASTs; measure baselines.
-- **Outputs:** Fractal docs/architecture/**/SYSTEM.md tree; Research Frontier tickets; pass/fail gate reports; baseline logs under .recurspec/evidence/.
+- **Outputs:** Contract Tree changes; one safe next route; common read-only check reports;
+  Research Frontier tickets; Candidate decisions; reconciliation drafts; baseline logs
+  under `.recurspec/evidence/`.
+- **Common CLI:** `recurspec status`, `recurspec check`, `recurspec evaluate`,
+  `recurspec reconcile plan`, and `recurspec skills`. Specialized command families remain
+  compatibility and research interfaces rather than the onboarding vocabulary.
 - **Interface syntax:** these three ports are declared this level down because a real child already consumes each by that exact name: `contract_path` by Contract Engine (see [contract-engine/SYSTEM.md](./contract-engine/SYSTEM.md) §3), `max_tokens_per_node` and `concurrency` by Spec Runner and its own children (see [spec-runner/SYSTEM.md](./spec-runner/SYSTEM.md) §3). The other L1 modules (Stack Resolver, Contract Reconciler, Frontier Adapter, Structure Gate, Evaluation Gate) are independently-invoked CLI gates with no cross-sibling data flow to formalize as ports — see R-105 in [ROADMAP.md](../../ROADMAP.md) for that finding.
 
 ## 4. Invariants (EARS + Epistemic Stage)
@@ -48,6 +57,14 @@ Research: [research/foundations.md](../research/foundations.md).
 - **[Ubiquitous]** Every node SHALL carry a decision class before it is decomposed or specified; every terminal node SHALL carry a complete §8 Technology Resolution block. (`test_resolution_audit_reports_incomplete_fields_and_refuses_vendor_on_defer`)
   - `EvidenceStage:` Sampled
 - **[Conditional]** IF a node resolves to BUY or ADOPT THEN THE SYSTEM SHALL treat it as terminal and SHALL NOT decompose the vendor's internals. (recursion termination guarantee)
+  - `EvidenceStage:` Unknown
+- **[Event-driven]** WHEN the common read-only check runs THE SYSTEM SHALL preserve each
+  checker's typed details and evidence license while reporting them through one Finding
+  envelope. (`test_check_cli_aggregates_selected_read_only_checks`)
+  - `EvidenceStage:` Sampled
+- **[Conditional]** IF Coverage Review proposes a missing Contract Node or cross-node
+  relationship THEN THE SYSTEM SHALL label it `Unknown` or `Inferred` and SHALL require
+  Architect review before changing the Contract Tree. (design policy)
   - `EvidenceStage:` Unknown
 
 ## 5. Architectural Decisions (ADRs)
@@ -73,13 +90,19 @@ Research: [research/foundations.md](../research/foundations.md).
   - *Impact:* per-node cost becomes O(1) in tree size rather than O(depth × breadth);
     the tree becomes executable by parallel workers without a second source of truth,
     because the Runner's state is a regenerable cache and markdown stays sovereign.
+- **ADR-007:** The common interface is smaller than the implementation architecture.
+  `status`, a consolidated read-only `check`, explicit `evaluate`, draft-only
+  `reconcile plan`, and `skills` form the ordinary path. Existing narrow commands remain
+  compatibility or research tools until the common interface preserves their refusal
+  guarantees. Interface compression never compresses mutation authority.
 
 ## 6. Recursive expansion rule
 
 - **Package implementation glue:** `src/recurspec/__init__.py`,
-  `src/recurspec/__main__.py`, `src/recurspec/fanout.py`, `src/recurspec/study.py`.
+  `src/recurspec/__main__.py`, `src/recurspec/inspection.py`,
+  `src/recurspec/fanout.py`, `src/recurspec/study.py`.
 - **Test Surface Seam:** `tests/test_repository.py`, `tests/test_skill_references.py`,
-  `tests/test_fanout.py`, `tests/test_study.py`.
+  `tests/test_fanout.py`, `tests/test_study.py`, `tests/test_inspection.py`.
 
 Resolve before decomposing. Decompose a node **only when** either its parts would resolve to *different* decision classes (split at that fault line), or it is uniformly BUILD and too large for one TDD session (split by independent interface seam — inputs/outputs that can change without rewriting siblings). Stop at procurement boundaries and at one-session build units. Full rule with depth guards: [contract-design.md](../process/contract-design.md).
 

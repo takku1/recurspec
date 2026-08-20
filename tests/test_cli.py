@@ -187,14 +187,36 @@ def test_skill_targets_include_grok_under_grok_home(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
     grok_home = tmp_path / "grok-home"
+    gemini_home = tmp_path / "gemini-home"
     monkeypatch.setenv("GROK_HOME", str(grok_home))
+    monkeypatch.setenv("GEMINI_HOME", str(gemini_home))
 
     grok_only = _skill_targets("grok")
+    agy_only = _skill_targets("antigravity")
     everyone = _skill_targets("all")
 
     assert grok_only == [("Grok", grok_home / "skills")]
+    assert agy_only == [("Antigravity", gemini_home / "config/skills")]
     assert ("Grok", grok_home / "skills") in everyone
-    assert {label for label, _path in everyone} == {"Claude Code", "Codex", "Grok"}
+    assert ("Antigravity", gemini_home / "config/skills") in everyone
+    assert {label for label, _path in everyone} == {
+        "Claude Code",
+        "Codex",
+        "Grok",
+        "Antigravity",
+    }
+
+
+def test_skills_install_writes_the_bundled_skill_to_antigravity_home(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
+):
+    gemini_home = tmp_path / "gemini-home"
+    monkeypatch.setenv("GEMINI_HOME", str(gemini_home))
+
+    assert main(["skills", "install", "--target", "antigravity"]) == 0
+    assert (gemini_home / "config" / "skills" / "recurspec" / "SKILL.md").is_file()
+    assert "Antigravity:" in capsys.readouterr().out
+    assert main(["skills", "check", "--target", "antigravity"]) == 0
 
 
 def test_skills_install_writes_the_bundled_skill_to_grok_home(
@@ -278,7 +300,9 @@ def test_evaluate_cli_orchestrates_the_isolated_candidate_lifecycle(tmp_path, mo
     assert received["record_baseline"] is True
 
 
-def test_evaluate_cli_bks_metrics_only_still_runs_the_full_evaluation(tmp_path, monkeypatch, capsys):
+def test_evaluate_cli_bks_metrics_only_still_runs_the_full_evaluation(
+    tmp_path, monkeypatch, capsys
+):
     """Locks in current behavior: --bks-metrics-only only changes what the printed
     BKS packet contains (metrics vs. metrics+source, per implementor_bks); it does
     not turn `evaluate` into a print-and-exit command. The isolated candidate

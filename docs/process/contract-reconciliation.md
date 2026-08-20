@@ -1,77 +1,45 @@
-# Multi-Signal Structural Contract Reconciler
+# Contract reconciliation
 
-Structural Feedback detail. Module contract: [architecture/contract-reconciler/SYSTEM.md](../architecture/contract-reconciler/SYSTEM.md). Incomplete work is tracked in [ROADMAP.md](../../ROADMAP.md).
+Reconciliation compares the accepted Contract Tree with implementation and evidence, then
+proposes which representation should change. It is draft-only: the Architect reviews all
+contract mutations.
 
----
+Module contract:
+[Contract Reconciler](../architecture/contract-reconciler/SYSTEM.md).
 
-## Paradigm
+## Finding to action
 
-Documentation is not a static write-once artifact. Under multi-agent edit rates, the
-Contract Tree needs **sensory triggers** that open draft nodes, split bloated contracts,
-and sync test-introduced seams.
+| Finding | Typical trigger | Reviewable action |
+|---|---|---|
+| Code drift | Public source has no owning Contract Node | Draft an `Unknown` leaf |
+| Structural bloat | One contract owns separable interfaces | Propose an interface-driven split |
+| Test-seam drift | A new mock or adapter is undeclared | Review the parent Interface Contract |
+| Metric drift | Behavior contradicts a target or assumption | Review code, contract, instrument, or Research Frontier |
+| Coverage gap | Bounded Coverage Review finds a missing seam | Propose an `Unknown` or `Inferred` node/interface |
 
-```mermaid
-graph TD
-    S1[Signal A: Code Drift] --> Agent[Contract Reconciler Observer]
-    S2[Signal B: Structural Bloat] --> Agent
-    S3[Signal C: Test Seam] --> Agent
-    Agent --> Split{Split / Draft?}
-    Split -->|File to folder| Sub[Child SYSTEM.md nodes]
-    Split -->|Draft leaf| Draft[New leaf under parent]
-    Sub --> WF[Wayfinder tickets]
-    Draft --> WF
-```
-
-Signal D (metric drift) is empirical — owned by Evaluation Gate + Empirical Feedback.
-
----
-
-## Signal A — AST / code drift
-
-- **Trigger:** New source file or exported symbol without a linked architecture node.
-- **Action:** Propose a schema-valid `Unknown` draft under `docs/architecture/drafts/`;
-  Architect review chooses the real parent and whether to apply it.
-- **Research basis:** Requirements–design–code traceability (RE practice); SDB reject when drift is left unacknowledged at commit (research foundation §2–§3).
-
----
-
-## Signal B — structural bloat
-
-- **Trigger:** Contract Node exceeds 150 lines, or its §1 explicitly declares more than
-  three semicolon-separated `- **Responsibilities:**` entries with separable interfaces.
-- **Action:** Emit a split-review proposal. Architect review identifies separable
-  responsibilities before any file-to-folder edit or child ticket is created.
-- **Research basis:** Recursive modular decomposition / deep modules (interface vs implementation complexity); ADR hygiene for *why* the split occurred.
-
----
-
-## Signal C — test seam expansion
-
-- **Trigger:** TDD introduces a mock/adapter not listed in parent interface contracts.
-- **Action:** Emit a test-seam-review proposal; do not silently expand production coupling.
-
----
-
-## Example evolution
-
-```
-Day 1:  docs/architecture/profile-page/SYSTEM.md   (single leaf)
-
-Day N:  docs/architecture/profile-page/
-          SYSTEM.md
-          header/SYSTEM.md
-          bio-form/SYSTEM.md
-          privacy-settings/SYSTEM.md
-```
-
-Wayfinder may carry execution detail for child frontier tickets, but every deferred task
-or incomplete feature retains its canonical row in `ROADMAP.md`; the tracker never
-becomes a parallel readiness list.
-
----
+All checkers may report through a common Finding envelope, but their evidence policies
+remain typed. Static structure cannot establish runtime behavior. A metric cannot rewrite
+its own target to turn failure into success. Contradictory evidence refuses a plan.
 
 ## Rules
 
-1. Prefer **interface-driven** splits over arbitrary line cuts.
-2. Never invent requirements during auto-draft; mark Epistemic Stage `Unknown` until Architect review.
-3. Do not treat reconcile as a substitute for measurement (Empirical Feedback).
+1. Prefer interface-driven splits over arbitrary line cuts.
+2. Never invent requirements during drafting; state the Evidence Stage and the evidence
+   needed to advance it.
+3. Keep one-parent ownership in the Contract Tree. Cross-node dependencies belong in a
+   regenerable Relationship Index.
+4. Keep incomplete intent in `ROADMAP.md`; generated drafts and Research Frontier tickets
+   reference it rather than becoming a competing backlog.
+5. Reconciliation may remove, merge, or reprioritize future work when evidence makes it
+   unnecessary.
+6. The Evaluation Gate remains the only authority for Candidate `KEEP`, `REVERT`, or
+   `ESCALATE` decisions.
+
+Run the current draft-only interface with:
+
+```bash
+recurspec reconcile plan . --changed-file src/example.py
+```
+
+Exit `0` means no action, `1` means reviewable actions exist, and `2` means the
+instrument could not produce trustworthy findings.

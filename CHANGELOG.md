@@ -4,6 +4,17 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ## [Unreleased]
 
+### Changed
+
+- R-700-02: condensed the bundled skill into a small controller around
+  `DISCOVER -> RESOLVE -> EXECUTE -> CHECK -> RECONCILE`; detailed design, resolution,
+  and reconciliation rules remain lazy-loaded references.
+- Added bounded Coverage Review and evidence-driven adaptive planning without adding an
+  editable project graph, Scrum ceremonies, or model-judge authority.
+- R-700-03: made `ROADMAP.md` incomplete-work-only, replaced obsolete multi-stage process
+  prose, and removed integrated consolidation scratch notes while retaining the standard
+  `src/recurspec` package layout and independently failing Contract Nodes.
+
 ### Added
 
 - R-627: `recurspec status` classifies a repository as `missing`, `not_recurspec`,
