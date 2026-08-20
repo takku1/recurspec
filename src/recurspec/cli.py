@@ -489,13 +489,7 @@ def _run_study(args: argparse.Namespace) -> int:
         return 1
 
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="recurspec", description="Evidence-gated system design")
-    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
-    commands = parser.add_subparsers(dest="command", required=True)
-
-    defaults_formatter = argparse.ArgumentDefaultsHelpFormatter
-
+def _add_check_parser(commands: argparse._SubParsersAction, defaults_formatter: type) -> None:
     common_check = commands.add_parser(
         "check",
         help="run selected read-only project checks",
@@ -529,6 +523,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     common_check.set_defaults(handler=_run_check)
 
+
+def _add_evaluate_parser(commands: argparse._SubParsersAction, defaults_formatter: type) -> None:
     evaluate = commands.add_parser(
         "evaluate",
         help="evaluate a candidate branch",
@@ -604,6 +600,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     evaluate.set_defaults(handler=_run_evaluate)
 
+
+def _add_skills_parser(commands: argparse._SubParsersAction, defaults_formatter: type) -> None:
     skills = commands.add_parser(
         "skills",
         help="install or verify the bundled agent skill",
@@ -624,6 +622,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     skills.set_defaults(handler=_run_skills)
 
+
+def _add_status_parser(commands: argparse._SubParsersAction, defaults_formatter: type) -> None:
     status = commands.add_parser(
         "status",
         help="classify Recurspec readiness of a repository",
@@ -649,6 +649,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     status.set_defaults(handler=_run_status)
 
+
+def _add_fanout_parser(commands: argparse._SubParsersAction, defaults_formatter: type) -> None:
     fanout = commands.add_parser(
         "fanout",
         help="split a work list into one strategy handoff per item",
@@ -695,6 +697,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     fanout.set_defaults(handler=_run_fanout)
 
+
+def _add_contract_parser(commands: argparse._SubParsersAction, defaults_formatter: type) -> None:
     contract = commands.add_parser(
         "contract",
         help="validate versioned Contract Nodes",
@@ -732,6 +736,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     evidence.set_defaults(handler=_run_contract_evidence)
 
+
+def _add_structure_parser(commands: argparse._SubParsersAction, defaults_formatter: type) -> None:
     structure = commands.add_parser(
         "structure",
         help="check source ownership and test seams against the Contract Tree",
@@ -773,6 +779,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     structure_check.set_defaults(handler=_run_structure_check)
 
+
+def _add_reconcile_parser(commands: argparse._SubParsersAction, defaults_formatter: type) -> None:
     reconcile = commands.add_parser(
         "reconcile",
         help="turn structural feedback into reviewable contract drafts",
@@ -800,6 +808,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     reconcile_plan.set_defaults(handler=_run_reconcile_plan)
 
+
+def _add_stack_parser(commands: argparse._SubParsersAction, defaults_formatter: type) -> None:
     stack = commands.add_parser(
         "stack",
         help="audit Technology Resolution completeness and staleness",
@@ -820,6 +830,8 @@ def build_parser() -> argparse.ArgumentParser:
     stack_check.add_argument("--format", choices=("text", "json"), default="text")
     stack_check.set_defaults(handler=_run_stack_check)
 
+
+def _add_modules_parser(commands: argparse._SubParsersAction, defaults_formatter: type) -> None:
     modules = commands.add_parser(
         "modules",
         help="run checks and measurements for changed measurable modules",
@@ -853,6 +865,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     modules_check.set_defaults(handler=_run_modules_check)
 
+
+def _add_frontier_parser(commands: argparse._SubParsersAction, defaults_formatter: type) -> None:
     frontier = commands.add_parser(
         "frontier",
         help="publish or verify Research Frontier tickets",
@@ -896,6 +910,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     frontier_check.set_defaults(handler=_run_frontier)
 
+
+def _add_corpus_parser(commands: argparse._SubParsersAction, defaults_formatter: type) -> None:
     corpus = commands.add_parser(
         "corpus",
         help="export a privacy-preserving decision corpus",
@@ -926,6 +942,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     corpus_export.set_defaults(handler=_run_corpus_export)
 
+
+def _add_predict_parser(commands: argparse._SubParsersAction, defaults_formatter: type) -> None:
     predict = commands.add_parser(
         "predict",
         help="report Negative Pattern reason frequencies; refuses when none exist",
@@ -946,6 +964,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     predict.set_defaults(handler=_run_predict)
 
+
+def _add_study_parser(commands: argparse._SubParsersAction, defaults_formatter: type) -> None:
     study = commands.add_parser(
         "study",
         help="register and assign R-400–R-403 matched-pair case studies",
@@ -1038,6 +1058,34 @@ def build_parser() -> argparse.ArgumentParser:
         help="working directory for the verify command",
     )
     study_accept.set_defaults(handler=_run_study)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """Assemble the CLI from one builder per top-level command.
+
+    Each ``_add_*_parser`` owns exactly one verb; a builder that is defined but never
+    called here would silently drop that command, which
+    ``test_every_command_builder_is_wired_into_the_parser`` rejects (R-701).
+    """
+    parser = argparse.ArgumentParser(prog="recurspec", description="Evidence-gated system design")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    commands = parser.add_subparsers(dest="command", required=True)
+
+    defaults_formatter = argparse.ArgumentDefaultsHelpFormatter
+    _add_check_parser(commands, defaults_formatter)
+    _add_evaluate_parser(commands, defaults_formatter)
+    _add_skills_parser(commands, defaults_formatter)
+    _add_status_parser(commands, defaults_formatter)
+    _add_fanout_parser(commands, defaults_formatter)
+    _add_contract_parser(commands, defaults_formatter)
+    _add_structure_parser(commands, defaults_formatter)
+    _add_reconcile_parser(commands, defaults_formatter)
+    _add_stack_parser(commands, defaults_formatter)
+    _add_modules_parser(commands, defaults_formatter)
+    _add_frontier_parser(commands, defaults_formatter)
+    _add_corpus_parser(commands, defaults_formatter)
+    _add_predict_parser(commands, defaults_formatter)
+    _add_study_parser(commands, defaults_formatter)
     return parser
 
 

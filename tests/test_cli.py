@@ -388,3 +388,25 @@ def test_reconcile_plan_cli_emits_drafts_without_writing_them(tmp_path, capsys):
     assert payload["actions"][0]["kind"] == "draft_leaf"
     assert payload["deferred_empirical_events"] == 0
     assert not (tmp_path / payload["actions"][0]["contract_path"]).exists()
+
+
+def test_every_command_builder_is_wired_into_the_parser():
+    """Splitting build_parser into per-verb builders made it possible to define one and
+    forget to call it, which would drop the command with no failing test (R-701)."""
+    import recurspec.cli as cli_module
+
+    builders = {
+        name.removeprefix("_add_").removesuffix("_parser")
+        for name in vars(cli_module)
+        if name.startswith("_add_") and name.endswith("_parser")
+    }
+    parser = build_parser()
+    commands = {
+        choice
+        for action in parser._actions
+        if isinstance(getattr(action, "choices", None), dict)
+        for choice in action.choices
+    }
+
+    assert builders, "no command builders found"
+    assert builders == commands

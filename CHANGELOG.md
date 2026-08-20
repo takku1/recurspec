@@ -24,6 +24,9 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
   layout instead of defaulting to `src/recurspec`, so both gates work outside this
   repository. `--source-root` still overrides, and an ambiguous layout fails closed
   naming the flag.
+- R-701: split the 560-line `build_parser` into one `_add_*_parser` builder per
+  command. Verified by diffing the help text of all 28 parsers before and after, and
+  guarded by a test asserting every defined builder is wired in.
 - R-701: `check` text output now identifies each finding's subject. The JSON envelope
   always carried `details.path`; the text renderer dropped it, printing every `Unknown`
   evidence finding as the same unactionable line.
