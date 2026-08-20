@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from .structure_gate import StructureDiagnostic, check_structure
+from .structure_gate import StructureDiagnostic, check_structure, infer_source_root
 
 _RESPONSIBILITIES = re.compile(r"^\s*-\s+\*\*Responsibilities:\*\*\s*(.+)$", re.MULTILINE)
 
@@ -151,7 +151,7 @@ def _actions_for_drift(
 def plan_reconciliation(
     repository: str | Path,
     *,
-    source_root: str = "src/recurspec",
+    source_root: str | None = None,
     contract_root: str = "docs/architecture",
     test_root: str = "tests",
     changed_files: set[str] | None = None,
@@ -161,6 +161,8 @@ def plan_reconciliation(
     """Return deterministic draft actions without changing repository files."""
     if bloat_line_limit < 1:
         raise ValueError("bloat_line_limit must be positive")
+    if source_root is None:
+        source_root = infer_source_root(repository) or "src"
     root = Path(repository).resolve()
     structure = check_structure(
         root,

@@ -16,6 +16,19 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
   documentation, stale ROADMAP references, and blockers that are no longer open.
 - Every `Sampled` architecture invariant now names an executable test. The remaining
   `Unknown` findings are intentional claim boundaries, not missing licenses.
+- R-701: `stack check` now accepts PEP 440 exact releases (`5.0.0.93`, `2.9.0.post0`,
+  `1.2.3rc1`, `1.0.0.dev1`). The semver-shaped test rejected them as floating, and one
+  offending package refused the whole `--inventory`, making the gate unusable on ordinary
+  Python environments.
+- R-701: `structure check` and `reconcile plan` infer the source root from the repository
+  layout instead of defaulting to `src/recurspec`, so both gates work outside this
+  repository. `--source-root` still overrides, and an ambiguous layout fails closed
+  naming the flag.
+- R-701: `check` text output now identifies each finding's subject. The JSON envelope
+  always carried `details.path`; the text renderer dropped it, printing every `Unknown`
+  evidence finding as the same unactionable line.
+
+
 - R-700-04: removed the duplicated decision-class table and Technology Resolution block
   from the bundled `design.md`, which had already drifted from `resolve.md` and the
   fields `recurspec stack check` enforces. Both references now document the same twelve
@@ -28,6 +41,13 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 - R-700-03: made `ROADMAP.md` incomplete-work-only, replaced obsolete multi-stage process
   prose, and removed integrated consolidation scratch notes while retaining the standard
   `src/recurspec` package layout and independently failing Contract Nodes.
+
+### Removed
+
+- R-701: the `recurspec recommend` command. It ignored `--corpus` and raised
+  unconditionally, and could never succeed because the exported corpus redacts Decision
+  Class by construction. `ROADMAP.md` R-502 remains the single record of the block, and a
+  test now asserts the redaction directly.
 
 ### Added
 

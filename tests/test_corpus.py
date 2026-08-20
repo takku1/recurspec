@@ -4,10 +4,9 @@ from pathlib import Path
 import pytest
 
 from recurspec.evidence import (
-    RecommendationError,
+    _CORPUS_KEEP,
     export_decision_corpus,
     log_event,
-    recommend_decision_class,
 )
 
 
@@ -43,6 +42,10 @@ def test_export_drops_reasons_branches_and_metric_values(tmp_path: Path):
     assert "candidate/private" not in dest.read_text(encoding="utf-8")
 
 
-def test_recommend_decision_class_refuses_to_invent_from_a_redacted_corpus():
-    with pytest.raises(RecommendationError, match="refusing to invent"):
-        recommend_decision_class()
+def test_decision_corpus_never_carries_a_decision_class_or_reason():
+    """The redaction is the guarantee. A CLI verb whose only behavior was to refuse
+    encoded the same fact as public surface area; ROADMAP R-502 records the block
+    (R-701)."""
+    assert "decision_class" not in _CORPUS_KEEP
+    assert "reason" not in _CORPUS_KEEP
+    assert "metrics" not in _CORPUS_KEEP

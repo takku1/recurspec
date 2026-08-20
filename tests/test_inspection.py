@@ -120,8 +120,14 @@ def test_check_cli_text_reports_nonblocking_findings_and_pass_summary(
 
     output = capsys.readouterr().out
     assert code == 0
-    assert "evidence: evidence.claim.unlicensed:" in output
-    assert "evidence: evidence.stage.unknown:" in output
+    assert "docs/architecture/SYSTEM.md" in output
+    assert "evidence.claim.unlicensed:" in output
+    assert "evidence.stage.unknown:" in output
+    # Text output must locate each finding; every Unknown shares the message "Unknown",
+    # so without the subject the lines are indistinguishable (R-701).
+    located = [line for line in output.splitlines() if "evidence.stage.unknown" in line]
+    assert located and len(set(located)) == len(located)
+    assert all(line.startswith("docs/architecture/SYSTEM.md:") for line in located)
     assert output.rstrip().endswith("PASS: 1 selected check(s) completed")
 
 

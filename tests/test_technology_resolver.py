@@ -181,6 +181,12 @@ def test_dependency_inventory_rejects_a_floating_version(tmp_path: Path, floatin
         "1.2.3-rc.1",
         "1.2.3+build.5",
         "2024.01.15",
+        # PEP 440 exact releases pip installs verbatim (R-701)
+        "5.0.0.93",
+        "2.9.0.post0",
+        "2026.3.post1",
+        "1.2.3rc1",
+        "1.0.0.dev1",
         "abc1234",
         "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
         "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b85",

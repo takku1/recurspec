@@ -9,6 +9,7 @@ from recurspec.structure_gate import (
     check_structure,
     declared_paths,
     declared_probe_paths,
+    infer_source_root,
     rust_adapter,
 )
 
@@ -480,3 +481,29 @@ def test_available_adapters_omits_rust_when_the_extra_is_missing(monkeypatch):
     assert rust_adapter() is None
     assert all(adapter.name != "rust" for adapter in available_adapters())
     assert available_adapters()[0].name == "python"
+
+
+def test_source_root_is_inferred_from_the_repository_layout(tmp_path: Path):
+    """The gates must work on a repository that is not Recurspec itself (R-701)."""
+    package = tmp_path / "src" / "someproject"
+    package.mkdir(parents=True)
+    (tmp_path / "src" / "someproject.egg-info").mkdir()
+
+    assert infer_source_root(tmp_path) == "src/someproject"
+
+
+def test_source_root_inference_declines_an_ambiguous_layout(tmp_path: Path):
+    for name in ("alpha", "beta"):
+        (tmp_path / "src" / name).mkdir(parents=True)
+
+    assert infer_source_root(tmp_path) is None
+
+
+def test_source_root_inference_finds_a_flat_layout_package(tmp_path: Path):
+    package = tmp_path / "someproject"
+    package.mkdir()
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "docs").mkdir()
+
+    assert infer_source_root(tmp_path) == "someproject"

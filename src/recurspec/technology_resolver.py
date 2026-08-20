@@ -111,6 +111,18 @@ _RANGE_OPERATOR_RE = re.compile(r"[<>=~^!,\s]")
 # explicit "-prerelease" or "+build" suffix, matching where semver actually allows one
 # (R-622, R-642).
 _SEMVER_RE = re.compile(r"^v?[0-9]+(?:\.[0-9]+){0,2}(?:-[0-9A-Za-z.]+)?(?:\+[0-9A-Za-z.]+)?$")
+# PEP 440 exact releases that semver's shape rejects but pip installs verbatim: an
+# unbounded release segment ("5.0.0.93"), a suffix-attached pre-release ("1.2.3rc1"),
+# and ".postN"/".devN" ("2.9.0.post0", "2026.3.post1"). Epochs ("1!2.0") stay
+# unsupported because "!" is reserved for the "!=" range operator rejected above
+# (R-701).
+_PEP440_RE = re.compile(
+    r"^v?[0-9]+(?:\.[0-9]+)*"
+    r"(?:(?:a|b|c|rc|alpha|beta|pre|preview)[0-9]+)?"
+    r"(?:\.post[0-9]+)?"
+    r"(?:\.dev[0-9]+)?"
+    r"(?:\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$"
+)
 # An immutable git/VCS revision - short or full hex SHA. Must contain a letter so a
 # plain numeric version (e.g. a build number) is never mistaken for one.
 _HEX_REVISION_RE = re.compile(r"^[0-9a-fA-F]{7,64}$")
@@ -120,7 +132,7 @@ _DIGEST_RE = re.compile(r"^[A-Za-z][A-Za-z0-9]*:[0-9a-fA-F]{32,}$")
 
 def _is_exact_version(value: str) -> bool:
     """A package version or VCS tag: semver-shaped, optionally v-prefixed."""
-    return bool(_SEMVER_RE.match(value))
+    return bool(_SEMVER_RE.match(value) or _PEP440_RE.match(value))
 
 
 def _is_exact_commit(value: str) -> bool:
@@ -201,7 +213,7 @@ def _looks_exact(version: str) -> bool:
         return True
     if _HEX_REVISION_RE.match(value) and any(c in "abcdefABCDEF" for c in value):
         return True
-    return bool(_SEMVER_RE.match(value))
+    return _is_exact_version(value)
 
 
 def load_dependency_inventory(path: str | Path) -> dict[str, str]:

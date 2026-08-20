@@ -25,6 +25,21 @@ class Finding:
     details: tuple[tuple[str, Detail], ...] = ()
     blocking: bool = True
 
+    @property
+    def subject(self) -> str:
+        """Where the finding is, for human output.
+
+        The JSON envelope always carried the locating details; text output printed only
+        checker/code/message, which rendered every ``Unknown`` evidence finding as the
+        same unactionable line (R-701).
+        """
+        details = dict(self.details)
+        path = details.get("path")
+        if path is None:
+            return self.checker
+        index = details.get("invariant_index")
+        return f"{path}:{index}" if index is not None else str(path)
+
     def as_dict(self) -> dict[str, Any]:
         return {
             "blocking": self.blocking,

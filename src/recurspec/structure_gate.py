@@ -347,10 +347,43 @@ def available_adapters() -> tuple[LanguageAdapter, ...]:
     return tuple(adapters)
 
 
+_NON_PACKAGE_DIRS = frozenset({"tests", "docs", "examples", "modules", "scripts"})
+
+
+def infer_source_root(repository: str | Path) -> str | None:
+    """Best-effort repository-relative source root: the one importable package.
+
+    Returns ``None`` rather than guessing when the layout is ambiguous, so callers fail
+    closed and name ``--source-root`` instead of auditing the wrong tree. Defaulting to
+    a fixed path made both structure gates usable only inside Recurspec itself (R-701).
+    """
+    root = Path(repository).resolve()
+    source = root / "src"
+    if source.is_dir():
+        # No __init__.py requirement: PEP 420 namespace packages legitimately lack one.
+        packages = sorted(
+            child.name
+            for child in source.iterdir()
+            if child.is_dir()
+            and not child.name.startswith((".", "_"))
+            and not child.name.endswith((".egg-info", ".dist-info"))
+        )
+        return f"src/{packages[0]}" if len(packages) == 1 else None
+    packages = sorted(
+        child.name
+        for child in root.iterdir()
+        if child.is_dir()
+        and not child.name.startswith((".", "_"))
+        and child.name not in _NON_PACKAGE_DIRS
+        and (child / "__init__.py").is_file()
+    )
+    return packages[0] if len(packages) == 1 else None
+
+
 def check_structure(
     repository: str | Path,
     *,
-    source_root: str | Path = "src/recurspec",
+    source_root: str | Path | None = None,
     contract_root: str | Path = "docs/architecture",
     test_root: str | Path = "tests",
     changed_files: set[str] | None = None,
@@ -363,6 +396,8 @@ def check_structure(
     Default adapters are Python-only so existing Python checks stay identical.
     """
     active = tuple(adapters) if adapters is not None else DEFAULT_ADAPTERS
+    if source_root is None:
+        source_root = infer_source_root(repository) or "src"
     root = Path(repository).resolve()
     source = (root / source_root).resolve()
     contracts = (root / contract_root).resolve()
@@ -403,7 +438,7 @@ def check_structure(
             StructureDiagnostic(
                 "structure.source_root.missing",
                 Path(source_root).as_posix(),
-                "source root does not exist",
+                "source root does not exist; pass --source-root to name it",
             )
         )
     if diagnostics:

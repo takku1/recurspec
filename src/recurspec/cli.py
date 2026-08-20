@@ -16,7 +16,7 @@ from pathlib import Path
 from . import __version__
 from .contract import ContractInstrumentError, audit_evidence_stages, validate_contract
 from .evaluation import ERROR, evaluate_isolated_candidate
-from .evidence import RecommendationError, export_decision_corpus, recommend_decision_class
+from .evidence import export_decision_corpus
 from .fanout import FanoutInstrumentError, plan_fanout, render_fanout, write_fanout
 from .frontier import (
     FrontierInstrumentError,
@@ -377,7 +377,7 @@ def _run_check(args: argparse.Namespace) -> int:
         print(json.dumps(report.as_dict(), separators=(",", ":"), sort_keys=True))
     else:
         for finding in report.findings:
-            print(f"{finding.checker}: {finding.code}: {finding.message}")
+            print(f"{finding.subject}: {finding.code}: {finding.message}")
         if report.valid:
             print(f"PASS: {len(report.checks)} selected check(s) completed")
     return report.exit_code
@@ -423,15 +423,6 @@ def _run_predict(args: argparse.Namespace) -> int:
     else:
         for row in rows:
             print(f"{row['count']}\t{row['reason']}")
-    return 0
-
-
-def _run_recommend(args: argparse.Namespace) -> int:
-    try:
-        recommend_decision_class(args.corpus)
-    except RecommendationError as exc:
-        print(f"[ERROR] {exc}", file=sys.stderr)
-        return 1
     return 0
 
 
@@ -756,7 +747,9 @@ def build_parser() -> argparse.ArgumentParser:
         "repository", type=Path, help="repository root containing source and Contract Tree"
     )
     structure_check.add_argument(
-        "--source-root", default="src/recurspec", help="repository-relative source root"
+        "--source-root",
+        default=None,
+        help="repository-relative source root (default: the repository's single package)",
     )
     structure_check.add_argument(
         "--contract-root",
@@ -792,7 +785,7 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=defaults_formatter,
     )
     reconcile_plan.add_argument("repository", type=Path, help="repository root")
-    reconcile_plan.add_argument("--source-root", default="src/recurspec")
+    reconcile_plan.add_argument("--source-root", default=None)
     reconcile_plan.add_argument("--contract-root", default="docs/architecture")
     reconcile_plan.add_argument("--test-root", default="tests")
     reconcile_plan.add_argument("--changed-file", action="append", default=[])
@@ -952,19 +945,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="text prints count and reason; json prints a stable payload",
     )
     predict.set_defaults(handler=_run_predict)
-
-    recommend = commands.add_parser(
-        "recommend",
-        help="refuse to invent a Decision Class recommendation without comparable outcomes",
-        formatter_class=defaults_formatter,
-    )
-    recommend.add_argument(
-        "--corpus",
-        type=Path,
-        default=None,
-        help="optional redacted corpus path; does not license a recommendation",
-    )
-    recommend.set_defaults(handler=_run_recommend)
 
     study = commands.add_parser(
         "study",
