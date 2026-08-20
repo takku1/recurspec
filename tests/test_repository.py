@@ -196,3 +196,25 @@ def test_skill_documents_exactly_the_enforced_resolution_fields():
     references = ROOT / "src/recurspec/skill/references"
     for name in ("design.md", "resolve.md"):
         assert _resolution_fields(references / name) == expected, name
+
+
+def test_ci_runs_every_deterministic_gate_the_project_ships():
+    """Gates that only run when a maintainer remembers are not gates. A source-root
+    default that broke every repository except this one survived precisely because
+    structure, stack, and reconcile were never executed in CI (R-701)."""
+    workflow = ROOT / ".github/workflows/ci.yml"
+    text = workflow.read_text(encoding="utf-8")
+
+    for command in (
+        "recurspec contract check docs/architecture",
+        "recurspec structure check .",
+        "recurspec stack check .",
+        "recurspec reconcile plan .",
+        "recurspec skills check --target claude",
+        "recurspec modules check .",
+        "python -m pytest",
+        "ruff check src tests",
+    ):
+        assert command in text, command
+
+    assert "windows-latest" in text, "the development platform must be verified in CI"

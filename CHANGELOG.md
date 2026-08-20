@@ -24,6 +24,13 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
   layout instead of defaulting to `src/recurspec`, so both gates work outside this
   repository. `--source-root` still overrides, and an ambiguous layout fails closed
   naming the flag.
+- R-701: CI now runs the gates the project ships - `structure check`, `stack check`,
+  `reconcile plan`, and a skill install/verify round-trip - and adds a `windows-latest`
+  job. Four of the project's own gates previously ran only when a maintainer remembered,
+  which is how a source-root default that broke every other repository survived.
+- R-701: `compare()` refuses `noise_pct >= tolerance_pct`. The noise band is tested
+  first, so that configuration reported every regression as neutral and silently voided
+  the primary gate.
 - R-701: split the 560-line `build_parser` into one `_add_*_parser` builder per
   command. Verified by diffing the help text of all 28 parsers before and after, and
   guarded by a test asserting every defined builder is wired in.

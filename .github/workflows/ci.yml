@@ -7,13 +7,26 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    # Git Bash exists on the Windows runners, so one shell covers the whole matrix and
+    # the probe runner (which resolves `bash` on PATH) behaves the same everywhere.
+    shell: bash
+
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest]
         python-version: ["3.10", "3.11", "3.12", "3.13"]
+        include:
+          # Development happens on Windows while CI ran only on Linux, so each platform
+          # was the other's blind spot - symlink handling, path separators, and bash
+          # discovery were never verified anywhere but a maintainer's machine (R-701).
+          - os: windows-latest
+            python-version: "3.13"
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -25,6 +38,18 @@ jobs:
       - run: ruff check src tests
       - run: recurspec contract check docs/architecture
       - run: recurspec contract check docs/examples/log-archive
+      # A project that gates on evidence must run its own gates. These four passed only
+      # when someone remembered to invoke them locally, which is how a source-root
+      # default that broke every other repository survived unnoticed (R-701).
+      - run: recurspec structure check .
+      - run: recurspec stack check .
+      - run: recurspec reconcile plan .
+      - name: Bundled skill installs and matches
+        env:
+          CLAUDE_SKILLS_DIR: ${{ runner.temp }}/skills
+        run: |
+          recurspec skills install --target claude
+          recurspec skills check --target claude
       - name: Evaluate changed measurable modules
         run: |
           set -euo pipefail
@@ -45,5 +70,5 @@ jobs:
             done
             python -m recurspec modules check . "${args[@]}"
           fi
-      - if: matrix.python-version == '3.13'
+      - if: matrix.python-version == '3.13' && runner.os == 'Linux'
         run: python -m build

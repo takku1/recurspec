@@ -282,6 +282,15 @@ def compare(
         raise ValueError(f"tolerance_pct must be a finite, non-negative number: {tolerance_pct!r}")
     if not math.isfinite(noise_pct) or noise_pct < 0:
         raise ValueError(f"noise_pct must be a finite, non-negative number: {noise_pct!r}")
+    if noise_pct >= tolerance_pct > 0:
+        # A noise band at or above the tolerance swallows every regression the tolerance
+        # exists to catch: the band is tested first, so a 25% regression under
+        # tolerance 20 / noise 30 reads NEUTRAL. Refuse the configuration instead of
+        # silently voiding the primary gate (R-701).
+        raise ValueError(
+            f"noise_pct {noise_pct!r} must be below tolerance_pct {tolerance_pct!r}; "
+            "a noise band that wide reports every regression as neutral"
+        )
 
     cur = _numeric(current)
     if cur is None:
@@ -385,9 +394,14 @@ def parse_measurement(stdout: str) -> dict[str, Any]:
     except json.JSONDecodeError:
         pass
 
-    # Otherwise scan for top-level balanced {...} blocks, so a evaluation gate may
-    # emit log lines - or multiple diagnostic JSON objects - before its
-    # payload. Only complete depth 0->1->0 spans count as candidates: a
+    # Otherwise scan for top-level balanced {...} blocks, so an evaluation gate may
+    # emit log lines - or multiple diagnostic JSON objects - before its payload. Note the
+    # asymmetry: the whole-stdout parse above accepts any object, while a scanned span
+    # must carry "metric" or "metrics" to be told apart from a diagnostic. A payload
+    # preceded by log lines therefore only survives if it is correctly shaped; a bare
+    # object reaching the single-metric path yields value=None, which compare() resolves
+    # UNKNOWN and the gate reverts. Both routes fail closed (R-701).
+    # Only complete depth 0->1->0 spans count as candidates: a
     # payload's own nested objects (e.g. a multi-metric entry) must never be
     # mistaken for the whole payload. Tried last-to-first so a genuine
     # payload emitted after diagnostic objects wins.

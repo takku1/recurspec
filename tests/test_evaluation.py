@@ -128,6 +128,26 @@ def test_bad_declared_direction_raises():
 # --- comparison -------------------------------------------------------------
 
 
+def test_compare_refuses_a_noise_band_that_swallows_the_tolerance():
+    """The noise band is tested before the tolerance, so noise >= tolerance reports every
+    regression as neutral and silently voids the primary gate (R-701)."""
+    for noise in (30.0, 20.0):
+        with pytest.raises(ValueError, match="must be below tolerance_pct"):
+            compare(
+                "latency_p99_ms",
+                125.0,
+                100.0,
+                tolerance_pct=20.0,
+                noise_pct=noise,
+                declared_direction="lower",
+            )
+
+    # A zero tolerance is a deliberate "any regression blocks" setting, not a mistake.
+    assert (
+        compare("latency_p99_ms", 125.0, 100.0, tolerance_pct=0.0).verdict == REGRESSED
+    )
+
+
 def test_lower_is_better_improvement():
     c = compare("latency_p99_ms", 80.0, 100.0)
     assert c.verdict == IMPROVED
