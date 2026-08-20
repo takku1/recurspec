@@ -77,17 +77,14 @@ two real alternatives** with versions or plan tiers, plus what each does *not* c
 
 ### 4. RESOLVE — assign exactly one decision class
 
-| Class | Meaning |
-|-------|---------|
-| **BUY** | Managed third-party service |
-| **ADOPT** | OSS library / framework feature you run |
-| **WRAP** | Thin adapter you write over a BUY/ADOPT |
-| **BUILD** | Genuinely custom |
-| **DEFER** | Unresolved → Research Frontier |
+`BUY` · `ADOPT` · `WRAP` · `BUILD` · `DEFER`. Their definitions, the six-axis score, and
+the survey they rest on are in [resolve.md](resolve.md) — follow it rather than deciding
+from these names alone.
 
 **BUILD carries the burden of proof.** It is correct only when the node is your
 differentiator, the fit gap is fatal, cost inverts at your scale, the dependency is a
-liability, or the thing is genuinely trivial and stable. Record which.
+liability, or the thing is genuinely trivial and stable. Record which. The other classes
+need no defence beyond their §8 block.
 
 Two questions settle most nodes:
 
@@ -223,6 +220,7 @@ Single-sentence responsibility. Explicit non-goals ("does not own: ...").
 
 ## 8. Technology Resolution (terminal nodes only)
 - **Decision class:** BUY | ADOPT | WRAP | BUILD | DEFER
+- **Justification:** BUILD only — which of the five BUILD conditions applies
 - **Selected:** product / library, pinned version or plan tier
 - **Standard / protocol:** OIDC, SMTP, S3, none
 - **Alternatives considered:**
@@ -239,8 +237,9 @@ Single-sentence responsibility. Explicit non-goals ("does not own: ...").
 - **Open questions:** ROADMAP R-nnn / Research Frontier, or "none"
 ```
 
-`BUILD` nodes add a **Justification** line in §8 naming which of the five BUILD conditions
-applies. A BUILD with no recorded justification is the failure this gate exists to catch.
+A `BUILD` with no recorded justification is the failure this gate exists to catch. Field
+wording is parsed by `recurspec stack check`; keep it identical to
+[resolve.md](resolve.md) §5.
 
 ---
 

@@ -16,6 +16,10 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
   documentation, stale ROADMAP references, and blockers that are no longer open.
 - Every `Sampled` architecture invariant now names an executable test. The remaining
   `Unknown` findings are intentional claim boundaries, not missing licenses.
+- R-700-04: removed the duplicated decision-class table and Technology Resolution block
+  from the bundled `design.md`, which had already drifted from `resolve.md` and the
+  fields `recurspec stack check` enforces. Both references now document the same twelve
+  required fields plus the BUILD-only `Justification`, pinned by a repository test.
 - R-700-02: condensed the bundled skill into a small controller around
   `DISCOVER -> RESOLVE -> EXECUTE -> CHECK -> RECONCILE`; detailed design, resolution,
   and reconciliation rules remain lazy-loaded references.

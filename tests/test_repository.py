@@ -171,3 +171,28 @@ def test_bundled_skill_has_one_public_identity():
         "reconcile.md",
         "resolve.md",
     ]
+
+
+def _resolution_fields(path: Path) -> set[str]:
+    """Field labels documented in a file's §8 Technology Resolution block."""
+    text = path.read_text(encoding="utf-8")
+    blocks = re.findall(
+        r"^#+ 8\. Technology Resolution.*?$(.*?)(?=^#+ |\Z)",
+        text,
+        re.MULTILINE | re.DOTALL,
+    )
+    assert blocks, f"{path.name} documents no §8 Technology Resolution block"
+    return {
+        label.strip()
+        for block in blocks
+        for label in re.findall(r"^\s*-\s+\*\*([^*]+):\*\*", block, re.MULTILINE)
+    }
+
+
+def test_skill_documents_exactly_the_enforced_resolution_fields():
+    from recurspec.technology_resolver import _REQUIRED_FIELDS
+
+    expected = set(_REQUIRED_FIELDS) | {"Justification"}
+    references = ROOT / "src/recurspec/skill/references"
+    for name in ("design.md", "resolve.md"):
+        assert _resolution_fields(references / name) == expected, name
