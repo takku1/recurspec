@@ -24,6 +24,12 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
   layout instead of defaulting to `src/recurspec`, so both gates work outside this
   repository. `--source-root` still overrides, and an ambiguous layout fails closed
   naming the flag.
+- R-701 (audit): a survey row stamped in the future never expired - negative age outran
+  every TTL, so one bad clock or edited row pinned a stale survey permanently. Future
+  stamps now read `stale`, and the Job Store invariant says so.
+- R-701 (audit): `evaluate_isolated_candidate` verified the Candidate oid and then merged
+  by branch name, re-opening the re-resolution window the pinned worktree checkout exists
+  to close. It now merges the verified oid.
 - R-701 (review): `AGENTS.md` and `CONTRIBUTING.md` document the complete local gate
   again - it had drifted to three commands while CI blocked on seven. CI also runs the
   two gates its own claim omitted (`contract evidence`, `check`), and structure-gate §6

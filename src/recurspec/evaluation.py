@@ -685,7 +685,11 @@ def evaluate_isolated_candidate(
             raise CandidateLifecycleError("baseline branch moved during candidate evaluation")
         if _git(repo_path, "rev-parse", candidate_ref).stdout.strip() != candidate_oid:
             raise CandidateLifecycleError("candidate branch moved during candidate evaluation")
-        _git(repo_path, "merge", "--ff-only", candidate_branch)
+        # Merge the verified oid, not the branch name, for the same reason the worktree
+        # checkout is pinned: a branch name re-resolves, leaving a window between the
+        # check above and the merge in which a concurrent push could substitute an
+        # unevaluated commit (R-701).
+        _git(repo_path, "merge", "--ff-only", candidate_oid)
 
         if record_baseline:
             promoted_code, promoted_reason = evaluate_change(

@@ -46,9 +46,11 @@ node's *contract surface*. Editing §5 prose does not dirty anything downstream.
   makes re-walks cheap; a sibling only dirties if it names the changed node in its own §3;
   `test_contract_hash_change_dirties_the_node_and_its_parent_but_not_siblings`)
   - `EvidenceStage:` Sampled
-- **[Conditional]** IF a survey row's `fetched_at` is older than `survey_ttl_days` THEN
-  THE SYSTEM SHALL report `stale` and SHALL NOT return it as a hit. (recency rule;
-  `test_survey_ttl_expiry_reports_stale_not_a_hit`)
+- **[Conditional]** IF a survey row's `fetched_at` is older than `survey_ttl_days`, or
+  lies in the future, THEN THE SYSTEM SHALL report `stale` and SHALL NOT return it as a
+  hit. (recency rule; a negative age would otherwise outrun every TTL;
+  `test_survey_ttl_expiry_reports_stale_not_a_hit`,
+  `test_survey_stamped_in_the_future_is_stale_not_a_hit`)
   - `EvidenceStage:` Sampled
 - **[Conditional]** IF the store disagrees with the markdown tree THEN THE SYSTEM SHALL
   discard the store's row and re-derive it. (markdown is sovereign;

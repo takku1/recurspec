@@ -90,6 +90,19 @@ def test_survey_ttl_expiry_reports_stale_not_a_hit(tmp_path: Path):
     assert stale_lookup.result is None
 
 
+def test_survey_stamped_in_the_future_is_stale_not_a_hit(tmp_path: Path):
+    """Negative age outran every TTL, so one bad clock or edited row pinned a survey
+    permanently (R-701)."""
+    store = _store(tmp_path)
+    now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    store.record_survey("managed-oidc-idp", "Vendor", ["vendor docs"], now + timedelta(days=10))
+
+    lookup = store.get_survey("managed-oidc-idp", ttl_days=7, now=now)
+
+    assert lookup.status == "stale"
+    assert lookup.result is None
+
+
 def test_survey_lookup_is_a_miss_when_never_recorded(tmp_path: Path):
     store = _store(tmp_path)
 

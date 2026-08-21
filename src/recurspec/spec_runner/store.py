@@ -298,7 +298,12 @@ class JobStore:
         self, capability_key: str, ttl_days: float, now: datetime | None = None
     ) -> SurveyLookup:
         """Return a cache hit only within ``ttl_days``; an expired row is
-        reported ``stale``, never returned as a usable hit (invariant 4)."""
+        reported ``stale``, never returned as a usable hit (invariant 4).
+
+        A row stamped in the future is stale, not fresh: negative age otherwise
+        outran every TTL, so one bad clock or edited row pinned a survey
+        permanently (R-701).
+        """
         now = now or datetime.now(timezone.utc)
         conn = self._connect()
         try:
@@ -312,7 +317,7 @@ class JobStore:
             return SurveyLookup("miss", None, ())
         result, sources_json, fetched_at = row
         age_days = (now - datetime.fromisoformat(fetched_at)).total_seconds() / 86400
-        if age_days > ttl_days:
+        if age_days > ttl_days or age_days < 0:
             return SurveyLookup("stale", None, ())
         return SurveyLookup("hit", result, tuple(json.loads(sources_json)))
 
