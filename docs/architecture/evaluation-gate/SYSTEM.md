@@ -32,6 +32,11 @@ Empirical Feedback infrastructure: explicit Best Known State (BKS) baselines, `m
   regression the tolerance exists to catch as neutral.
   (`test_compare_refuses_a_noise_band_that_swallows_the_tolerance`)
   - `EvidenceStage:` Sampled
+- **[Ubiquitous]** Changed-module probe selection SHALL discover probes from the
+  paths Contract Nodes declare in §7, not from a fixed directory name, so a project
+  that keeps probes elsewhere cannot pass green having measured nothing.
+  (`test_measurable_owners_discovers_probes_a_contract_declares_outside_modules`)
+  - `EvidenceStage:` Sampled
 - **[Event-driven]** WHEN `checks.sh` fails THE SYSTEM SHALL block keep regardless of primary metric improvement. (`test_runner_logs_negative_patterns_and_enforces_total_attempt_ceiling`)
   - `EvidenceStage:` Sampled
 - **[Conditional]** IF telemetry self-contradiction is detected THEN THE SYSTEM SHALL flag the instrument broken and halt Empirical Feedback Contract Tree updates. (`test_telemetry_contradiction_multi_metric_missing_value`)

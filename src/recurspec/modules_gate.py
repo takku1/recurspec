@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .evaluation import run_script
-from .structure_gate import declared_paths
+from .structure_gate import declared_paths, declared_probe_paths
 
 ProbeRunner = Callable[..., tuple[int, str, str]]
 
@@ -33,32 +33,47 @@ def measurable_owners(
 ) -> dict[str, set[str]]:
     """Return ``{module_name: repo-relative owned paths}`` for modules that have probes."""
     repository = Path(repository)
-    modules_root = repository / "modules"
     owners: dict[str, set[str]] = {}
-    if not modules_root.is_dir():
-        return owners
-    for module_dir in modules_root.iterdir():
+
+    def _register(module_dir: Path) -> None:
         if not module_dir.is_dir():
-            continue
+            return
         if not (module_dir / "checks.sh").is_file() or not (module_dir / "measure.sh").is_file():
-            continue
-        name = module_dir.name
-        owned = {
+            return
+        owners[module_dir.name] = {
             _posix(path.relative_to(repository))
             for path in module_dir.rglob("*")
             if path.is_file()
         }
-        owners[name] = owned
+
+    modules_root = repository / "modules"
+    if modules_root.is_dir():
+        for module_dir in modules_root.iterdir():
+            _register(module_dir)
 
     tree = repository / contract_root
+    # A project names its own probe root in §7; scanning only "modules/" made the gate
+    # report a green PASS having measured nothing on any project that puts probes
+    # elsewhere, while the Structure Gate validated those same declared paths (R-701).
     if tree.is_dir():
         for contract in tree.rglob("SYSTEM.md"):
-            module = contract.parent.name
-            if module not in owners:
-                continue
-            implementations, tests, _unsafe = declared_paths(contract, repository=repository)
-            owners[module].update(_posix(item) for item in implementations)
-            owners[module].update(_posix(item) for item in tests)
+            declared, _unsafe = declared_probe_paths(contract, repository=repository)
+            for probe in declared:
+                _register((repository / probe).parent)
+
+    if tree.is_dir():
+        for contract in tree.rglob("SYSTEM.md"):
+            declared, _unsafe = declared_probe_paths(contract, repository=repository)
+            # The module is the one this node declares a probe for; several nodes may
+            # share one. Falling back to the contract's directory name only works where
+            # that name happens to match the probe directory, as it does here (R-701).
+            modules = {(repository / probe).parent.name for probe in declared}
+            for module in modules or {contract.parent.name}:
+                if module not in owners:
+                    continue
+                implementations, tests, _unsafe2 = declared_paths(contract, repository=repository)
+                owners[module].update(_posix(item) for item in implementations)
+                owners[module].update(_posix(item) for item in tests)
     return owners
 
 

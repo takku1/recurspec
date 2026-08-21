@@ -124,6 +124,49 @@ def test_check_contamination_finds_a_tracker_reference(tmp_path: Path):
     assert any("R-ARCH-13" in finding and "ROADMAP.md" in finding for finding in findings)
 
 
+def test_check_contamination_ignores_an_adr_id_ending_in_the_ticket_number(tmp_path: Path):
+    """`ADR-SR-003` is not a reference to ticket `R-003`; bare containment says it is."""
+
+    subject = tmp_path / "adr-only"
+    docs = subject / "docs" / "architecture"
+    docs.mkdir(parents=True)
+    (docs / "SYSTEM.md").write_text(
+        "- **ADR-SR-003:** Query policy consumes one deep Interface.\n"
+        "- **ADR-GIR-003:** The IR is not a parallel answer store.\n",
+        encoding="utf-8",
+    )
+
+    assert check_contamination(subject, "R-003 short-word absence", "R-004 facet ordering") == []
+
+
+def test_check_contamination_allows_an_unworked_tracker_registration(tmp_path: Path):
+    """Protocol section 2 requires a task to be *already prioritized*, so it is already
+    registered somewhere. A registration row with no sign of work is eligibility, not
+    contamination; flagging it makes every eligible task ineligible."""
+
+    subject = tmp_path / "registered-not-worked"
+    subject.mkdir()
+    (subject / "ROADMAP.md").write_text(
+        "| R-004 | Facet reservations are seated in arrival order | ready | "
+        "ordering by facet evidence strength is untried |\n",
+        encoding="utf-8",
+    )
+
+    assert check_contamination(subject, "R-004 facet ordering", "R-003 short-word absence") == []
+
+
+def test_check_contamination_finds_a_non_strategy_handoff(tmp_path: Path):
+    """A correction or escalation handoff is a Recurspec fingerprint too."""
+
+    subject = tmp_path / "corrected"
+    handoffs = subject / ".recurspec" / "handoffs"
+    handoffs.mkdir(parents=True)
+    (handoffs / "correction-R-010.md").write_text("# Correction R-010\n", encoding="utf-8")
+
+    findings = check_contamination(subject, "R-010 token leak", "R-011 other")
+    assert any("R-010" in finding and "handoff" in finding for finding in findings)
+
+
 def test_study_init_refuses_a_contaminated_subject(tmp_path: Path):
     subject = tmp_path / "other"
     handoffs = subject / ".recurspec" / "handoffs"

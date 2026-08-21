@@ -103,3 +103,18 @@ def test_correctness_template_refuses_to_pass_without_assertions():
     assert code == 2
     assert "pass" not in out.lower()
     assert "replace" in err.lower()
+
+
+def test_bundled_probes_survive_a_preexisting_pythonpath(monkeypatch):
+    """The shared preamble joined PYTHONPATH with a POSIX ':' on every platform.
+    Windows splits it on ';', so an existing PYTHONPATH collapsed the whole value into
+    one bogus entry and the probe failed to import the package under test (R-701)."""
+    if gate._bash() is None:
+        pytest.skip("no POSIX shell available to run bundled probes")
+    monkeypatch.setenv("PYTHONPATH", str(REPO_ROOT / "tests"))
+
+    code, out, err = gate.run_script(
+        "modules/contract-engine/checks.sh", "contract-engine", cwd=REPO_ROOT, timeout=120
+    )
+
+    assert code == 0, f"probe exited {code} with PYTHONPATH set: {err or out}"

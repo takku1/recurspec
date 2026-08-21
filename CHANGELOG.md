@@ -24,6 +24,22 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
   layout instead of defaulting to `src/recurspec`, so both gates work outside this
   repository. `--source-root` still overrides, and an ambiguous layout fails closed
   naming the flag.
+- R-701 (portability): changed-module probe selection discovered probes only under a
+  hardcoded `modules/`, and keyed ownership on the contract's directory name. A project
+  that declares probes elsewhere in section 7 - as the Structure Gate already validates -
+  got a green `PASS: no measurable modules touched` having measured nothing. Discovery now
+  follows the section 7 declarations and keys ownership on the declared probe, so several
+  nodes may share one. On graphgraph this moves discovery from 1 module to 14.
+- R-701 (portability): the probe preamble joined `PYTHONPATH` with a POSIX `:` on every
+  platform. Windows splits on `;`, so an existing `PYTHONPATH` collapsed into one bogus
+  entry and the probe failed to import the package under test. The preamble is now one
+  sourced `modules/_probe_prelude.sh` instead of four drifting copies across 18 files -
+  two probes never exported `PYTHONPATH` at all, and two skipped the Windows `pwd -W`
+  guard.
+- R-701: `check_contamination` no longer reads a bare tracker registration as a
+  fingerprint - section 2 requires an already-prioritized task, so a ROADMAP row is
+  expected - and matches ticket ids as whole tokens, so `ADR-SR-003` is no longer read as
+  a reference to ticket `R-003`. Non-strategy handoffs now count.
 - R-701 (audit): a survey row stamped in the future never expired - negative age outran
   every TTL, so one bad clock or edited row pinned a stale survey permanently. Future
   stamps now read `stale`, and the Job Store invariant says so.

@@ -1,6 +1,10 @@
 from pathlib import Path
 
-from recurspec.modules_gate import evaluate_changed_modules, modules_touched
+from recurspec.modules_gate import (
+    evaluate_changed_modules,
+    measurable_owners,
+    modules_touched,
+)
 
 
 def test_modules_touched_maps_a_declared_implementation_path():
@@ -61,3 +65,37 @@ def test_evaluate_changed_modules_treats_a_missing_shell_as_instrument_failure()
 
     assert code == 2
     assert reports[0].checks_code == 127
+
+
+def test_measurable_owners_discovers_probes_a_contract_declares_outside_modules(
+    tmp_path: Path,
+):
+    """Scanning only `modules/` made the gate report a green PASS having measured
+    nothing on any project that puts probes elsewhere, while the Structure Gate
+    validated those same declared paths (R-701)."""
+    probe_dir = tmp_path / "components" / "acceptance"
+    probe_dir.mkdir(parents=True)
+    for name in ("checks.sh", "measure.sh"):
+        (probe_dir / name).write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+    node = tmp_path / "docs" / "architecture" / "some-leaf"
+    node.mkdir(parents=True)
+    lines = [
+        "# Some Leaf (L1)",
+        "",
+        "## 6. Leaf Execution & Test Seam",
+        "",
+        "- **Implementation Files:** `src/app/thing.py`.",
+        "",
+        "## 7. Measurement Seams",
+        "",
+        "- **Evaluation Gate Path:** `components/acceptance/measure.sh`",
+        "- **Correctness Backpressure:** `components/acceptance/checks.sh`",
+    ]
+    (node / "SYSTEM.md").write_text(chr(10).join(lines), encoding="utf-8")
+
+    owners = measurable_owners(tmp_path)
+
+    assert "acceptance" in owners
+    # The node's declared implementation is owned by the probe it declares, even though
+    # the contract directory name ("some-leaf") differs from the probe directory name.
+    assert modules_touched(tmp_path, ["src/app/thing.py"]) == ("acceptance",)

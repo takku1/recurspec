@@ -177,6 +177,26 @@ def _tracked_markdown(project: Path) -> list[Path]:
     return found
 
 
+_WORKED_MARKER_RE = re.compile(
+    "NEED_CHECKER"
+    "|candidate/"
+    "|[.]recurspec"
+    "|strategy-"
+    "|(?<![A-Za-z])(?:done|active|landed|merged|accepted)(?![A-Za-z])"
+)
+
+
+def _mentions_ticket(text: str, ticket_id: str) -> bool:
+    """True only for a whole-token occurrence of ``ticket_id``.
+
+    Bare containment reports ``ADR-SR-003`` and ``ADR-003`` as references to
+    ticket ``R-003``, because every ADR number is a suffix of some ticket id.
+    """
+
+    pattern = "(?<![A-Za-z0-9-])" + re.escape(ticket_id) + "(?![A-Za-z0-9-])"
+    return re.search(pattern, text) is not None
+
+
 def check_contamination(project: str | Path, task_a: str, task_b: str) -> list[str]:
     """Return contamination findings for either task's ticket id in ``project``.
 
@@ -185,6 +205,13 @@ def check_contamination(project: str | Path, task_a: str, task_b: str) -> list[s
     before the pair is assigned. Both fail the same way: an id that already
     has Recurspec fingerprints in the subject repository. Returns one
     human-readable finding per (id, location) hit; empty means clean.
+
+    A tracker *registration* is not a fingerprint. Protocol section 2 requires an
+    eligible task to be already prioritized independent of this research, which
+    in practice means it is already a row in the project's ROADMAP or open-work
+    file. Only a row that also shows the ticket has been worked -- a
+    ``NEED_CHECKER`` marker, a candidate branch, a Recurspec artifact path, or a
+    done/active/landed/merged/accepted status -- counts against eligibility.
     """
     subject = Path(project)
     ids = _ticket_ids(task_a, task_b)
@@ -195,13 +222,14 @@ def check_contamination(project: str | Path, task_a: str, task_b: str) -> list[s
     evidence = subject / ".recurspec" / "evidence"
     trackers = _tracked_markdown(subject)
     for ticket_id in ids:
-        handoff = handoffs / f"strategy-{ticket_id}.md"
-        if handoff.is_file():
-            findings.append(f"{ticket_id}: existing strategy handoff at {handoff}")
+        if handoffs.is_dir():
+            for handoff in sorted(handoffs.glob("*-" + ticket_id + ".md")):
+                kind = handoff.stem.split("-")[0]
+                findings.append(f"{ticket_id}: existing {kind} handoff at {handoff}")
         if evidence.is_dir():
             for log in sorted(evidence.rglob("*.jsonl")):
                 try:
-                    if ticket_id in log.read_text(encoding="utf-8"):
+                    if _mentions_ticket(log.read_text(encoding="utf-8"), ticket_id):
                         findings.append(f"{ticket_id}: referenced in evidence log {log}")
                         break
                 except (OSError, UnicodeError):
@@ -211,8 +239,16 @@ def check_contamination(project: str | Path, task_a: str, task_b: str) -> list[s
                 text = tracker.read_text(encoding="utf-8")
             except (OSError, UnicodeError):
                 continue
-            if ticket_id in text:
-                findings.append(f"{ticket_id}: already referenced in {tracker}")
+            for line in text.splitlines():
+                if not _mentions_ticket(line, ticket_id):
+                    continue
+                marker = _WORKED_MARKER_RE.search(line)
+                if marker is None:
+                    continue
+                findings.append(
+                    f"{ticket_id}: already worked in {tracker} (row carries {marker.group(0)!r})"
+                )
+                break
     return findings
 
 
