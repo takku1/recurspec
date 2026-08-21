@@ -4,6 +4,8 @@ and the contract-engine multi-object payload bug."""
 
 from __future__ import annotations
 
+import os
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -118,3 +120,24 @@ def test_bundled_probes_survive_a_preexisting_pythonpath(monkeypatch):
     )
 
     assert code == 0, f"probe exited {code} with PYTHONPATH set: {err or out}"
+
+
+def test_probe_refuses_an_interpreter_that_resolves_but_cannot_execute(tmp_path):
+    """Resolving is not running. A present-but-unrunnable interpreter used to fail deep
+    inside the probe and read as a defect in the code under test. run_script pins
+    RECURSPEC_PYTHON to its own interpreter, so this guard is reached only by a
+    hand-run probe - which is exactly how a maintainer runs one (R-701)."""
+    bash = gate._bash()
+    if bash is None:
+        pytest.skip("no POSIX shell available to run bundled probes")
+    not_an_interpreter = tmp_path / "not-python.txt"
+    not_an_interpreter.write_text("not an interpreter" + chr(10), encoding="utf-8")
+    env = {**os.environ, "RECURSPEC_PYTHON": str(not_an_interpreter)}
+
+    result = subprocess.run(
+        [bash, "modules/contract-engine/checks.sh", "contract-engine"],
+        cwd=REPO_ROOT, env=env, capture_output=True, text=True, timeout=120,
+    )
+
+    assert result.returncode == 127, f"got {result.returncode}: {result.stderr}"
+    assert "could not execute" in result.stderr

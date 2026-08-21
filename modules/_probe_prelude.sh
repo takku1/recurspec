@@ -24,3 +24,11 @@ if [ -z "${PYTHON}" ]; then
   echo "no python3 or python interpreter found on PATH" >&2
   exit 127
 fi
+# Resolving is not running. A present-but-unrunnable interpreter - one an application
+# control policy is still evaluating, a stale venv shim, a dead app-execution alias -
+# otherwise failed deep inside the probe and read as a defect in the code under test
+# rather than an unusable environment (R-701).
+if ! "${PYTHON}" -c "" >/dev/null 2>&1; then
+  echo "interpreter ${PYTHON} resolved but could not execute; set RECURSPEC_PYTHON" >&2
+  exit 127
+fi

@@ -30,6 +30,11 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
   got a green `PASS: no measurable modules touched` having measured nothing. Discovery now
   follows the section 7 declarations and keys ownership on the declared probe, so several
   nodes may share one. On graphgraph this moves discovery from 1 module to 14.
+- R-701 (portability): the probe preamble checked that an interpreter *resolved*, never
+  that it *ran*. A present-but-unrunnable interpreter - one an application control policy
+  is still evaluating, a stale venv shim, a dead app-execution alias - failed deep inside
+  the probe and read as a defect in the code under test. It now exits 127 naming
+  `RECURSPEC_PYTHON`.
 - R-701 (portability): the probe preamble joined `PYTHONPATH` with a POSIX `:` on every
   platform. Windows splits on `;`, so an existing `PYTHONPATH` collapsed into one bogus
   entry and the probe failed to import the package under test. The preamble is now one
