@@ -29,9 +29,9 @@ Locus ROADMAP + docs/open-work.md alias; implement on main; cargo test / cargo c
 |---|---|---|---|
 | Wall-clock to first accepted implementation | ~27 min (2026-08-15 01:06 first edit -> 01:33 accept) | unknown | mtime of `records.rs` -> checker accept, this session |
 | Review round-trips | unknown | unknown | |
-| Reverted or redone work | unknown | unknown | |
+| Reverted or redone work | 0 reverted; `rules/registry.rs` restructured under `e6002d7` (+368 lines) around the accepted rule | n/a | `git show --stat e6002d7` |
 | Structure-Gate diagnostics caught before merge | unknown | n/a | |
-| Escaped mismatches within 30 days | unknown | unknown | |
+| Escaped mismatches within 30 days | 1 observed, window still open (opened 2026-08-15, closes 2026-09-14) | n/a (baseline arm disqualified) | `git log` in locus: `e6002d7` (2026-08-20) re-touches the R-U-02 seam |
 | Decision Class later reversed? cost? | unknown | unknown | |
 | Repeated a previously-failed approach? | unknown | n/a | |
 | Failed-to-help? (2× time or tree abandoned) | unknown | unknown | |
@@ -57,3 +57,20 @@ Locus ROADMAP + docs/open-work.md alias; implement on main; cargo test / cargo c
 List any number reported that is not in the protocol §5 table. Label each `post-hoc`.
 
 - post-hoc: **Baseline-arm contamination discovered 2026-08-15.** Locus's own `ROADMAP.md:32` already lists R-ARCH-13 as `active (2026-08-15: CatalogIndex genome lookup ...; NEED_CHECKER)`, and `.recurspec/handoffs/strategy-R-ARCH-13.md` exists (a Recurspec fanout/strategy artifact, KEEP gate NEED_CHECKER, target `docs/architecture/search/catalog-rules/SYSTEM.md`). The `CatalogIndex`/`CatalogPriority` code that *is* R-ARCH-13's exit gate ("catalog priority index for N2") is the same `catalog_hit.rs` that shipped as scaffolding for the R-U-02 Recurspec-arm tests above. R-ARCH-13 was therefore (a) already substantially implemented before this pair's baseline arm could start, and (b) implemented via Recurspec-style artifacts (Contract Tree doc target, strategy handoff, KEEP gate) rather than the pre-registered "plain workflow" baseline condition. This pair's baseline arm cannot honestly be run as originally assigned — needs a checker decision: void pair locus-01's baseline leg, substitute a fresh unstarted Locus ticket as the baseline arm, or document R-ARCH-13 as a disqualified/contaminated observation.
+
+- post-hoc: **Escape observation 2026-08-21 (30-day window still open).** Locus commit
+  `e6002d7` (2026-08-20, day 5 of the window) re-touches this pair's Recurspec-arm seam —
+  `rules/catalog_hit.rs` (±20 lines) and `rules/registry.rs` (+368 lines) — and its message
+  records regression **R-REG-01**: after R-ARCH-19 moved `optimize()` onto coordinate-directed
+  selection, rules that were still present in the catalog and still compiled were never handed
+  to the e-graph and silently stopped firing (23 tests failed; `cargo test --workspace` exited
+  101). That is a contract/code mismatch of exactly the kind §5 counts as *escaped*: R-U-02's
+  accepted test `one_minus_exp_is_a_catalog_hit` asserted catalog membership, which remained
+  true while the behavioral guarantee did not. The repair added **R-REG-02**, a registry test
+  asserting every `ALL_RULES` entry is reachable from some family and vice versa — the
+  structural invariant that would have caught it. The Structure Gate did not catch this before
+  merge; it was found by a full-workspace test run five days later. Counted as 1 escape so far;
+  the window does not close until 2026-09-14 and this cell must be re-checked then.
+- Verification 2026-08-21: `cargo test -p locus-engine rules::catalog_hit` → 8 passed. The
+  R-U-02 rule still fires after the R-REG-01 repair; the accepted work was not reverted.
+

@@ -36,6 +36,9 @@ declared in §6; incomplete work is recorded only in `ROADMAP.md`.
 - [Evaluation protocol](./research/evaluation-protocol.md) is the pre-registered plan for
   R-400–R-403; it commits to metrics and analysis before any outcome data exists.
 - [Case-study log](./research/case-study-log.md) is the empty apparatus for those studies.
+- [R-400 case record: graphgraph / DX-WDAC-01](./research/r-400-case-record-graphgraph-dx-wdac-01.md)
+  is an observational record from a real ticket. It is explicitly **not** R-400 outcome
+  data -- no matched arm, no pre-assignment -- and does not count toward the stopping rule.
 - [Log-archive example](./examples/log-archive/SYSTEM.md) is the published non-web
   Contract Tree (R-404).
 - [R-204 runtime survey](./research/r-204-runtime-survey.md) is the primary-source
