@@ -707,3 +707,21 @@ def test_contract_evidence_cli_is_observation_only(tmp_path: Path, capsys):
     assert payload["unlicensed"]
     assert payload["counts"]["Sampled"] >= 1
     assert validate_contract(copy).valid
+
+
+def test_fenced_example_sections_are_not_treated_as_declarations():
+    """A node whose sections 4-8 existed only inside a fence validated with zero
+    diagnostics, and its example `Proved` stage entered the tree (R-701)."""
+    result = validate_contract(FIXTURES / "fenced-example" / "SYSTEM.md")
+
+    assert not result.valid
+    assert any(
+        diagnostic.rule_code == "contract.heading.missing" for diagnostic in result.diagnostics
+    )
+    # The illustrative claim must never reach the tree.
+    harvested = [
+        invariant
+        for contract in result.contracts
+        for invariant in contract.get("invariants", ())
+    ]
+    assert not any(invariant["evidence_stage"] == "Proved" for invariant in harvested)

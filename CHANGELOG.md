@@ -24,6 +24,9 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
   layout instead of defaulting to `src/recurspec`, so both gates work outside this
   repository. `--source-root` still overrides, and an ambiguous layout fails closed
   naming the flag.
+- R-701: contract validation ignores fenced code blocks. Sections and invariants inside
+  a fence were parsed as declarations, so a node whose sections 4-8 existed only inside a
+  fenced example validated clean and its illustrative `Proved` stage entered the tree.
 - R-701: CI now runs the gates the project ships - `structure check`, `stack check`,
   `reconcile plan`, and a skill install/verify round-trip - and adds a `windows-latest`
   job. Four of the project's own gates previously ran only when a maintainer remembered,

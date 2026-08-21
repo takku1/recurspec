@@ -137,6 +137,34 @@ def resolve_child_path(parent_path: Path, child_link: str) -> Path:
     return child_path
 
 
+_FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})")
+
+
+def _strip_fenced_blocks(text: str) -> str:
+    """Blank out fenced code blocks, preserving line count so positions stay accurate.
+
+    Headings and invariants inside a fence are illustrations. Parsing them let a node
+    whose sections 4-8 existed only inside a fence validate clean, and harvested the
+    example's `EvidenceStage:` - including `Proved` - into the tree (R-701).
+    """
+    out: list[str] = []
+    marker: str | None = None
+    for line in text.splitlines(keepends=True):
+        match = _FENCE_RE.match(line)
+        blank = "\n" if line.endswith("\n") else ""
+        if marker is None:
+            if match is not None:
+                marker = match.group(1)[0] * 3
+                out.append(blank)
+                continue
+            out.append(line)
+        else:
+            out.append(blank)
+            if match is not None and match.group(1).startswith(marker):
+                marker = None
+    return "".join(out)
+
+
 def _sections(text: str) -> dict[str, str]:
     matches = list(SECTION_RE.finditer(text))
     return {
@@ -201,6 +229,7 @@ def _normalize(path: Path) -> tuple[dict[str, Any] | None, list[Diagnostic]]:
     except (OSError, UnicodeError) as exc:
         raise ContractInstrumentError(f"could not read {path}: {exc}") from exc
 
+    text = _strip_fenced_blocks(text)
     display_path = path.as_posix()
     diagnostics: list[Diagnostic] = []
     version = VERSION_RE.search(text)
