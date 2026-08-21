@@ -25,6 +25,10 @@ Run the complete local gate before publishing:
 ```bash
 pytest
 ruff check src tests
+recurspec contract check docs/architecture
+recurspec structure check .
+recurspec stack check .
+recurspec reconcile plan .
 python -m build
 ```
 

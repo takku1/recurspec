@@ -10,7 +10,7 @@ permissions:
 defaults:
   run:
     # Git Bash exists on the Windows runners, so one shell covers the whole matrix and
-    # the probe runner (which resolves `bash` on PATH) behaves the same everywhere.
+    # probe execution (which resolves `bash` on PATH) behaves the same everywhere.
     shell: bash
 
 jobs:
@@ -44,6 +44,8 @@ jobs:
       - run: recurspec structure check .
       - run: recurspec stack check .
       - run: recurspec reconcile plan .
+      - run: recurspec contract evidence docs/architecture
+      - run: recurspec check .
       - name: Bundled skill installs and matches
         env:
           CLAUDE_SKILLS_DIR: ${{ runner.temp }}/skills

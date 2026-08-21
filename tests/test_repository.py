@@ -212,6 +212,8 @@ def test_ci_runs_every_deterministic_gate_the_project_ships():
         "recurspec reconcile plan .",
         "recurspec skills check --target claude",
         "recurspec modules check .",
+        "recurspec contract evidence docs/architecture",
+        "recurspec check .",
         "python -m pytest",
         "ruff check src tests",
     ):

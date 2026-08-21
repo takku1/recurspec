@@ -65,7 +65,8 @@ without structural verification.
 
 ## 6. Leaf Execution & Test Seam
 
-- **Implementation:** `src/recurspec/structure_gate.py`; public seam `check_structure()`.
+- **Implementation:** `src/recurspec/structure_gate.py`; public seams
+  `check_structure()`, `infer_source_root()`, and `source_root_candidates()`.
 - **Tests:** `tests/test_structure_gate.py` plus CLI coverage in `tests/test_cli.py`.
 
 ## 7. Measurement Seams

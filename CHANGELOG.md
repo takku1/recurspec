@@ -24,6 +24,10 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
   layout instead of defaulting to `src/recurspec`, so both gates work outside this
   repository. `--source-root` still overrides, and an ambiguous layout fails closed
   naming the flag.
+- R-701 (review): `AGENTS.md` and `CONTRIBUTING.md` document the complete local gate
+  again - it had drifted to three commands while CI blocked on seven. CI also runs the
+  two gates its own claim omitted (`contract evidence`, `check`), and structure-gate §6
+  declares all three public seams rather than one.
 - R-701 (review): the fence fix covered only the contract parser; `declared_paths` and
   `declared_probe_paths` still harvested fenced §6/§7 examples as real declarations, so
   the Structure Gate could believe a nonexistent file was covered. Both parsers now share

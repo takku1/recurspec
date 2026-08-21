@@ -11,6 +11,10 @@ Before opening a pull request, run:
 ```bash
 pytest
 ruff check src tests
+recurspec contract check docs/architecture
+recurspec structure check .
+recurspec stack check .
+recurspec reconcile plan .
 python -m build
 ```
 
