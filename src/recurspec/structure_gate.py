@@ -8,6 +8,8 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
+from .contract import strip_fenced_blocks
+
 _SECTION_SIX = re.compile(
     r"^## 6\.[^\n]*\n(?P<body>.*?)(?=^## [78]\.|\Z)",
     re.MULTILINE | re.DOTALL,
@@ -119,7 +121,7 @@ def declared_paths(
     """Return repository-relative implementation and test paths declared in §6, plus
     any declared path that fails repository containment."""
     contract = Path(contract)
-    text = contract.read_text(encoding="utf-8")
+    text = strip_fenced_blocks(contract.read_text(encoding="utf-8"))
     section = _SECTION_SIX.search(text)
     if section is None:
         return set(), set(), set()
@@ -171,7 +173,7 @@ def declared_probe_paths(
 ) -> tuple[set[str], set[str]]:
     """Return §7-declared probe scripts plus any that fail repository containment."""
     contract = Path(contract)
-    text = contract.read_text(encoding="utf-8")
+    text = strip_fenced_blocks(contract.read_text(encoding="utf-8"))
     section = _SECTION_SEVEN.search(text)
     if section is None:
         return set(), set()
@@ -350,26 +352,22 @@ def available_adapters() -> tuple[LanguageAdapter, ...]:
 _NON_PACKAGE_DIRS = frozenset({"tests", "docs", "examples", "modules", "scripts"})
 
 
-def infer_source_root(repository: str | Path) -> str | None:
-    """Best-effort repository-relative source root: the one importable package.
-
-    Returns ``None`` rather than guessing when the layout is ambiguous, so callers fail
-    closed and name ``--source-root`` instead of auditing the wrong tree. Defaulting to
-    a fixed path made both structure gates usable only inside Recurspec itself (R-701).
-    """
+def source_root_candidates(repository: str | Path) -> list[str]:
+    """Repository-relative source roots the layout could plausibly mean."""
     root = Path(repository).resolve()
+    if not root.is_dir():
+        return []
     source = root / "src"
     if source.is_dir():
         # No __init__.py requirement: PEP 420 namespace packages legitimately lack one.
-        packages = sorted(
-            child.name
+        return sorted(
+            f"src/{child.name}"
             for child in source.iterdir()
             if child.is_dir()
             and not child.name.startswith((".", "_"))
             and not child.name.endswith((".egg-info", ".dist-info"))
         )
-        return f"src/{packages[0]}" if len(packages) == 1 else None
-    packages = sorted(
+    return sorted(
         child.name
         for child in root.iterdir()
         if child.is_dir()
@@ -377,7 +375,17 @@ def infer_source_root(repository: str | Path) -> str | None:
         and child.name not in _NON_PACKAGE_DIRS
         and (child / "__init__.py").is_file()
     )
-    return packages[0] if len(packages) == 1 else None
+
+
+def infer_source_root(repository: str | Path) -> str | None:
+    """The one source root a repository layout implies, or ``None`` if it is ambiguous.
+
+    Callers fail closed on ``None`` and name ``--source-root`` rather than auditing the
+    wrong tree. Defaulting to a fixed path made both gates usable only inside Recurspec
+    itself (R-701).
+    """
+    candidates = source_root_candidates(repository)
+    return candidates[0] if len(candidates) == 1 else None
 
 
 def check_structure(
@@ -396,8 +404,12 @@ def check_structure(
     Default adapters are Python-only so existing Python checks stay identical.
     """
     active = tuple(adapters) if adapters is not None else DEFAULT_ADAPTERS
+    ambiguous: list[str] = []
     if source_root is None:
-        source_root = infer_source_root(repository) or "src"
+        source_root = infer_source_root(repository)
+        if source_root is None:
+            ambiguous = source_root_candidates(repository)
+            source_root = "src"
     root = Path(repository).resolve()
     source = (root / source_root).resolve()
     contracts = (root / contract_root).resolve()
@@ -433,7 +445,16 @@ def check_structure(
                 "Contract Tree root does not exist",
             )
         )
-    if not source.is_dir():
+    if ambiguous:
+        diagnostics.append(
+            StructureDiagnostic(
+                "structure.source_root.ambiguous",
+                Path(source_root).as_posix(),
+                f"layout implies {len(ambiguous)} source roots ({', '.join(ambiguous)}); "
+                "pass --source-root to name one",
+            )
+        )
+    elif not source.is_dir():
         diagnostics.append(
             StructureDiagnostic(
                 "structure.source_root.missing",

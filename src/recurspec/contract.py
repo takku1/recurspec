@@ -140,7 +140,7 @@ def resolve_child_path(parent_path: Path, child_link: str) -> Path:
 _FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})")
 
 
-def _strip_fenced_blocks(text: str) -> str:
+def strip_fenced_blocks(text: str) -> str:
     """Blank out fenced code blocks, preserving line count so positions stay accurate.
 
     Headings and invariants inside a fence are illustrations. Parsing them let a node
@@ -229,7 +229,7 @@ def _normalize(path: Path) -> tuple[dict[str, Any] | None, list[Diagnostic]]:
     except (OSError, UnicodeError) as exc:
         raise ContractInstrumentError(f"could not read {path}: {exc}") from exc
 
-    text = _strip_fenced_blocks(text)
+    text = strip_fenced_blocks(text)
     display_path = path.as_posix()
     diagnostics: list[Diagnostic] = []
     version = VERSION_RE.search(text)

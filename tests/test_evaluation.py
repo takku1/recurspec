@@ -142,9 +142,15 @@ def test_compare_refuses_a_noise_band_that_swallows_the_tolerance():
                 declared_direction="lower",
             )
 
-    # A zero tolerance is a deliberate "any regression blocks" setting, not a mistake.
+    # tolerance=0 is not an exemption: with the default noise band it still reported
+    # every sub-2% regression as neutral. "Any regression blocks" is tolerance 0 + noise 0.
+    with pytest.raises(ValueError, match="must be below tolerance_pct"):
+        compare("latency_p99_ms", 101.5, 100.0, tolerance_pct=0.0)
     assert (
-        compare("latency_p99_ms", 125.0, 100.0, tolerance_pct=0.0).verdict == REGRESSED
+        compare(
+            "latency_p99_ms", 101.5, 100.0, tolerance_pct=0.0, noise_pct=0.0
+        ).verdict
+        == REGRESSED
     )
 
 

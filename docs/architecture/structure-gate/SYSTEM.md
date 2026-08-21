@@ -28,6 +28,12 @@ without structural verification.
   belong to a Contract Node and that declared implementation/test paths exist.
   (`test_structure_gate_accepts_contract_owned_python_with_a_real_test_surface`)
   - `EvidenceStage:` Sampled
+- **[Conditional]** IF no source root is supplied THEN THE SYSTEM SHALL infer the one
+  the repository layout implies, and SHALL refuse with an ambiguity diagnostic naming
+  `--source-root` when the layout implies more than one.
+  (`test_source_root_is_inferred_from_the_repository_layout`,
+  `test_ambiguous_source_root_fails_closed_naming_the_flag`)
+  - `EvidenceStage:` Sampled
 - **[Conditional]** IF a Contract Node §7 names a `checks.sh` or `measure.sh` path THEN
   THE SYSTEM SHALL require that file to exist inside the repository.
   (`test_structure_gate_reports_a_missing_declared_probe`)

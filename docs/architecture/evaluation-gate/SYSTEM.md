@@ -27,6 +27,11 @@ Empirical Feedback infrastructure: explicit Best Known State (BKS) baselines, `m
   the BKS metric vector and SHALL NOT include prior implementation source.
   (`test_implementor_bks_metrics_only_omits_source_even_when_files_are_named`)
   - `EvidenceStage:` Sampled
+- **[Conditional]** IF the configured noise band is not below the regression
+  tolerance THEN THE SYSTEM SHALL refuse the comparison rather than report every
+  regression the tolerance exists to catch as neutral.
+  (`test_compare_refuses_a_noise_band_that_swallows_the_tolerance`)
+  - `EvidenceStage:` Sampled
 - **[Event-driven]** WHEN `checks.sh` fails THE SYSTEM SHALL block keep regardless of primary metric improvement. (`test_runner_logs_negative_patterns_and_enforces_total_attempt_ceiling`)
   - `EvidenceStage:` Sampled
 - **[Conditional]** IF telemetry self-contradiction is detected THEN THE SYSTEM SHALL flag the instrument broken and halt Empirical Feedback Contract Tree updates. (`test_telemetry_contradiction_multi_metric_missing_value`)
@@ -81,7 +86,8 @@ Empirical Feedback infrastructure: explicit Best Known State (BKS) baselines, `m
 ## 6. Leaf Execution & Test Seam
 
 - **Current prototype:** `src/recurspec/metrics.py`, `src/recurspec/evaluation.py`, `src/recurspec/evidence.py`
-- **Current implementation:** `src/recurspec/evaluation.py`,
+- **Current implementation:** `src/recurspec/metrics.py` (comparison and tiers),
+  `src/recurspec/evaluation.py`,
   `src/recurspec/modules_gate.py` (changed-module probes),
   `src/recurspec/evidence.py` (including opt-in corpus export).
 - **Tests:** `tests/test_evaluation.py`, `tests/test_cli.py`, `tests/test_modules.py`

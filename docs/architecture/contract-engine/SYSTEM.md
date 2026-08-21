@@ -38,6 +38,11 @@ seam and cannot fail independently from a user's perspective.
 - **[Ubiquitous]** The Contract Engine SHALL validate normalized Contract Nodes against
   JSON Schema Draft 2020-12. (`test_validate_contract_accepts_a_complete_versioned_atomic_leaf`)
   - `EvidenceStage:` Sampled
+- **[Ubiquitous]** The Contract Engine SHALL treat Markdown inside a fenced code
+  block as illustration, not declaration, so an example cannot satisfy a required
+  section or contribute an Evidence Stage.
+  (`test_fenced_example_sections_are_not_treated_as_declarations`)
+  - `EvidenceStage:` Sampled
 - **[Ubiquitous]** The Contract Engine SHALL report diagnostics in byte-stable order.
   (`test_contract_diagnostics_are_stable_across_repeated_validation`)
   - `EvidenceStage:` Sampled

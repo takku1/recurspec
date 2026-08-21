@@ -423,7 +423,7 @@ def test_validate_contract_accepts_wrapped_invariants_from_the_contract_engine_s
             ),
         "evidence_stage": "Sampled",
     }
-    assert len(result.contracts[0]["invariants"]) == 9
+    assert len(result.contracts[0]["invariants"]) == 10
     assert result.contracts[0]["invariants"][-1]["ears_pattern"] == "Event-driven"
     assert "test_evidence_audit_lists_unlicensed_sampled_and_counts_unknown" in (
         result.contracts[0]["invariants"][-1]["statement"]

@@ -70,6 +70,10 @@ StalenessAuditor (review triggers).
   claim complete growth detection; files found inside that namespace but outside the seam
   SHALL re-open the resolution. (`test_resolution_audit_reopens_a_wrap_that_spreads_past_or_outgrows_its_seam`)
   - `EvidenceStage:` Sampled
+- **[Ubiquitous]** The `version` grammar SHALL accept semver and PEP 440 exact releases
+  alike, so an installed `.postN`, `.devN`, pre-release, or four-component version is not
+  misread as floating. (`test_dependency_inventory_accepts_ecosystem_valid_exact_forms`)
+  - `EvidenceStage:` Sampled
 - **[Optional]** WHERE a §8 Pin declares a Reference kind (`version` | `tag` | `commit` |
   `digest`) THE SYSTEM SHALL validate the pin against only that kind's grammar instead
   of accepting any of the three; an unrecognized kind or a pin that does not match its
@@ -82,25 +86,21 @@ StalenessAuditor (review triggers).
 
 ## 5. Architectural Decisions (ADRs)
 
-- **ADR-001:** Five decision classes, not binary build/buy. WRAP is named explicitly
-  because it is the most common real outcome and the one flat plans omit — buying a
-  capability still leaves an adapter, and that adapter is the swap point.
-- **ADR-002:** Procurement terminates recursion. Without this the tree has no natural
-  floor and "decompose further" runs to absurdity (login → OIDC → JWT → RSA). Subtree
-  depth then measures how much you are building, which is the number worth seeing.
-- **ADR-003:** Split at non-uniform resolution. Choosing the BUY/BUILD fault line as the
-  seam is not arbitrary — you cannot refactor across a vendor's API, so the boundary is
-  already real.
-- **ADR-004:** Alternatives and their rejection reasons are retained in §8 permanently.
-  The record is what stops the same debate recurring every time someone new reads the node.
-- **ADR-005:** Prefer options speaking a standard protocol (OIDC, SMTP, S3, OTel) so the
-  seam stays swappable. Proprietary APIs are permitted but must record exit cost.
-- **ADR-006:** Reference kind is opt-in, not required, and `version`/`tag` share one
-  grammar. A single regex cannot reliably separate a package version, a VCS tag, an
-  immutable commit, and a content digest — REVIEW4's own conclusion. Declaring a kind
-  narrows validation to that grammar instead of "any of the three," but a bare VCS tag
-  is not verified as actually immutable (Recurspec cannot ask the vendor); that residual
-  ambiguity is accepted, not hidden.
+- **ADR-001:** Five decision classes, not binary build/buy. WRAP is named because it is
+  the common real outcome flat plans omit: buying still leaves an adapter, and that
+  adapter is the swap point.
+- **ADR-002:** Procurement terminates recursion; without a floor, "decompose further"
+  runs to absurdity (login → OIDC → JWT → RSA).
+- **ADR-003:** Split at non-uniform resolution: you cannot refactor across a vendor's
+  API, so the BUY/BUILD fault line is already a real boundary.
+- **ADR-004:** Alternatives and rejection reasons stay in §8 permanently; the record is
+  what stops the same debate recurring.
+- **ADR-005:** Prefer a standard protocol (OIDC, SMTP, S3, OTel) so the seam stays
+  swappable; proprietary APIs are permitted but must record exit cost.
+- **ADR-006:** Reference kind is opt-in, and `version`/`tag` share one grammar: no single
+  regex separates a package version, a VCS tag, a commit, and a digest. Declaring a kind
+  narrows validation to that grammar; a bare tag is still not verified as immutable
+  (Recurspec cannot ask the vendor), and that residual ambiguity is accepted, not hidden.
 
 ## 6. Leaf Execution & Test Seam
 

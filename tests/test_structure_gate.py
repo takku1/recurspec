@@ -11,6 +11,7 @@ from recurspec.structure_gate import (
     declared_probe_paths,
     infer_source_root,
     rust_adapter,
+    source_root_candidates,
 )
 
 
@@ -507,3 +508,44 @@ def test_source_root_inference_finds_a_flat_layout_package(tmp_path: Path):
     (tmp_path / "docs").mkdir()
 
     assert infer_source_root(tmp_path) == "someproject"
+
+
+def test_ambiguous_source_root_fails_closed_naming_the_flag(tmp_path: Path):
+    """infer_source_root promises callers fail closed on ambiguity; they used to fall
+    back to "src" and audit both packages instead (R-701)."""
+    for name in ("alpha", "beta"):
+        (tmp_path / "src" / name).mkdir(parents=True)
+    (tmp_path / "docs" / "architecture").mkdir(parents=True)
+
+    assert source_root_candidates(tmp_path) == ["src/alpha", "src/beta"]
+    result = check_structure(tmp_path)
+
+    diagnostic = next(
+        item for item in result.diagnostics if item.code == "structure.source_root.ambiguous"
+    )
+    assert "--source-root" in diagnostic.message
+
+
+def test_section_six_examples_inside_a_fence_are_not_declared_paths(tmp_path: Path):
+    """declared_paths harvested a fenced example as a real declaration, so the gate
+    could believe a nonexistent file was covered (R-701)."""
+    fence = "`" * 3
+    lines = [
+        "# X (L1)",
+        "",
+        "## 6. Leaf Execution & Test Seam",
+        "",
+        "- **Implementation Files:** `src/real.py`.",
+        "- **Test Surface Seam:** `tests/test_real.py`.",
+        "",
+        fence + "markdown",
+        "- **Implementation Files:** `src/example_only.py`.",
+        fence,
+    ]
+    contract = tmp_path / "SYSTEM.md"
+    contract.write_text(chr(10).join(lines), encoding="utf-8")
+
+    implementations, tests, _ = declared_paths(contract)
+
+    assert implementations == {"src/real.py"}
+    assert tests == {"tests/test_real.py"}

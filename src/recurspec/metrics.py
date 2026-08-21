@@ -282,11 +282,11 @@ def compare(
         raise ValueError(f"tolerance_pct must be a finite, non-negative number: {tolerance_pct!r}")
     if not math.isfinite(noise_pct) or noise_pct < 0:
         raise ValueError(f"noise_pct must be a finite, non-negative number: {noise_pct!r}")
-    if noise_pct >= tolerance_pct > 0:
-        # A noise band at or above the tolerance swallows every regression the tolerance
-        # exists to catch: the band is tested first, so a 25% regression under
-        # tolerance 20 / noise 30 reads NEUTRAL. Refuse the configuration instead of
-        # silently voiding the primary gate (R-701).
+    if noise_pct >= tolerance_pct and (noise_pct or tolerance_pct):
+        # The band is tested first, so a band at or above the tolerance swallows every
+        # regression the tolerance exists to catch. tolerance=0 is not exempt: with the
+        # default noise it still reports every sub-2% regression as neutral, so "any
+        # regression blocks" must be spelled tolerance=0 AND noise=0 (R-701).
         raise ValueError(
             f"noise_pct {noise_pct!r} must be below tolerance_pct {tolerance_pct!r}; "
             "a noise band that wide reports every regression as neutral"

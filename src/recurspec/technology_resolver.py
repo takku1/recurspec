@@ -131,7 +131,7 @@ _DIGEST_RE = re.compile(r"^[A-Za-z][A-Za-z0-9]*:[0-9a-fA-F]{32,}$")
 
 
 def _is_exact_version(value: str) -> bool:
-    """A package version or VCS tag: semver-shaped, optionally v-prefixed."""
+    """A package version or VCS tag: semver- or PEP 440-shaped, optionally v-prefixed."""
     return bool(_SEMVER_RE.match(value) or _PEP440_RE.match(value))
 
 

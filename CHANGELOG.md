@@ -24,6 +24,19 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
   layout instead of defaulting to `src/recurspec`, so both gates work outside this
   repository. `--source-root` still overrides, and an ambiguous layout fails closed
   naming the flag.
+- R-701 (review): the fence fix covered only the contract parser; `declared_paths` and
+  `declared_probe_paths` still harvested fenced §6/§7 examples as real declarations, so
+  the Structure Gate could believe a nonexistent file was covered. Both parsers now share
+  one stripper.
+- R-701 (review): `compare()`'s guard exempted `tolerance_pct == 0`, so `--tolerance 0` -
+  the strictest setting - still reported every sub-2% regression as neutral. "Any
+  regression blocks" is now spelled tolerance 0 **and** noise 0.
+- R-701 (review): an ambiguous layout now fails closed with
+  `structure.source_root.ambiguous` naming `--source-root`, instead of silently auditing
+  all of `src/`; a missing repository stays a diagnostic rather than an instrument crash.
+- R-701 (review): reconciled the Contract Tree with the code - contract-engine,
+  structure-gate, evaluation-gate, and stack-resolver each declare the behaviour these
+  commits changed, and evaluation-gate §6 lists `metrics.py` as implementation.
 - R-701: contract validation ignores fenced code blocks. Sections and invariants inside
   a fence were parsed as declarations, so a node whose sections 4-8 existed only inside a
   fenced example validated clean and its illustrative `Proved` stage entered the tree.
@@ -102,9 +115,8 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
   search space) may be wrong. No fourth gate outcome.
 - R-638: `implementor_bks(..., metrics_only=True)` and `evaluate --bks-metrics-only`
   expose the Best Known State metric vector and omit prior source.
-- R-501/R-502 instruments: `recurspec predict` reports Negative Pattern
-  frequencies or refuses; `recurspec recommend` refuses to invent a Decision
-  Class from the redacted corpus. The study outcomes remain blocked.
+- R-501 instrument: `recurspec predict` reports Negative Pattern frequencies or
+  refuses. R-502 stays blocked and, per Removed below, ships no command.
 - R-640: an optional `.recurspec/trusted-inputs.json` manifest lets a project pin
   extra probe-adjacent inputs into the Candidate worktree; `setup.cfg`, `tox.ini`,
   `sitecustomize.py`, `usercustomize.py`, and a `scripts/` tree join the fixed
@@ -238,7 +250,8 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 - Fixed the same `EvidenceStage: Asserted` / invented `Checked` value in the two documents
   most likely to actively teach the wrong format going forward: the skill's own worker-facing
   template (`src/recurspec/skill/references/design.md`) and the README-linked worked example
-  (`docs/examples/identity-design.md`). `design.md`'s Evidence Stage table now matches the
+  (`docs/examples/identity-design.md`, since removed). `design.md`'s Evidence Stage table
+  now matches the
   schema's real seven-value enum exactly, with a note against inventing new stage labels.
 - Found and fixed a real atomic-leaf misclassification bug while wiring R-105 below: the
   parser's leaf detector only recognized a bare `Atomic leaf.` lead-in, so the 8 of 10 real
