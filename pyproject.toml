@@ -14,6 +14,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
+authors = [{ name = "takku1", email = "dillon.c.carney@gmail.com" }]
 keywords = ["agents", "specification", "software-design", "verification"]
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -38,6 +39,7 @@ Homepage = "https://github.com/takku1/recurspec"
 Repository = "https://github.com/takku1/recurspec.git"
 Issues = "https://github.com/takku1/recurspec/issues"
 Documentation = "https://github.com/takku1/recurspec/tree/main/docs"
+Changelog = "https://github.com/takku1/recurspec/blob/main/CHANGELOG.md"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

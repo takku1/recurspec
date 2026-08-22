@@ -123,10 +123,16 @@ selected explicitly through `RECURSPEC_BASH`.
 git clone https://github.com/takku1/recurspec.git
 cd recurspec
 python -m pip install -e ".[dev]"
-pytest
+python -m pytest
 ruff check src tests
+recurspec contract check docs/architecture
+recurspec structure check .
+recurspec stack check .
+recurspec reconcile plan .
+recurspec check .
 python -m build
 ```
 
-See [CONTEXT.md](../CONTEXT.md) for canonical terms and [ROADMAP.md](../ROADMAP.md) for
-incomplete work.
+See [CONTEXT.md](../CONTEXT.md) for canonical terms, [ROADMAP.md](../ROADMAP.md) for
+incomplete work, and [research/foundations.md](./research/foundations.md) for the cited
+mechanism sources and their claim boundaries.

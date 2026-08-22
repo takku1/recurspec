@@ -9,9 +9,10 @@ layer of detail; the bundled skill loads them only when its current route requir
 1. [Getting started](./getting-started.md)
 2. [Project fit and progressive adoption](./adoption.md)
 3. [Canonical language](../CONTEXT.md)
-4. [Contract design](./process/contract-design.md)
-5. [Published Contract Tree example](./examples/log-archive/SYSTEM.md)
-6. [Evidence cycle and adaptive planning](./process/evidence-cycle.md)
+4. [Research foundations](./research/foundations.md)
+5. [Contract design](./process/contract-design.md)
+6. [Published Contract Tree example](./examples/log-archive/SYSTEM.md)
+7. [Evidence cycle and adaptive planning](./process/evidence-cycle.md)
 
 ## Design process
 
@@ -30,26 +31,26 @@ declared in §6; incomplete work is recorded only in `ROADMAP.md`.
 
 ## Evidence and project status
 
-- [Research foundations](./research/foundations.md) contains source-backed rationale.
+[Research foundations](./research/foundations.md) is the evidence ledger: original
+sources, what each supports, and the Recurspec design inference. It does not validate
+the workflow as a whole.
+
 - [Constrained-creativity survey](./research/constrained-creativity.md) bounds what the
   supporting literature does and does not license.
 - [Evaluation protocol](./research/evaluation-protocol.md) is the pre-registered plan for
   R-400–R-403; it commits to metrics and analysis before any outcome data exists.
 - [Case-study log](./research/case-study-log.md) is the empty apparatus for those studies.
-- [R-400 case record: graphgraph / DX-WDAC-01](./research/r-400-case-record-graphgraph-dx-wdac-01.md)
-  is an observational record from a real ticket. It is explicitly **not** R-400 outcome
-  data -- no matched arm, no pre-assignment -- and does not count toward the stopping rule.
+- [graphgraph / DX-WDAC-01](./research/r-400-case-record-graphgraph-dx-wdac-01.md) is an
+  observational record. It is not R-400 outcome data: no matched arm, no pre-assignment.
 - [Log-archive example](./examples/log-archive/SYSTEM.md) is the published non-web
-  Contract Tree (R-404).
+  Contract Tree.
 - [R-204 runtime survey](./research/r-204-runtime-survey.md) is the primary-source
   resolution behind the Worker Pool adapter.
+- [ROADMAP.md](../ROADMAP.md) is the only incomplete-work registry.
 
 Project orientation: `recurspec status`. Common read-only inspection: `recurspec check`.
 Specialized probes and research interfaces remain discoverable through
 `recurspec --help`.
-- [ROADMAP.md](../ROADMAP.md) is the only incomplete-work registry.
-- Historical drafts were removed from the published tree and remain recoverable from git
-  history.
 
 ## Editing rules
 

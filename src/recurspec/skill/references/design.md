@@ -186,33 +186,35 @@ the node can be completed.
 ## `SYSTEM.md` template
 
 ```markdown
-# [Module Name] (Level N)
+# [Module Name] (L<level>)
+
+<!-- recurspec-contract: 1.0 -->
 
 ## 1. System Intent & Responsibility
 Single-sentence responsibility. Explicit non-goals ("does not own: ...").
 
 ## 2. Sub-System Decomposition
-- **Child Contract Node** — role and interface seam; replace this label with its real relative link.
-<!-- Terminal nodes instead state: "Atomic leaf (procured | atomic build | deferred)." -->
+Atomic leaf (procured | atomic build | deferred).
+<!-- Non-terminals replace this with child links and omit §6–§8. -->
 
 ## 3. Interface Contracts
 - **Inputs:** types, events, configuration, state passed in.
 - **Outputs:** returned data, events emitted, state mutations.
 
 ## 4. Invariants (EARS + Epistemic Stage)
-- [Ubiquitous] The module SHALL ...
-  - `EvidenceStage:` Unknown | Observed | Sampled | Inferred | Measured | Proved | Refuted
+- **[Ubiquitous]** THE SYSTEM SHALL ...
+  - `EvidenceStage:` Unknown
 
 ## 5. Architectural Decisions (ADRs)
 - **ADR-001:** [Title] — context, decision, impact.
 
 ## 6. Leaf Execution & Test Seam (terminal nodes only)
-- **Implementation File(s):** relative path to source.
+- **Implementation Files:** relative path to source.
 - **Test Surface Seam:** primary test file (`checks.sh` target).
 
 ## 7. Measurement Seams (terminal nodes only)
 - **Primary Metric:** `[metric_name]` (target, and `direction: lower|higher`)
-- **Evaluation Gate Path:** `modules/[name]/measure.sh`
+- **Evaluation Gate:** `modules/[name]/measure.sh`
 - **Correctness Backpressure:** `modules/[name]/checks.sh`
 - **Telemetry Surface:** structured JSON for self-diagnostics
 - **Branching Policy:** worktree candidate; merge only when checks pass AND the primary

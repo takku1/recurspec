@@ -14,9 +14,12 @@ The mechanisms remain strict: `ROADMAP.md` is the only incomplete-work registry,
 Candidates cannot authorize themselves, missing evidence is never guessed, and tests or
 measurements are never mislabeled as proof.
 
-Recurspec is alpha software. Its deterministic gates and Candidate lifecycle are tested;
-project-level outcome validation remains explicitly unfinished in
-[ROADMAP.md](./ROADMAP.md).
+Recurspec is alpha software. Its deterministic gates and Candidate lifecycle are tested
+(`Sampled`). Individual mechanisms are design inferences from the sources in
+[docs/research/foundations.md](./docs/research/foundations.md); those sources do not
+evaluate Recurspec as a whole. Outcome studies remain unfinished in
+[ROADMAP.md](./ROADMAP.md). Until they exist, call Recurspec research-informed, not
+research-validated.
 
 ## Install
 
@@ -27,8 +30,9 @@ recurspec skills install
 
 The installer supports Claude Code, Codex, Grok, and Antigravity. Use
 `recurspec skills check` for a read-only drift check or `--target NAME` to select one.
-The core package needs only Python 3.10+ and `jsonschema`; runtime and Rust adapters are
-optional extras.
+The core package needs only Python 3.10+ and `jsonschema`. Optional extras:
+`recurspec[runtime]` (Anthropic adapter) and `recurspec[rust]` (tree-sitter Structure
+Gate). Distribution is the git URL until a registry release is cut.
 
 For development:
 

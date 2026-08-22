@@ -1,10 +1,15 @@
 # Security policy
 
-Recurspec is alpha software and does not yet provide a private vulnerability reporting
-channel. Until one is configured, do not publish exploit details. Contact the repository
-owner through their GitHub profile and request a private reporting channel.
+## Supported versions
 
-Never include credentials, proprietary source, prompts, or local evidence logs in a
-report. Decision-corpus export requires explicit project-level opt-in; prediction refuses
-without recorded Negative Patterns, and Decision Class recommendation stays out of scope
-until the studies in `ROADMAP.md` produce comparable outcomes (R-502).
+Fixes land on `main`. Tagged releases older than the current `main` are not maintained.
+Recurspec is alpha (`0.2.0`).
+
+## Reporting a vulnerability
+
+There is no private advisory inbox yet. Do not file a public issue with exploit details.
+Contact the repository owner through GitHub and ask for a private channel first.
+
+Never include credentials, proprietary source, prompts, or local evidence logs.
+Decision-corpus export requires project-level opt-in. `predict` refuses without recorded
+Negative Patterns. Decision Class recommendation stays out of scope until R-502.

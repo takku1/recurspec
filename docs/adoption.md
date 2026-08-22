@@ -53,8 +53,8 @@ promotion explicit.
 
 Use isolated Candidates, distinct maker/checker identities, Negative Pattern repair
 memory, and contract reconciliation when changes are long-lived, parallel, or expensive
-to get wrong. This mode remains incomplete until the state-enforced orchestration items
-in [ROADMAP.md](../ROADMAP.md) are delivered.
+to get wrong. That loop is implemented. Whether it improves outcomes is unfinished work
+in [ROADMAP.md](../ROADMAP.md), not a missing orchestrator.
 
 ## Stop rule
 

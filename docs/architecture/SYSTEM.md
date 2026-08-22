@@ -66,6 +66,10 @@ Research: [research/foundations.md](../research/foundations.md).
   relationship THEN THE SYSTEM SHALL label it `Unknown` or `Inferred` and SHALL require
   Architect review before changing the Contract Tree. (design policy)
   - `EvidenceStage:` Unknown
+- **[Ubiquitous]** The bundled skill template SHALL produce a Contract Node the Contract
+  Engine accepts when its level placeholder is filled.
+  (`test_skill_template_is_accepted_by_the_parser`)
+  - `EvidenceStage:` Sampled
 
 ## 5. Architectural Decisions (ADRs)
 

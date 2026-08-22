@@ -220,3 +220,60 @@ def test_ci_runs_every_deterministic_gate_the_project_ships():
         assert command in text, command
 
     assert "windows-latest" in text, "the development platform must be verified in CI"
+
+
+def test_contributor_docs_name_the_gates_ci_runs():
+    """AGENTS.md and CONTRIBUTING.md had drifted to a shorter gate than CI, which is how
+    a source-root default that broke every other repository survived (R-701)."""
+    commands = (
+        "python -m pytest",
+        "ruff check src tests",
+        "recurspec contract check docs/architecture",
+        "recurspec structure check .",
+        "recurspec stack check .",
+        "recurspec reconcile plan .",
+        "recurspec check .",
+        "python -m build",
+    )
+    for path in (ROOT / "AGENTS.md", ROOT / "CONTRIBUTING.md"):
+        text = path.read_text(encoding="utf-8")
+        for command in commands:
+            assert command in text, f"{path.name} missing {command!r}"
+
+
+def test_readme_names_the_evidence_boundary_and_foundations_ledger():
+    """A front-door README that omits the claim boundary will be quoted as if Recurspec
+    were already outcome-validated (R-400)."""
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert "docs/research/foundations.md" in text
+    assert "research-informed" in text
+    assert "research-validated" in text
+    assert "ROADMAP.md" in text
+
+
+def _bundled_system_md_template() -> str:
+    text = (ROOT / "src/recurspec/skill/references/design.md").read_text(encoding="utf-8")
+    after = text.split("## `SYSTEM.md` template", 1)[1]
+    start = after.index("```markdown") + len("```markdown")
+    return after[start : after.index("```", start)].strip() + "\n"
+
+
+def test_skill_template_is_accepted_by_the_parser(tmp_path):
+    """The bundled template said `(Level N)`, omitted the version marker, and used
+    unbolded EARS tags — an agent following Recurspec's own instructions produced a
+    tree Recurspec rejects. Recurspec's contracts were hand-written, so this stayed
+    invisible (R-701)."""
+    from recurspec.contract import validate_contract
+    from recurspec.structure_gate import _IMPLEMENTATION_LABELS
+
+    filled = _bundled_system_md_template().replace("<level>", "2")
+    path = tmp_path / "SYSTEM.md"
+    path.write_text(filled, encoding="utf-8")
+    result = validate_contract(path)
+
+    assert result.valid, [item.as_dict() for item in result.diagnostics]
+    assert "<!-- recurspec-contract: 1.0 -->" in filled
+    assert "**Implementation Files:**" in filled
+    assert "Implementation Files" in _IMPLEMENTATION_LABELS
+    assert "**Evaluation Gate Path:**" not in filled

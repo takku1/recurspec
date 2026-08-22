@@ -23,12 +23,15 @@ before changing contracts.
 Run the complete local gate before publishing:
 
 ```bash
-pytest
+python -m pytest
 ruff check src tests
 recurspec contract check docs/architecture
+recurspec contract check docs/examples/log-archive
 recurspec structure check .
 recurspec stack check .
 recurspec reconcile plan .
+recurspec contract evidence docs/architecture
+recurspec check .
 python -m build
 ```
 

@@ -150,7 +150,9 @@ visible.
 
 Terminal nodes get a complete `SYSTEM.md` including **§8 Technology Resolution** — the
 section that replaces the two-line summary with a real, actionable stack. Non-terminal
-nodes get §1–§5 and a child index.
+nodes get §1–§5 and a child index. The heading is `# Title (L<n>)` with
+`<!-- recurspec-contract: 1.0 -->` on the next line; any other title form is rejected.
+Copy the bundled template in the skill's `references/design.md`.
 
 ---
 

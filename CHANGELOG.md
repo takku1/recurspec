@@ -6,6 +6,17 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ### Changed
 
+- R-701 (review): the bundled `SYSTEM.md` template now matches the parser. It used
+  `(Level N)` instead of `(L<n>)`, omitted the version marker, wrote unbolded EARS
+  tags, listed every Evidence Stage on one line, and named §6/§7 labels the Structure
+  Gate does not harvest — so an agent that followed Recurspec's own instructions
+  produced a tree Recurspec rejected. A repository test now fills the template and
+  runs `validate_contract`.
+- Public packaging and claim-boundary pass: README names `foundations.md` as the
+  mechanism ledger and repeats the research-informed / not research-validated
+  boundary; adoption no longer claims the Candidate loop is waiting on ROADMAP
+  orchestration that already shipped; the contributor gate matches CI; `pyproject.toml`
+  carries the maintainer and a Changelog URL.
 - Completed the repository-wide consolidation pass: removed the orphaned review snapshot
   and obsolete identity example, aligned every active architecture contract with shipped
   modules, removed completed-ticket and nonexistent-archive references, and indexed the
@@ -84,7 +95,6 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 - R-701: `check` text output now identifies each finding's subject. The JSON envelope
   always carried `details.path`; the text renderer dropped it, printing every `Unknown`
   evidence finding as the same unactionable line.
-
 
 - R-700-04: removed the duplicated decision-class table and Technology Resolution block
   from the bundled `design.md`, which had already drifted from `resolve.md` and the
@@ -427,3 +437,7 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 - Conflicting specialist skill names and the Bash-only installer.
 - Obsolete archived drafts from the published tree; history remains available in git.
+
+[Unreleased]: https://github.com/takku1/recurspec/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/takku1/recurspec/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/takku1/recurspec/releases/tag/v0.1.0
